@@ -2,7 +2,7 @@ import sys, bpy
 from .envi_func import retmenu
 
 def label(dnode, metric, axis, variant):
-    catdict = {'clim': 'Ambient', 'zone': 'Zone', 'Linkage': 'Linkage', 'External node': 'External node', 'Frames': 'Frame', 'metric': dnode.inputs[axis].rtypemenu + ' metric', 'type': metric} 
+    catdict = {'clim': 'Ambient', 'zone': 'Zone', 'Linkage': 'Linkage', 'External': 'External', 'Frames': 'Frame', 'metric': dnode.inputs[axis].rtypemenu + ' metric', 'type': metric} 
     animdict = {'metric': dnode.inputs[axis].rtypemenu, 'type': metric}
     if dnode.parametricmenu == '1':
         return animdict[variant]
@@ -10,7 +10,7 @@ def label(dnode, metric, axis, variant):
         return catdict[variant]
 
 def llabel(dnode, metric, axis, variant):
-    rdict = {'Climate': 'Ambient', 'Zone': dnode.inputs[axis].zonemenu, 'Linkage':dnode.inputs[axis].linkmenu, 'Frames': 'Frames', 'Camera': dnode.inputs[axis].cammenu, 'Position': dnode.inputs[axis].posmenu}
+    rdict = {'Climate': 'Ambient', 'Zone': dnode.inputs[axis].zonemenu, 'Linkage':dnode.inputs[axis].linkmenu, 'Frames': 'Frames', 'Camera': dnode.inputs[axis].cammenu, 'Position': dnode.inputs[axis].posmenu, 'External': dnode.inputs[axis].enmenu}
     ldict = {'type': rdict[dnode.inputs[axis].rtypemenu], 'metric': metric, }
     return ldict[variant]
     
@@ -127,7 +127,7 @@ def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
         framey2 = retframe('Y-axis 2', dnode, rzly2[0])
         menusy2 = retmenu(dnode, 'Y-axis 2', dnode.inputs['Y-axis 2'].rtypemenu)
         y2d = [ry2[4].split()[si:ei + 1] for ry2 in rly2 if ry2[0] == framey2 and ry2[1] == dnode.inputs['Y-axis 2'].rtypemenu and ry2[2] == menusy2[0] and ry2[3] == menusy2[1]][0]
-        y2data = timedata([float(y) for y in y2d], dnode.timemenu, dnode.inputs['Y-axis 2'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
+        y2data = timedata([dnode.inputs['Y-axis 2'].multfactor * float(y) for y in y2d], dnode.timemenu, dnode.inputs['Y-axis 2'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
         drange = checkdata(chart_op, xdata, y2data) 
         line, = plt.plot(xdata[:drange], y2data[:drange], color=colors[1], ls = linestyles[1], linewidth = 1, label = llabel(dnode, menusy2[1], 'Y-axis 2', variant))    
  
@@ -138,7 +138,7 @@ def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
         framey3 = retframe('Y-axis 3', dnode, rzly3[0])
         menusy3 = retmenu(dnode, 'Y-axis 3', dnode.inputs['Y-axis 3'].rtypemenu)
         y3d = [ry3[4].split()[si:ei + 1] for ry3 in rly3 if ry3[0] == framey3 and ry3[1] == dnode.inputs['Y-axis 3'].rtypemenu and ry3[2] == menusy3[0] and ry3[3] == menusy3[1]][0]
-        y3data = timedata([float(y) for y in y3d], dnode.timemenu, dnode.inputs['Y-axis 3'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
+        y3data = timedata([dnode.inputs['Y-axis 3'].multfactor * float(y) for y in y3d], dnode.timemenu, dnode.inputs['Y-axis 3'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
         drange = checkdata(chart_op, xdata, y3data) 
         line, = plt.plot(xdata[:drange], y3data[:drange], color=colors[2], ls = linestyles[2], linewidth = 1, label=llabel(dnode, menusy3[1], 'Y-axis 3', variant))    
     

@@ -34,7 +34,8 @@ class envi_materials(object):
                         'Inner concrete block': ('Rough', '0.51', '1400.0', '1000', '0.9', '0.65', '0.65', '100'),
                         'Heavy mix concrete': ('Rough', '1.4', '2100.0', '840.0', '0.90', '0.65', '0.65', '100'),
                         'Concrete Floor slab': ('MediumRough', '1.73', '2242.6', '836.0', '0.90', '0.65', '0.65', '100'),
-                        'Hemcrete': ('Rough', '0.09', '330.0', '2100', '0.900000', '0.600000', '0.600000', '50')}
+                        'Hemcrete': ('Rough', '0.09', '330.0', '2100', '0.900000', '0.600000', '0.600000', '50'),
+                        'Screed': ('MediumRough', '0.41', '1200.0', '2100', '0.900000', '0.600000', '0.600000', '50')}
         self.concrete_dat = OrderedDict(sorted(self.concrete_datd.items()))
 
         self.wood_datd = {'Wood flooring': ('MediumSmooth', '0.14', '600.0', '1210.0', '0.91', '0.65', '0.65', '25'),
@@ -62,16 +63,21 @@ class envi_materials(object):
                         'Horizontal Air 20-50mm Heat Up': ('Gas', 'Air', '0.17')}
         self.gas_dat = OrderedDict(sorted(self.gas_datd.items()))
 
-        self.wgas_datd = {'Argon': ('Gas', 'Argon', '', '', '0.016'),
-                        'Krypton':('Gas', 'Krypton', '', '', '0.00943'),
-                        'Xenon':('Gas', 'Xenon', '', '', '0.00565'),
-                        'Air': ('Gas', 'Air', '', '', '0.024')}
+        self.wgas_datd = {'Argon': ('Gas', 'Argon', '', '0.2', '0.016'),
+                        'Krypton':('Gas', 'Krypton', '', '0.22', '0.00943'),
+                        'Xenon':('Gas', 'Xenon', '', '0.25', '0.00565'),
+                        'Air': ('Gas', 'Air', '', '0.17', '0.024')}
         self.wgas_dat = OrderedDict(sorted(self.wgas_datd.items()))
 
         self.glass_datd = {'Clear 6mm': ('Glazing', 'SpectralAverage', '', '0.006', '0.775', '0.071', '0.071', '0.881', '0.080', '0.080', '0.0', '0.84', '0.84', '0.9'),
+                          'Clear 4mm': ('Glazing', 'SpectralAverage', '', '0.004', '0.837', '0.075', '0.075', '0.898', '0.081', '0.081', '0.0', '0.84', '0.84', '0.9'),
                           'Clear 3mm': ('Glazing', 'SpectralAverage', '', '0.003', '0.837', '0.075', '0.075', '0.898', '0.081', '0.081', '0.0', '0.84', '0.84', '0.9'),
-                          'Clear 6mm LoE': ('Glazing', 'SpectralAverage', '', '0.006', '0.600', '0.0170', '0.220', '0.840', '0.055', '0.078', '0.0', '0.84', '0.10', '0.9'),
-                          'Clear 3mm LoE': ('Glazing', 'SpectralAverage', '', '0.003', '0.630', '0.190', '0.220', '0.850', '0.056', '0.079', '0.0', '0.84', '0.10', '0.9')}
+                          'Clear 6mm Soft LoE': ('Glazing', 'SpectralAverage', '', '0.006', '0.600', '0.0170', '0.220', '0.840', '0.055', '0.078', '0.0', '0.05', '0.84', '0.9'),
+                          'Clear 4mm Soft LoE': ('Glazing', 'SpectralAverage', '', '0.004', '0.600', '0.0170', '0.220', '0.840', '0.055', '0.078', '0.0', '0.05', '0.84', '0.9'),
+                          'Clear 3mm Soft LoE': ('Glazing', 'SpectralAverage', '', '0.003', '0.630', '0.190', '0.220', '0.850', '0.056', '0.079', '0.0', '0.05', '0.84', '0.9'),
+                          'Clear 6mm Hard LoE': ('Glazing', 'SpectralAverage', '', '0.006', '0.600', '0.0170', '0.220', '0.840', '0.055', '0.078', '0.0', '0.15', '0.84', '0.9'),
+                          'Clear 4mm Hard LoE': ('Glazing', 'SpectralAverage', '', '0.004', '0.600', '0.0170', '0.220', '0.840', '0.055', '0.078', '0.0', '0.15', '0.84', '0.9'),
+                          'Clear 3mm Hard LoE': ('Glazing', 'SpectralAverage', '', '0.003', '0.630', '0.190', '0.220', '0.850', '0.056', '0.079', '0.0', '0.15', '0.84', '0.9')}
         self.glass_dat = OrderedDict(sorted(self.glass_datd.items()))
 
         self.insulation_datd = {'Glass fibre quilt': ('Rough', '0.04', '12.0', '840.0', '0.9', '0.65', '0.65', '100'),
@@ -85,7 +91,8 @@ class envi_materials(object):
                         'Foamglass': ('MediumSmooth', '0.04', '120.0', '840', '0.900000', '0.600000', '0.600000', '50'),
                         'Calsitherm': ('Rough', '0.059', '220.0', '1500', '0.900000', '0.600000', '0.600000', '50'),
                         'Cellulose (attic)': ('Rough', '0.04', '25.0', '1600', '0.900000', '0.600000', '0.600000', '200'),
-                        'Thermafloor TF70': ('Smooth', '0.022', '32.0', '1500', '0.100000', '0.100000', '0.100000', '250')}
+                        'Thermafloor TF70': ('Smooth', '0.022', '32.0', '1500', '0.100000', '0.100000', '0.100000', '250'),
+                        'Aerogel insulation': ('Smooth', '0.015', '2.0', '840', '0.100000', '0.100000', '0.100000', '60')}
    
         self.insulation_dat = OrderedDict(sorted(self.insulation_datd.items()))
         
@@ -101,6 +108,7 @@ class envi_materials(object):
         self.thickdict = OrderedDict()
         self.i = 0
         self.matdat = OrderedDict()
+        
         for dat in (self.brick_dat, self.cladding_dat, self.concrete_dat, self.gas_dat, self.insulation_dat, self.metal_dat, 
                     self.stone_dat, self.wood_dat, self.glass_dat, self.wgas_dat, self.pcm_dat):
             self.matdat.update(dat)
@@ -135,26 +143,41 @@ class envi_materials(object):
             params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
             paramvs +=(te.split(':')[0], te.split(':')[1])
         idf_file.write(epentry("MaterialProperty:PhaseChange", params, paramvs))
+        
+    def sg_write(self, idf_file, name, uv, shgc, vt):
+        params = ('Name', 'U-Factor', 'Solar Heat Gain Coefficient', 'Visible Transmittance')
+        paramvs = [name] + ['{:.3f}'.format(p) for p in (uv, shgc, vt)]
+        idf_file.write(epentry("WindowMaterial:SimpleGlazingSystem", params, paramvs))
 
 class envi_constructions(object):    
     def __init__(self):
         self.wall_cond = {'External Wall 1': ('Standard Brick', 'Thermawall TW50', 'Inner concrete block'), 'Kingston PH 1': ('Plywood', 'EPS', 'Plywood'),
         'Party Wall 1': ('Plaster board', 'Standard Brick', 'Plaster board'), 'SIP': ('OSB', 'EPS', 'OSB')}
         self.wall_con = OrderedDict(sorted(self.wall_cond.items()))
-        self.ceil_cond = {'Ceiling 1': ('Chipboard', 'EPS', 'Plaster board')}
+        
+        self.ceil_cond = {'Floor/Ceil 1': ('Chipboard', 'EPS', 'Plaster board')}
         self.ceil_con = OrderedDict(sorted(self.ceil_cond.items()))
+        
+        self.ifloor_cond = {'Floor/Ceil 1': ('Plaster board', 'EPS', 'Chipboard')}
+        self.ifloor_con = OrderedDict(sorted(self.ceil_cond.items()))
+        
         self.floor_cond = {'Ground Floor 1': ('Common earth', 'Gravel', 'Heavy mix concrete', 'Horizontal Air 20-50mm Heat Down', 'Chipboard'),
                            'Kingston PH 1': ('Common earth', 'Gravel', 'EPS', 'Heavy mix concrete')}
-        self.floor_cond.update(self.ceil_cond)
+        self.floor_cond.update(self.ifloor_cond)
         self.floor_con = OrderedDict(sorted(self.floor_cond.items()))
-        self.roof_cond = {'Roof 1': ('Clay tile', 'Roofing felt', 'Plywood')}
+        
+        self.roof_cond = {'Roof 1': ('Clay tile', 'Roofing felt', 'Plywood'), 'Roof/Ceil 1': ('Clay tile', 'Roofing felt', 'Plywood')}
+        self.roof_cond.update(self.ceil_cond)
         self.roof_con = OrderedDict(sorted(self.roof_cond.items()))
 
         self.door_cond = {'Internal Door 1': ('Chipboard', 'Hardwood', 'Chipboard')}
         self.door_con = OrderedDict(sorted(self.door_cond.items()))
-        self.glaze_cond = {'Standard Double Glazing': ('Clear 3mm', 'Air', 'Clear 3mm'), 'Low-E Double Glazing': ('Clear 3mm LoE', 'Air', 'Clear 3mm'), 
-                           'PassivHaus': ('Clear 3mm LoE', 'Argon', 'Clear 3mm LoE', 'Argon', 'Clear 3mm')}
+        
+        self.glaze_cond = {'Standard Double Glazing': ('Clear 3mm', 'Air', 'Clear 3mm'), 'Low-E Double Glazing': ('Clear 3mm', 'Air', 'Clear 3mm Hard LoE'), 
+                           'PassivHaus': ('Clear 3mm', 'Argon', 'Clear 3mm Soft LoE', 'Argon', 'Clear 3mm Soft LoE'), 'Velfac 200 Double': ('Clear 4mm', 'Argon', 'Clear 4mm Soft LoE'),
+                           'Velfac 200 Triple': ('Clear 4mm', 'Argon', 'Clear 4mm Soft LoE', 'Argon', 'Clear 4mm Soft LoE')}
         self.glaze_con = OrderedDict(sorted(self.glaze_cond.items()))
+        
         self.p = 0
         self.propdict = {'Wall': self.wall_con, 'Floor': self.floor_con, 'Roof': self.roof_con, 'Ceiling': self.floor_con, 'Door': self.door_con, 
                                 'Window': self.glaze_con} 
@@ -222,28 +245,31 @@ def envi_con_list(self, context):
     return [(mat, mat, 'Construction') for mat in (ec.wall_con, ec.roof_con, ec.floor_con, ec.ceil_con, ec.door_con, ec.glaze_con)[("Wall", "Roof", "Floor", "Ceiling", "Door", "Window").index(self.envi_con_type)]]
     
 def retuval(mat):
-    resists, em, ec = [], envi_materials(), envi_constructions()
-    thicks = [0.001 * tc for tc in (mat.envi_export_lo_thi, mat.envi_export_l1_thi, mat.envi_export_l2_thi, mat.envi_export_l3_thi, mat.envi_export_l4_thi)]
-
-    if mat.envi_con_makeup == '1': 
+    if mat.envi_con_type not in ('None', 'Shading', 'Aperture', 'Window'):
+        resists, em, ec = [], envi_materials(), envi_constructions()
+        thicks = [0.001 * tc for tc in (mat.envi_export_lo_thi, mat.envi_export_l1_thi, mat.envi_export_l2_thi, mat.envi_export_l3_thi, mat.envi_export_l4_thi)]
         laymats = (mat.envi_material_lo, mat.envi_material_l1, mat.envi_material_l2, mat.envi_material_l3, mat.envi_material_l4)
-        lays = (mat.envi_layero, mat.envi_layer1, mat.envi_layer2, mat.envi_layer3, mat.envi_layer4)
-        ctcs = (mat.envi_export_lo_tc, mat.envi_export_l1_tc, mat.envi_export_l2_tc, mat.envi_export_l3_tc, mat.envi_export_l4_tc)
-
-        for l, lay in enumerate(lays):
-            if lay == '1':
-                if mat.envi_con_type != 'Window':
-                    dtc = em.matdat[laymats[l]][1]
-                else:
-                    dtc = em.matdat[laymats[l]][(4, 11)[l in (0, 2, 4)]]
-                resists.append(thicks[l]/float(dtc))
-            if lay == '2':
-                resists.append(thicks[l]/ctcs[l])
+        pstcs = []
         
-    elif mat.envi_con_makeup == '0':
-        pi = 4 if mat.envi_con_type == 'Window' else 1
-        pstcs = [float(em.matdat[psmat][pi]) for psmat in ec.propdict[mat.envi_con_type][mat.envi_con_list]]
-        resists = [thicks[t]/tc for t, tc in enumerate(pstcs)]
-
-    return 1/sum(resists)
+        if mat.envi_con_makeup == '1':         
+            lays = (mat.envi_layero, mat.envi_layer1, mat.envi_layer2, mat.envi_layer3, mat.envi_layer4)
+            ctcs = (mat.envi_export_lo_tc, mat.envi_export_l1_tc, mat.envi_export_l2_tc, mat.envi_export_l3_tc, mat.envi_export_l4_tc)
+    
+            for l, lay in enumerate(lays):
+                if lay == '1':
+                    dtc = em.matdat[laymats[l]][2] if em.matdat[laymats[l]][0] == 'Gas' else em.matdat[laymats[l]][1]
+                    resists.append((thicks[l]/float(dtc), float(dtc))[em.matdat[laymats[l]][0] == 'Gas'])
+                if lay == '2':
+                    resists.append(thicks[l]/ctcs[l])
+            
+        elif mat.envi_con_makeup == '0':
+            for p, psmat in enumerate(ec.propdict[mat.envi_con_type][mat.envi_con_list]):
+                pi = 2 if psmat in em.gas_dat else 1
+                pstcs.append(float(em.matdat[psmat][pi]))
+                resists.append((thicks[p]/float(em.matdat[psmat][pi]), float(em.matdat[psmat][pi]))[em.matdat[psmat][0] == 'Gas'])
+        uv = 1/(sum(resists) + 0.12 + 0.08)
+        mat.envi_material_uv = '{:.3f}'.format(uv)
+        return uv
+    else:
+        return 1.0
     

@@ -19,7 +19,7 @@
 import bpy, os, sys, multiprocessing, mathutils, bmesh, datetime, colorsys, bgl, blf, shlex, bpy_extras, math
 #from collections import OrderedDict
 from subprocess import Popen, PIPE, STDOUT
-from numpy import int8, in1d, float32, float64, array, digitize, amax, amin, average, zeros, inner, transpose, nan, set_printoptions, choose, clip, where
+from numpy import int8, in1d, float16, float32, float64, array, digitize, amax, amin, average, zeros, inner, transpose, nan, set_printoptions, choose, clip, where, savetxt, char
 set_printoptions(threshold=nan)
 from numpy import sum as nsum
 from numpy import max as nmax
@@ -28,26 +28,30 @@ from numpy import mean as nmean
 from numpy import delete as ndelete
 from numpy import append as nappend
 from math import sin, cos, asin, acos, pi, tan, ceil, log10
+from math import e as expo
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 from xml.dom import minidom
 from bpy.props import IntProperty, StringProperty, EnumProperty, FloatProperty, BoolProperty, FloatVectorProperty
 
-try:
-    import matplotlib
-    if sys.platform == 'win32':
-        matplotlib.use('Qt4Agg', force = True)
-    else:
-        matplotlib.use('Qt5Agg', force = True)
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as colors
-    import matplotlib.cm as mcm
-    from .windrose import WindroseAxes
-    mp = 1
-except Exception as e:
-    print(e)
-    mp = 0
-
+def ret_plt():
+    try:
+        import matplotlib
+        matplotlib.use('qt5agg', warn = False, force = True)
+        from matplotlib import pyplot as plt
+        plt.figure()
+        return plt
+    except Exception as e:
+        logentry('Matplotlib error: {}'.format(e))
+        return 0
+    
+def ret_mcm():
+    try:
+        import matplotlib.cm as mcm
+        return mcm
+    except Exception as e:
+        return 0   
+    
 dtdf = datetime.date.fromordinal
 unitdict = {'Lux': 'illu', u'W/m\u00b2 (f)': 'firrad', u'W/m\u00b2 (v)': 'virrad', 'DF (%)': 'df', 'DA (%)': 'da', 'UDI-f (%)': 'udilow', 'UDI-s (%)': 'udisup', 'UDI-a (%)': 'udiauto', 'UDI-e (%)': 'udihi',
             'Sky View': 'sv', 'Mlxh': 'illu', 'kWh (f)': 'firrad', 'kWh (v)': 'virrad', u'kWh/m\u00b2 (f)': 'firradm2', u'kWh/m\u00b2 (v)': 'virradm2', '% Sunlit': 'res', 'sDA (%)': 'sda', 'ASE (hrs)': 'ase', 'kW': 'watts', 'Max lux': 'illu', 
@@ -55,9 +59,110 @@ unitdict = {'Lux': 'illu', u'W/m\u00b2 (f)': 'firrad', u'W/m\u00b2 (v)': 'virrad
 
 coldict = {'0': 'rainbow', '1': 'gray', '2': 'hot', '3': 'CMRmap', '4': 'jet', '5': 'plasma'}
 
-def retcols(scene, levels):
+CIE_X = (1.299000e-04, 2.321000e-04, 4.149000e-04, 7.416000e-04, 1.368000e-03, 
+2.236000e-03, 4.243000e-03, 7.650000e-03, 1.431000e-02, 2.319000e-02, 
+4.351000e-02, 7.763000e-02, 1.343800e-01, 2.147700e-01, 2.839000e-01, 
+3.285000e-01, 3.482800e-01, 3.480600e-01, 3.362000e-01, 3.187000e-01, 
+2.908000e-01, 2.511000e-01, 1.953600e-01, 1.421000e-01, 9.564000e-02, 
+5.795001e-02, 3.201000e-02, 1.470000e-02, 4.900000e-03, 2.400000e-03, 
+9.300000e-03, 2.910000e-02, 6.327000e-02, 1.096000e-01, 1.655000e-01, 
+2.257499e-01, 2.904000e-01, 3.597000e-01, 4.334499e-01, 5.120501e-01, 
+5.945000e-01, 6.784000e-01, 7.621000e-01, 8.425000e-01, 9.163000e-01, 
+9.786000e-01, 1.026300e+00, 1.056700e+00, 1.062200e+00, 1.045600e+00, 
+1.002600e+00, 9.384000e-01, 8.544499e-01, 7.514000e-01, 6.424000e-01, 
+5.419000e-01, 4.479000e-01, 3.608000e-01, 2.835000e-01, 2.187000e-01, 
+1.649000e-01, 1.212000e-01, 8.740000e-02, 6.360000e-02, 4.677000e-02, 
+3.290000e-02, 2.270000e-02, 1.584000e-02, 1.135916e-02, 8.110916e-03, 
+5.790346e-03, 4.106457e-03, 2.899327e-03, 2.049190e-03, 1.439971e-03, 
+9.999493e-04, 6.900786e-04, 4.760213e-04, 3.323011e-04, 2.348261e-04, 
+1.661505e-04, 1.174130e-04, 8.307527e-05, 5.870652e-05, 4.150994e-05, 
+2.935326e-05, 2.067383e-05, 1.455977e-05, 1.025398e-05, 7.221456e-06, 
+5.085868e-06, 3.581652e-06, 2.522525e-06, 1.776509e-06, 1.251141e-06)
+
+CIE_Y = (3.917000e-06, 6.965000e-06, 1.239000e-05, 2.202000e-05, 3.900000e-05, 
+6.400000e-05, 1.200000e-04, 2.170000e-04, 3.960000e-04, 6.400000e-04, 
+1.210000e-03, 2.180000e-03, 4.000000e-03, 7.300000e-03, 1.160000e-02, 
+1.684000e-02, 2.300000e-02, 2.980000e-02, 3.800000e-02, 4.800000e-02, 
+6.000000e-02, 7.390000e-02, 9.098000e-02, 1.126000e-01, 1.390200e-01, 
+1.693000e-01, 2.080200e-01, 2.586000e-01, 3.230000e-01, 4.073000e-01, 
+5.030000e-01, 6.082000e-01, 7.100000e-01, 7.932000e-01, 8.620000e-01, 
+9.148501e-01, 9.540000e-01, 9.803000e-01, 9.949501e-01, 1.000000e+00, 
+9.950000e-01, 9.786000e-01, 9.520000e-01, 9.154000e-01, 8.700000e-01, 
+8.163000e-01, 7.570000e-01, 6.949000e-01, 6.310000e-01, 5.668000e-01, 
+5.030000e-01, 4.412000e-01, 3.810000e-01, 3.210000e-01, 2.650000e-01, 
+2.170000e-01, 1.750000e-01, 1.382000e-01, 1.070000e-01, 8.160000e-02, 
+6.100000e-02, 4.458000e-02, 3.200000e-02, 2.320000e-02, 1.700000e-02, 
+1.192000e-02, 8.210000e-03, 5.723000e-03, 4.102000e-03, 2.929000e-03, 
+2.091000e-03, 1.484000e-03, 1.047000e-03, 7.400000e-04, 5.200000e-04, 
+3.611000e-04, 2.492000e-04, 1.719000e-04, 1.200000e-04, 8.480000e-05, 
+6.000000e-05, 4.240000e-05, 3.000000e-05, 2.120000e-05, 1.499000e-05, 
+1.060000e-05, 7.465700e-06, 5.257800e-06, 3.702900e-06, 2.607800e-06, 
+1.836600e-06, 1.293400e-06, 9.109300e-07, 6.415300e-07, 4.518100e-07)
+
+CIE_Z = (6.061000e-04, 1.086000e-03, 1.946000e-03, 3.486000e-03, 6.450001e-03, 
+1.054999e-02, 2.005001e-02, 3.621000e-02, 6.785001e-02, 1.102000e-01, 
+2.074000e-01, 3.713000e-01, 6.456000e-01, 1.039050e+00, 1.385600e+00, 
+1.622960e+00, 1.747060e+00, 1.782600e+00, 1.772110e+00, 1.744100e+00, 
+1.669200e+00, 1.528100e+00, 1.287640e+00, 1.041900e+00, 8.129501e-01, 
+6.162000e-01, 4.651800e-01, 3.533000e-01, 2.720000e-01, 2.123000e-01, 
+1.582000e-01, 1.117000e-01, 7.824999e-02, 5.725001e-02, 4.216000e-02, 
+2.984000e-02, 2.030000e-02, 1.340000e-02, 8.749999e-03, 5.749999e-03, 
+3.900000e-03, 2.749999e-03, 2.100000e-03, 1.800000e-03, 1.650001e-03, 
+1.400000e-03, 1.100000e-03, 1.000000e-03, 8.000000e-04, 6.000000e-04, 
+3.400000e-04, 2.400000e-04, 1.900000e-04, 1.000000e-04, 4.999999e-05, 
+3.000000e-05, 2.000000e-05, 1.000000e-05, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 
+0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00)
+
+
+XYZtosRGB = (
+  3.2404542, -1.5371385, -0.4985314,
+ -0.9692660,  1.8760108,  0.0415560,
+  0.0556434, -0.2040259,  1.0572252
+  )
+
+def planck(w, t):
+	wm = w * 1e-9
+	c1 = 3.7402e-16
+	c2 = 1.43848e-2
+	return (c1*wm**-5.0) / (expo**(c2/(wm*t))-1)
+
+def ct2RGB(t):
+    xyz = [0.0, 0.0, 0.0]
+    rgb = [0.0, 0.0, 0.0]
+    step = 5 # unit: nanometer
+    startWavelength = 360
+    endWavelength = 830
+    i = 0
+    for w in range(startWavelength, endWavelength + step, step):
+        I = planck(w, t)
+        xyz[0] += I * CIE_X[i]
+        xyz[1] += I * CIE_Y[i]
+        xyz[2] += I * CIE_Z[i]
+        i += 1
+    #mxyz = max(xyz)
+    mxyz = xyz[0] + xyz[1] + xyz[2]
+    xyz[0] /= mxyz
+    xyz[1] /= mxyz
+    xyz[2] /= mxyz
+    rgb[0] = max(0, xyz[0]*XYZtosRGB[0] + xyz[1]*XYZtosRGB[1] + xyz[2]*XYZtosRGB[2])
+    rgb[1] = max(0, xyz[0]*XYZtosRGB[3] + xyz[1]*XYZtosRGB[4] + xyz[2]*XYZtosRGB[5])
+    rgb[2] = max(0, xyz[0]*XYZtosRGB[6] + xyz[1]*XYZtosRGB[7] + xyz[2]*XYZtosRGB[8])
+    maxrgb = max(rgb)
+
+    if maxrgb > 0.0:
+        rgb[0] /= maxrgb
+        rgb[1] /= maxrgb
+        rgb[2] /= maxrgb
+    return rgb
+
+def retcols(cmap, levels):
     try:
-        cmap = mcm.get_cmap(scene.vi_leg_col)
         rgbas = [cmap(int(i * 255/(levels - 1))) for i in range(levels)]
     except:
         hs = [0.75 - 0.75*(i/19) for i in range(levels)]
@@ -65,7 +170,8 @@ def retcols(scene, levels):
     return rgbas
   
 def cmap(scene):
-    cols = retcols(scene, 20)
+    cols = retcols(ret_mcm().get_cmap(scene.vi_leg_col), 20)
+    
     for i in range(20):   
         matname = '{}#{}'.format('vi-suite', i)
         
@@ -75,16 +181,55 @@ def cmap(scene):
             bpy.data.materials[matname].specular_color = (0, 0, 0)
             bpy.data.materials[matname].use_shadeless = 0
         
-#        if bpy.data.materials[matname].users:
         bpy.data.materials[matname].diffuse_color = cols[i][0:3]
+        bpy.data.materials[matname].use_nodes = True
+        nodes = bpy.data.materials[matname].node_tree.nodes
+
+        for node in nodes:
+            nodes.remove(node)
         
-def bmesh2mesh(scene, obmesh, o, frame, tmf):
+        if scene.vi_disp_trans < 1:
+            # create transparency node
+            node_material = nodes.new(type='ShaderNodeBsdfTransparent')            
+        elif scene.vi_disp_mat:
+            # create emission node
+            node_material = nodes.new(type='ShaderNodeEmission') 
+            node_material.inputs[1].default_value = scene.vi_disp_ems
+        else:
+            # create diffuse node
+            node_material = nodes.new(type='ShaderNodeBsdfDiffuse')
+            node_material.inputs[1].default_value = 0.5
+
+        node_material.inputs[0].default_value = (*cols[i][0:3],1)  # green RGBA
+        node_material.location = 0,0
+                
+        # create output node
+        node_output = nodes.new(type='ShaderNodeOutputMaterial')   
+        node_output.location = 400,0
+        
+        links = bpy.data.materials[matname].node_tree.links
+        links.new(node_material.outputs[0], node_output.inputs[0])
+        
+def leg_min_max(scene):
+    try:
+        if scene.vi_res_py and bpy.app.driver_namespace.get('resmod'):
+            return (bpy.app.driver_namespace['resmod'](scene.vi_leg_min), bpy.app.driver_namespace['resmod'](scene.vi_leg_max))
+        elif scene.vi_res_mod:
+            return (eval('{}{}'.format(scene.vi_leg_min, scene.vi_res_mod)), eval('{}{}'.format(scene.vi_leg_max, scene.vi_res_mod)))
+        else:
+            return (scene.vi_leg_min, scene.vi_leg_max)
+    except Exception as e:
+        print(e)
+        return (scene.vi_leg_min, scene.vi_leg_max)
+                     
+def bmesh2mesh(scene, obmesh, o, frame, tmf, fb):
     ftext, gradfile, vtext = '', '', ''
 
     try:
         bm = obmesh.copy()
-#        bm.verts.ensure_lookup_table()
-#        bm.faces.ensure_lookup_table()
+        bmesh.ops.remove_doubles(bm, verts = bm.verts, dist = 0.0001)
+        bmesh.ops.dissolve_limit(bm, angle_limit = 0.0001, use_dissolve_boundaries = False, verts = bm.verts, edges = bm.edges, delimit = 1)
+        bmesh.ops.connect_verts_nonplanar(bm, angle_limit = 0.0001, faces = bm.faces)
         mrms = array([m.radmatmenu for m in o.data.materials])
         mpps = array([not m.pport for m in o.data.materials])        
         mnpps = where(mpps, 0, 1)        
@@ -92,17 +237,17 @@ def bmesh2mesh(scene, obmesh, o, frame, tmf):
         fmrms = in1d(mrms, array(('0', '1', '2', '3', '6', '7', '9')), invert = True)
         mfaces = [f for f in bm.faces if (mmrms * mpps)[f.material_index]]
         ffaces = [f for f in bm.faces if (fmrms + mnpps)[f.material_index]]        
-#        mfaces = [face for face in bm.faces if o.data.materials[face.material_index].radmatmenu in ('0', '1', '2', '3') and not o.data.materials[face.material_index].pport]
-#        ffaces = [face for face in bm.faces if o.data.materials[face.material_index].radmatmenu not in ('0', '1', '2', '3', '7', '8') or o.data.materials[face.material_index].pport]    
         mmats = [mat for mat in o.data.materials if mat.radmatmenu in ('0', '1', '2', '3', '6', '9')]
         otext = 'o {}\n'.format(o.name)
         vtext = ''.join(['v {0[0]:.6f} {0[1]:.6f} {0[2]:.6f}\n'.format(v.co) for v in bm.verts])
+        
         if o.data.polygons[0].use_smooth:
             vtext += ''.join(['vn {0[0]:.6f} {0[1]:.6f} {0[2]:.6f}\n'.format(v.normal.normalized()) for v in bm.verts])
+            
         if not o.data.uv_layers:            
             if mfaces:
                 for mat in mmats:
-                    matname = mat.name.replace(' ', '_')
+                    matname = mat['radname']
                     ftext += "usemtl {}\n".format(matname) + ''.join(['f {}\n'.format(' '.join(('{0}', '{0}//{0}')[f.smooth].format(v.index + 1) for v in f.verts)) for f in mfaces if o.data.materials[f.material_index] == mat])            
         else:            
             uv_layer = bm.loops.layers.uv.values()[0]
@@ -110,6 +255,7 @@ def bmesh2mesh(scene, obmesh, o, frame, tmf):
             vtext += ''.join([''.join(['vt {0[0]} {0[1]}\n'.format(loop[uv_layer].uv) for loop in face.loops]) for face in bm.faces])
             
             li = 1
+
             for face in bm.faces:
                 for loop in face.loops:
                     loop.index = li
@@ -117,35 +263,44 @@ def bmesh2mesh(scene, obmesh, o, frame, tmf):
                     
             if mfaces:
                 for mat in mmats:
-                    matname = mat.name.replace(' ', '_')
+                    matname = mat['radname']
                     ftext += "usemtl {}\n".format(matname) + ''.join(['f {}\n'.format(' '.join(('{0}/{1}'.format(loop.vert.index + 1, loop.index), '{0}/{1}/{0}'.format(loop.vert.index + 1, loop.index))[f.smooth]  for loop in f.loops)) for f in mfaces if o.data.materials[f.material_index] == mat])
-
-#        with open('/home/ryan/{}test.obj'.format(o.name), 'w') as ofile:
-#            ofile.write(otext+vtext+ftext)                
+              
         if ffaces:
             gradfile += radpoints(o, ffaces, 0)
     
         if ftext:   
             mfile = os.path.join(scene['viparams']['newdir'], 'obj', '{}-{}.mesh'.format(o.name.replace(' ', '_'), frame))
-
+            ofile = os.path.join(scene['viparams']['newdir'], 'obj', '{}-{}.obj'.format(o.name.replace(' ', '_'), frame))
+            
             with open(mfile, 'w') as mesh:
-                o2mrun = Popen('obj2mesh -w -a {} '.format(tmf).split(), stdout = mesh, stdin = PIPE, stderr = PIPE).communicate(input = (otext + vtext + ftext).encode('utf-8'))
-
-            if os.path.getsize(mfile) and not o2mrun[1]:
+                o2mrun = Popen('obj2mesh -w -a {} '.format(tmf).split(), stdout = mesh, stdin = PIPE, stderr = PIPE, universal_newlines=True).communicate(input = (otext + vtext + ftext))
+                
+                
+            if os.path.getsize(mfile) and not o2mrun[1] and not fb:
                 gradfile += "void mesh id \n1 {}\n0\n0\n\n".format(mfile)
+
             else:
+                if o2mrun[1]:
+                    logentry('Obj2mesh error: {}. Using geometry export fallback on {}'.format(o2mrun[1], o.name))
+
                 gradfile += radpoints(o, mfaces, 0)
+
+            with open(ofile, 'w') as objfile:
+                objfile.write(otext + vtext + ftext)
 
         bm.free()
             
         return gradfile
     
     except Exception as e:
-        print(e)
+        logentry('LiVi mesh export error for {}: {}'.format(o.name, e))
         return gradfile
     
 def radmat(self, scene):
     radname = self.name.replace(" ", "_")
+    radname = radname.replace(",", "")
+    self['radname'] = radname
     radtex = ''
     mod = 'void' 
     if self.radmatmenu in ('0', '1', '2', '3', '6') and self.radtex:
@@ -160,24 +315,21 @@ def radmat(self, scene):
             ar = ('*{}'.format(w/h), '') if w >= h else ('', '*{}'.format(h/w))
             radtex = 'void colorpict {}_tex\n7 red green blue {} . frac(Lu){} frac(Lv){}\n0\n0\n\n'.format(radname, '{}'.format(teximageloc), ar[0], ar[1])
             mod = '{}_tex'.format(radname)
+            
             try:
                 if self.radnorm:             
                     normimage = self.node_tree.nodes['Material Output'].inputs['Surface'].links[0].from_node.inputs['Normal'].links[0].from_node.inputs['Color'].links[0].from_node.image
                     header = '2\n0 1 {}\n0 1 {}\n'.format(normimage.size[1], normimage.size[0])
-                    p = array(normimage.pixels[:])
-                    totpix = normimage.size[0] * normimage.size[1]
-                    xdat = (-1 + 2 * p.reshape(totpix, int(len(p)/totpix))[:,0]).reshape(normimage.size[0], normimage.size[1])                   
-                    ydat = (-1 + 2 * p.reshape(totpix, int(len(p)/totpix))[:,1]).reshape(normimage.size[0], normimage.size[1]) if self.gup == '0' else (1 - 2 * p.reshape(totpix, int(len(p)/totpix))[:,1]).reshape(normimage.size[0], normimage.size[1])
-
-                    with open(os.path.join(scene['liparams']['texfilebase'],'{}.ddx'.format(radname)), 'w') as xfile:
-                        xfile.write(header + '\n'.join([' '.join(map(str, xd)) for xd in xdat]))
-                    with open(os.path.join(scene['liparams']['texfilebase'],'{}.ddy'.format(radname)), 'w') as yfile:
-                        yfile.write(header + '\n'.join([' '.join(map(str, xd)) for xd in ydat]))
-                    radtex += "{0}_tex texdata {0}_norm\n9 ddx ddy ddz {1}.ddx {1}.ddy {1}.ddy nm.cal frac(Lv){2} frac(Lu){3}\n0\n4 {4} {5[0]} {5[1]} {5[2]}\n\n".format(radname, os.path.join(scene['viparams']['newdir'], 'textures', radname), ar[0], ar[1], self.ns, self.nu)
+                    xdat = -1 + 2 * array(normimage.pixels[:][0::4]).reshape(normimage.size[0], normimage.size[1])
+                    ydat = -1 + 2 * array(normimage.pixels[:][1::4]).reshape(normimage.size[0], normimage.size[1])# if self.gup == '0' else 1 - 2 * array(normimage.pixels[:][1::4]).reshape(normimage.size[0], normimage.size[1])
+                    savetxt(os.path.join(scene['liparams']['texfilebase'],'{}.ddx'.format(radname)), xdat, fmt='%.2f', header = header, comments='')
+                    savetxt(os.path.join(scene['liparams']['texfilebase'],'{}.ddy'.format(radname)), ydat, fmt='%.2f', header = header, comments='')
+                    radtex += "{0}_tex texdata {0}_norm\n9 ddx ddy ddz {1}.ddx {1}.ddy {1}.ddy nm.cal frac(Lv){2} frac(Lu){3}\n0\n7 {4} {5[0]} {5[1]} {5[2]} {6[0]} {6[1]} {6[2]}\n\n".format(radname, os.path.join(scene['viparams']['newdir'], 'textures', radname), ar[1], ar[1], self.ns, self.nu, self.nside)
                     mod = '{}_norm'.format(radname)
                     
             except Exception as e:
                 print('Problem with normal export {}'.format(e))
+                
         except Exception as e:
             print('Problem with texture export {}'.format(e))
          
@@ -188,7 +340,7 @@ def radmat(self, scene):
             '2': '0\n0\n5 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} 0\n'.format(self.radcolour, self.radior),
             '3': '0\n0\n7 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} {2:.3f} {3:.3f} {4:.3f}\n'.format(self.radcolour, self.radspec, self.radrough, self.radtrans, self.radtranspec), 
             '4': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format(self.radcolour),
-            '5': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format([c * self.radintensity for c in self.radcolour]), 
+            '5': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format([c * self.radintensity for c in (self.radcolour, ct2RGB(self.radct))[self.radcolmenu == '1']]), 
             '6': '0\n0\n5 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} {2:.3f}\n'.format(self.radcolour, self.radspec, self.radrough), 
             '7': '1 void\n0\n0\n', '8': '1 void\n0\n0\n', '9': '1 void\n0\n0\n'}[self.radmatmenu] + '\n'
 
@@ -239,7 +391,17 @@ def rtpoints(self, bm, offset, frame):
         gp[cindex] = g + 1
         
     self['rtpnum'] = g + 1
-                    
+    
+def validradparams(params):
+    valids = ('-ps', '-pt', '-pj', '-pj', '-dj', '-ds', '-dt', '-dc', '-dr', '-dp',	'-ss',	'-st',	'-st', '-ab',	'-av',	'-aa',	'-ar',	'-ad',	'-as',	'-lr',	'-lw')
+    for p, param in enumerate(params.split()):
+        if not p%2 and param not in valids:
+            return 0
+        elif  p%2:
+            try: float(param)
+            except: return 0   
+    return 1        
+            
 def regresults(scene, frames, simnode, res):    
     for i, f in enumerate(frames):
         simnode['maxres'][str(f)] = amax(res[i])
@@ -282,11 +444,11 @@ def cbdmmtx(self, scene, locnode, export_op):
     else:
         export_op.report({'ERROR'}, "Not a valid EPW file")
         return ''
-
+    
 def cbdmhdr(node, scene):
     targethdr = os.path.join(scene['viparams']['newdir'], node['epwbase'][0]+"{}.hdr".format(('l', 'w')[node['watts']]))
     latlonghdr = os.path.join(scene['viparams']['newdir'], node['epwbase'][0]+"{}p.hdr".format(('l', 'w')[node['watts']]))
-    skyentry = hdrsky(targethdr, node.hdrmap, node.hdrangle, node.hdrradius)
+    skyentry = hdrsky(node.hdrname, '1', 0, 1000) if node.sourcemenu == '1' and  node.cbanalysismenu == '0' else hdrsky(targethdr, '1', 0, 1000)
 
     if node.sourcemenu != '1' or node.cbanalysismenu == '2':
         vecvals, vals = mtx2vals(open(node['mtxfile'], 'r').readlines(), datetime.datetime(2015, 1, 1).weekday(), node, node.times)
@@ -296,7 +458,7 @@ def cbdmhdr(node, scene):
         vwrun = Popen(vwcmd.split(), stdout = PIPE)
         rcrun = Popen(rcontribcmd.split(), stderr = PIPE, stdin = vwrun.stdout)
         for line in rcrun.stderr:
-            print(line)
+            logentry('HDR generation error: {}'.format(line))
     
         for j in range(146):
             with open(os.path.join(scene['viparams']['newdir'], "ps{}.hdr".format(j)), 'w') as psfile:
@@ -310,7 +472,7 @@ def cbdmhdr(node, scene):
     
         if node.hdr:
             with open('{}.oct'.format(os.path.join(scene['viparams']['newdir'], node['epwbase'][0])), 'w') as hdroct:
-                Popen(shlex.split("oconv -w - "), stdin = PIPE, stdout=hdroct, stderr=STDOUT).communicate(input = skyentry.encode(sys.filesystemencoding()))
+                Popen(shlex.split("oconv -w - "), stdin = PIPE, stdout=hdroct, stderr=STDOUT).communicate(input = skyentry.encode(sys.getfilesystemencoding()))
             cntrun = Popen('cnt 750 1500'.split(), stdout = PIPE)
             rcalcrun = Popen('rcalc -f {} -e XD=1500;YD=750;inXD=0.000666;inYD=0.001333'.format(os.path.join(scene.vipath, 'Radfiles', 'lib', 'latlong.cal')).split(), stdin = cntrun.stdout, stdout = PIPE)
             with open(latlonghdr, 'w') as panohdr:
@@ -318,10 +480,15 @@ def cbdmhdr(node, scene):
                 Popen(rtcmd.split(), stdin = rcalcrun.stdout, stdout = panohdr)
     return skyentry
 
+def hdrsky(hdrfile, hdrmap, hdrangle, hdrradius):
+    hdrangle = '1 {:.3f}'.format(hdrangle * math.pi/180) if hdrangle else '1 0'
+    hdrfn = {'0': 'sphere2latlong', '1': 'sphere2angmap'}[hdrmap]
+    return("# Sky material\nvoid colorpict hdr_env\n7 red green blue '{}' {}.cal sb_u sb_v\n0\n{}\n\nhdr_env glow env_glow\n0\n0\n4 1 1 1 0\n\nenv_glow bubble sky\n0\n0\n4 0 0 0 {}\n\n".format(hdrfile, hdrfn, hdrangle, hdrradius))
+
 def retpmap(node, frame, scene):
     pportmats = ' '.join([mat.name.replace(" ", "_") for mat in bpy.data.materials if mat.pport and mat.get('radentry')])
     ammats = ' '.join([mat.name.replace(" ", "_") for mat in bpy.data.materials if mat.mattype == '1' and mat.radmatmenu == '7' and mat.get('radentry')])
-    pportentry = '-apo {}'.format(pportmats) if pportmats else ''
+    pportentry = ' '.join(['-apo {}'.format(ppm) for ppm in pportmats.split()]) if pportmats else ''
     amentry = '-aps {}'.format(ammats) if ammats else ''
     cpentry = '-apc {}-{}.cpm {}'.format(scene['viparams']['filebase'], frame, node.pmapcno) if node.pmapcno else ''
     cpfileentry = '-ap {}-{}.cpm 50'.format(scene['viparams']['filebase'], frame) if node.pmapcno else ''  
@@ -356,7 +523,7 @@ def setscenelivivals(scene):
             udict = {'0': 'DF (%)', '1': 'Sky View'}
             scene['liparams']['unit'] = udict[scene.li_disp_sv]
             
-    olist = [scene.objects[on] for on in scene['liparams']['shadc']] if scene['viparams']['visimcontext'] == 'Shadow' else [scene.objects[on] for on in scene['liparams']['livic']]
+    olist = [scene.objects[on] for on in scene['liparams']['shadc']] if scene['viparams']['visimcontext'] in ('Shadow', 'SVF') else [scene.objects[on] for on in scene['liparams']['livic']]
 
     for frame in range(scene['liparams']['fs'], scene['liparams']['fe'] + 1):
         scene['liparams']['maxres'][str(frame)] = max([o['omax']['{}{}'.format(unitdict[scene['liparams']['unit']], frame)] for o in olist])
@@ -386,11 +553,11 @@ def rettree(scene, obs, ignore):
     return tree
     
 class progressfile(): 
-    def __init__(self, scene, starttime, calcsteps):
+    def __init__(self, folder, starttime, calcsteps):
         self.starttime = starttime
         self.calcsteps = calcsteps
-        self.scene = scene
-        self.pfile = os.path.join(self.scene['viparams']['newdir'], 'viprogress')
+        self.folder = folder
+        self.pfile = os.path.join(folder, 'viprogress')
 
         with open(self.pfile, 'w') as pfile:
             pfile.write('STARTING')
@@ -400,14 +567,32 @@ class progressfile():
             if 'CANCELLED' in pfile.read():
                 return 'CANCELLED'
                 
-        with open(os.path.join(self.scene['viparams']['newdir'], 'viprogress'), 'w') as pfile:
+        with open(self.pfile, 'w') as pfile:
             if curres:
                 dt = (datetime.datetime.now() - self.starttime) * (self.calcsteps - curres)/curres
                 pfile.write('{} {}'.format(int(100 * curres/self.calcsteps), datetime.timedelta(seconds = dt.seconds)))
             else:
                 pfile.write('0 Initialising')
+                
+class fvprogressfile(): 
+    def __init__(self, folder):
+        self.pfile = os.path.join(folder, 'viprogress')
+
+        with open(self.pfile, 'w') as pfile:
+            pfile.write('STARTING')
+    
+    def check(self, curres):
+        if curres == 'CANCELLED':
+            if 'CANCELLED' in self.pfile.read():
+                return 'CANCELLED'
+                
+        with open(self.pfile, 'w') as pfile:
+            if curres:
+                pfile.write(curres)                
+            else:
+                pfile.write('0 Initialising')
         
-def progressbar(file):
+def progressbar(file, calctype):
     kivytext = "# -*- coding: "+sys.getfilesystemencoding()+" -*-\n\
 from kivy.app import App \n\
 from kivy.clock import Clock \n\
@@ -441,6 +626,7 @@ class Calculating(App):\n\
     bl.add_widget(button)\n\
 \n\
     def build(self):\n\
+        self.title = 'Calculating "+calctype+"'\n\
         refresh_time = 1\n\
         Clock.schedule_interval(self.timer, refresh_time)\n\
         return self.bl\n\
@@ -459,10 +645,69 @@ if __name__ == '__main__':\n\
         kivyfile.write(kivytext)
     return Popen([bpy.app.binary_path_python, file+".py"])
 
+def fvprogressbar(file, residuals):
+    kivytext = "# -*- coding: "+sys.getfilesystemencoding()+" -*-\n\
+from kivy.app import App\n\
+from kivy.clock import Clock\n\
+from kivy.uix.progressbar import ProgressBar\n\
+from kivy.uix.boxlayout import BoxLayout\n\
+from kivy.uix.gridlayout import GridLayout\n\
+from kivy.uix.button import Button\n\
+from kivy.uix.label import Label\n\
+from kivy.config import Config\n\
+Config.set('graphics', 'width', '500')\n\
+Config.set('graphics', 'height', '200')\n\
+\n\
+class CancelButton(Button):\n\
+    def on_touch_down(self, touch):\n\
+        if 'button' in touch.profile:\n\
+            if self.collide_point(*touch.pos):\n\
+                App.get_running_app().stop()\n\
+        else:\n\
+            return\n\
+    def on_open(self, widget, parent):\n\
+        self.focus = True\n\
+\n\
+class Calculating(App):\n\
+    rpbs, labels = [], []\n\
+    bl = BoxLayout(orientation='vertical')\n\
+    gl  = GridLayout(cols=2, height = 150)\n\
+    for r in "+residuals+":\n\
+        rpb = ProgressBar(max = 1)\n\
+        rpbs.append(rpb)\n\
+        label = Label(text=r, font_size=20, size_hint=(0.2, .2))\n\
+        labels.append(r)\n\
+        gl.add_widget(label)\n\
+        gl.add_widget(rpb)\n\
+    bl.add_widget(gl)\n\
+    button = CancelButton(text='Cancel', font_size=20, size_hint=(1, .2))\n\
+    bl.add_widget(button)\n\
+\n\
+    def build(self):\n\
+        self.title = 'OpenFOAM Residuals'\n\
+        refresh_time = 1\n\
+        Clock.schedule_interval(self.timer, refresh_time)\n\
+        return self.bl\n\
+\n\
+    def timer(self, dt):\n\
+        with open('"+file+"', 'r') as pffile:\n\
+            for ri, r in enumerate(pffile.readlines()):\n\
+                try:\n\
+                    li = self.labels.index(r.split()[0])\n\
+                    self.rpbs[li].value = float(r.split()[1])\n\
+                except: pass\n\
+\n\
+if __name__ == '__main__':\n\
+    Calculating().run()"
+
+    with open(file+".py", 'w') as kivyfile:
+        kivyfile.write(kivytext)
+    return Popen([bpy.app.binary_path_python, file+".py"])
+
 def logentry(text):
     log = bpy.data.texts.new('vi-suite-log') if 'vi-suite-log' not in bpy.data.texts else bpy.data.texts['vi-suite-log']
     log.write('')
-    log.write('{}'.format(text))
+    log.write('{}\n'.format(text))
     
 def retsv(self, scene, frame, rtframe, chunk, rt):
     svcmd = "rcontrib -w -I -n {} {} -m sky_glow {}-{}.oct ".format(scene['viparams']['nproc'], '-ab 1 -ad 8192 -aa 0 -ar 512 -as 1024 -lw 0.0002 ', scene['viparams']['filebase'], frame)    
@@ -487,6 +732,7 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
     totarea = sum([gp.calc_area() for gp in geom if gp[cindex] > 0]) if self['cpoint'] == '0' else sum([vertarea(bm, gp) for gp in geom])
     
     for f, frame in enumerate(frames):
+        self['res{}'.format(frame)] = {}
         geom.layers.float.new('firrad{}'.format(frame))
         geom.layers.float.new('virrad{}'.format(frame))
         geom.layers.float.new('illu{}'.format(frame))
@@ -508,25 +754,27 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
             
         for chunk in chunks([g for g in geom if g[rt]], int(scene['viparams']['nproc']) * 500):
             rtrun = Popen(rtcmds[f].split(), stdin = PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate(input = '\n'.join([c[rt].decode('utf-8') for c in chunk]))   
-            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()]).astype(float32)
-            virrad = nsum(xyzirrad * array([0.26, 0.67, 0.065], dtype = float32), axis = 1)
+            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()])
+            virrad = nsum(xyzirrad * array([0.26, 0.67, 0.065]), axis = 1)
             firrad = virrad * 1.64
             illu = virrad * 179
             df = illu * 0.01
+            
             for gi, gp in enumerate(chunk):
-                gp[virradres] = virrad[gi]
-                gp[firradres] = firrad[gi]
-                gp[illures] = illu[gi]
-                gp[dfres] = df[gi]
-                gp[res] = illu[gi]
+                gp[virradres] = virrad[gi].astype(float32)
+                gp[firradres] = firrad[gi].astype(float32)
+                gp[illures] = illu[gi].astype(float32)
+                gp[dfres] = df[gi].astype(float16)
+                gp[res] = illu[gi].astype(float32)
                 
             curres += len(chunk)
             if pfile.check(curres) == 'CANCELLED':
                 bm.free()
                 return {'CANCELLED'}
 
-        ovirrad = array([g[virradres] for g in geom], dtype = float32)
-        maxovirrad, minovirrad, aveovirrad = nmax(ovirrad).astype(float64), nmin(ovirrad).astype(float64), nmean(ovirrad).astype(float64)
+        ovirrad = array([g[virradres] for g in geom]).astype(float64)
+        maxovirrad, minovirrad, aveovirrad = nmax(ovirrad), nmin(ovirrad), nmean(ovirrad)
+        self['livires'][str(frame)] = (maxovirrad, minovirrad, aveovirrad)
         self['omax']['virrad{}'.format(frame)] = maxovirrad
         self['omax']['illu{}'.format(frame)] =  maxovirrad * 179.0
         self['omax']['df{}'.format(frame)] =  maxovirrad * 1.79
@@ -547,14 +795,17 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         posis = [v.co for v in bm.verts if v[cindex] > 0] if self['cpoint'] == '1' else [f.calc_center_bounds() for f in bm.faces if f[cindex] > 1]
         illubinvals = [self['omin']['illu{}'.format(frame)] + (self['omax']['illu{}'.format(frame)] - self['omin']['illu{}'.format(frame)])/20 * (i + 0.05) for i in range(20)]
         bins = array([0.05 * i for i in range(1, 20)])
+        
         if self['omax']['illu{}'.format(frame)] > self['omin']['illu{}'.format(frame)]:
             vals = [(gp[illures] - self['omin']['illu{}'.format(frame)])/(self['omax']['illu{}'.format(frame)] - self['omin']['illu{}'.format(frame)]) for gp in geom]         
         else:
             vals = [1 for gp in geom]
+            
         ais = digitize(vals, bins)
         rgeom = [g for g in geom if g[cindex] > 0]
         rareas = [gp.calc_area() for gp in geom] if self['cpoint'] == '0' else [vertarea(bm, gp) for gp in geom]
         sareas = zeros(20)
+        
         for ai in range(20):
             sareas[ai] = sum([rareas[gi]/totarea for gi in range(len(rgeom)) if ais[gi] == ai])
                 
@@ -564,11 +815,23 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         reslists.append([str(frame), 'Zone', self.name, 'Y', ' '.join(['{:.3f}'.format(p[1]) for p in posis])])
         reslists.append([str(frame), 'Zone', self.name, 'Z', ' '.join(['{:.3f}'.format(p[2]) for p in posis])])
         reslists.append([str(frame), 'Zone', self.name, 'Areas (m2)', ' '.join(['{:.3f}'.format(ra) for ra in rareas])])
-        reslists.append([str(frame), 'Zone', self.name, 'Illuminance(lux)', ' '.join(['{:.3f}'.format(g[illures]) for g in rgeom])])
+        reslists.append([str(frame), 'Zone', self.name, 'Illuminance (lux)', ' '.join(['{:.3f}'.format(g[illures]) for g in rgeom])])
         reslists.append([str(frame), 'Zone', self.name, 'DF (%)', ' '.join(['{:.3f}'.format(g[dfres]) for g in rgeom])])
         reslists.append([str(frame), 'Zone', self.name, 'Full Irradiance (W/m2)', ' '.join(['{:.3f}'.format(g[firradres]) for g in rgeom])])
         reslists.append([str(frame), 'Zone', self.name, 'Visible Irradiance (W/m2)', ' '.join(['{:.3f}'.format(g[virradres]) for g in rgeom])])
-   
+
+    if len(frames) > 1:
+        reslists.append(['All', 'Frames', '', 'Frames', ' '.join([str(f) for f in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Average illuminance (lux)', ' '.join(['{:.3f}'.format(self['oave']['illu{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Maximum illuminance (lux)', ' '.join(['{:.3f}'.format(self['omax']['illu{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Minimum illuminance (lux)', ' '.join(['{:.3f}'.format(self['omin']['illu{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Illuminance ratio', ' '.join(['{:.3f}'.format(self['omin']['illu{}'.format(frame)]/self['oave']['illu{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Average DF (lux)', ' '.join(['{:.3f}'.format(self['oave']['df{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Maximum DF (lux)', ' '.join(['{:.3f}'.format(self['omax']['df{}'.format(frame)]) for frame in frames])])
+        reslists.append(['All', 'Zone', self.name, 'Minimum DF (lux)', ' '.join(['{:.3f}'.format(self['omin']['df{}'.format(frame)]) for frame in frames])])
+
+    
+    
     bm.transform(self.matrix_world.inverted())
     bm.to_mesh(self.data)
     bm.free()
@@ -604,38 +867,38 @@ def lhcalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         
         rt = geom.layers.string['rt{}'.format(rtframe)]
         gps = [g for g in geom if g[rt]]
-        areas = array([g.calc_area() for g in gps] if self['cpoint'] == '0' else [vertarea(bm, g) for g in gps], dtype = float32)
+        areas = array([g.calc_area() for g in gps] if self['cpoint'] == '0' else [vertarea(bm, g) for g in gps])
 
         for chunk in chunks(gps, int(scene['viparams']['nproc']) * 200):
-            careas = array([c.calc_area() if self['cpoint'] == '0' else vertarea(bm, c) for c in chunk], dtype = float32)
+            careas = array([c.calc_area() if self['cpoint'] == '0' else vertarea(bm, c) for c in chunk])
             rtrun = Popen(rtcmds[f].split(), stdin = PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate(input = '\n'.join([c[rt].decode('utf-8') for c in chunk]))   
-            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()]).astype(float32)
-            virradm2 = nsum(xyzirrad * array([0.26, 0.67, 0.065], dtype = float32), axis = 1) * 1e-3
+            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()])
+            virradm2 = nsum(xyzirrad * array([0.26, 0.67, 0.065]), axis = 1) * 1e-3
             virrad = virradm2 * careas
             firradm2 = virradm2 * 1.64
             firrad = firradm2 * careas
             illu = virradm2 * 179e-3
 
             for gi, gp in enumerate(chunk):
-                gp[firradm2res] = firradm2[gi]
-                gp[virradm2res] = virradm2[gi]
-                gp[firradres] = firrad[gi]
-                gp[virradres] = virrad[gi]
-                gp[illures] = illu[gi]
+                gp[firradm2res] = firradm2[gi].astype(float32)
+                gp[virradm2res] = virradm2[gi].astype(float32)
+                gp[firradres] = firrad[gi].astype(float32)
+                gp[virradres] = virrad[gi].astype(float32)
+                gp[illures] = illu[gi].astype(float32)
             
             curres += len(chunk)
             if pfile.check(curres) == 'CANCELLED':
                 bm.free()
                 return {'CANCELLED'}
                 
-        ovirradm2 = array([g[virradm2res] for g in gps]).astype(float32)
-        ovirrad = array([g[virradres] for g in gps]).astype(float32)
-        maxovirradm2 = nmax(ovirradm2).astype(float64)
-        maxovirrad = nmax(ovirrad).astype(float64)
-        minovirradm2 = nmin(ovirradm2).astype(float64)
-        minovirrad = nmin(ovirrad).astype(float64)
-        aveovirradm2 = nmean(ovirradm2).astype(float64)
-        aveovirrad = nmean(ovirrad).astype(float64)
+        ovirradm2 = array([g[virradm2res] for g in gps])
+        ovirrad = array([g[virradres] for g in gps])
+        maxovirradm2 = nmax(ovirradm2)
+        maxovirrad = nmax(ovirrad)
+        minovirradm2 = nmin(ovirradm2)
+        minovirrad = nmin(ovirrad)
+        aveovirradm2 = nmean(ovirradm2)
+        aveovirrad = nmean(ovirrad)
         self['omax']['firrad{}'.format(frame)] = maxovirrad * 1.64
         self['omin']['firrad{}'.format(frame)] = minovirrad * 1.64
         self['oave']['firrad{}'.format(frame)] = aveovirrad * 1.64
@@ -709,16 +972,16 @@ def compcalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         
         for chunk in chunks([g for g in geom if g[rt]], int(scene['viparams']['nproc']) * 50):
             rtrun = Popen(rtcmds[f].split(), stdin = PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate(input = '\n'.join([c[rt].decode('utf-8') for c in chunk]))   
-            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()]).astype(float32)
+            xyzirrad = array([[float(v) for v in sl.split('\t')[:3]] for sl in rtrun[0].splitlines()])
             virrad = nsum(xyzirrad * array([0.26, 0.67, 0.065]), axis = 1)
             illu = virrad * 179
             df = illu * 0.01
             sv = self.retsv(scene, frame, rtframe, chunk, rt)
 
             for gi, gp in enumerate(chunk):
-                gp[dfres] = df[gi]
-                gp[svres] = sv[gi]
-                gp[res] = illu[gi]
+                gp[dfres] = df[gi].astype(float16)
+                gp[svres] = sv[gi].astype(int8)
+                gp[res] = illu[gi].astype(float32)
             
             curres += len(chunk)
             if pfile.check(curres) == 'CANCELLED':
@@ -744,6 +1007,7 @@ def compcalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         reslists.append([str(frame), 'Zone', self.name, 'Y', ' '.join([str(p[0]) for p in posis])])
         reslists.append([str(frame), 'Zone', self.name, 'Z', ' '.join([str(p[0]) for p in posis])])
         resdict = {'DF': resdf, 'Illuminance': resillu, 'Sky View': ressv}
+        
         for unit in resdict:
             reslists.append([str(frame), 'Zone', self.name, unit, ' '.join([str(r) for r in resdict[unit]])])
         
@@ -901,6 +1165,7 @@ def compcalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
     
 def udidacalcapply(self, scene, frames, rccmds, simnode, curres, pfile):
     self['livires'] = {}
+    self['compmat'] = [material.name for material in self.data.materials if material.mattype == '1'][0]
     selobj(scene, self)
     bm = bmesh.new()
     bm.from_mesh(self.data)
@@ -952,7 +1217,8 @@ def udidacalcapply(self, scene, frames, rccmds, simnode, curres, pfile):
                 
         for ch, chunk in enumerate(chunks([g for g in geom if g[rt]], int(scene['viparams']['nproc']) * 40)):
             sensrun = Popen(rccmds[f].split(), stdin=PIPE, stdout=PIPE, universal_newlines=True).communicate(input = '\n'.join([c[rt].decode('utf-8') for c in chunk]))
-            resarray = array([[float(v) for v in sl.split('\t') if v] for sl in sensrun[0].splitlines() if sl not in ('\n', '\r\n')]).reshape(len(chunk), 146, 3).astype(float32)
+#            resarray = array([[float(v) for v in sl.split('\t') if v] for sl in sensrun[0].splitlines() if sl not in ('\n', '\r\n')]).reshape(len(chunk), 146, 3).astype(float32)
+            resarray = array([[float(v) for v in sl.strip('\n').strip('\r\n').split('\t') if v] for sl in sensrun[0].splitlines()]).reshape(len(chunk), 146, 3).astype(float32)
             chareas = array([c.calc_area() for c in chunk]) if self['cpoint'] == '0' else array([vertarea(bm, c) for c in chunk]).astype(float32)
             sensarray = nsum(resarray*illuarray, axis = 2).astype(float32)
             wsensearray  = nsum(resarray*fwattarray, axis = 2).astype(float32)
@@ -1070,14 +1336,14 @@ def udidacalcapply(self, scene, frames, rccmds, simnode, curres, pfile):
             self['omax']['illu{}'.format(frame)] = amax(totfinalillu)
             self['omin']['illu{}'.format(frame)] = amin(totfinalillu)
             self['oave']['illu{}'.format(frame)] = nmean(totfinalillu)/reslen
-            self['livires']['dhilluave{}'.format(frame)] = average(totfinalillu, axis = 0).flatten().reshape(dno, hno).transpose()
-            self['livires']['dhillumin{}'.format(frame)] = amin(totfinalillu, axis = 0).reshape(dno, hno).transpose()
-            self['livires']['dhillumax{}'.format(frame)] = amax(totfinalillu, axis = 0).reshape(dno, hno).transpose()
-            self['livires']['daarea{}'.format(frame)] = totdaarea.reshape(dno, hno).transpose()
-            self['livires']['udiaarea{}'.format(frame)] = totudiaarea.reshape(dno, hno).transpose()
-            self['livires']['udisarea{}'.format(frame)] = totudisarea.reshape(dno, hno).transpose()
-            self['livires']['udilarea{}'.format(frame)] = totudilarea.reshape(dno, hno).transpose()
-            self['livires']['udiharea{}'.format(frame)] = totudiharea.reshape(dno, hno).transpose() 
+            self['livires']['dhilluave{}'.format(frame)] = average(totfinalillu, axis = 0).flatten().reshape(dno, hno).transpose().tolist()
+            self['livires']['dhillumin{}'.format(frame)] = amin(totfinalillu, axis = 0).reshape(dno, hno).transpose().tolist()
+            self['livires']['dhillumax{}'.format(frame)] = amax(totfinalillu, axis = 0).reshape(dno, hno).transpose().tolist()
+            self['livires']['daarea{}'.format(frame)] = totdaarea.reshape(dno, hno).transpose().tolist()
+            self['livires']['udiaarea{}'.format(frame)] = totudiaarea.reshape(dno, hno).transpose().tolist()
+            self['livires']['udisarea{}'.format(frame)] = totudisarea.reshape(dno, hno).transpose().tolist()
+            self['livires']['udilarea{}'.format(frame)] = totudilarea.reshape(dno, hno).transpose().tolist()
+            self['livires']['udiharea{}'.format(frame)] = totudiharea.reshape(dno, hno).transpose().tolist()
             
             self['tableudil{}'.format(frame)] = array([["", 'Minimum', 'Average', 'Maximum'], 
                 ['UDI-l (% area)', '{:.1f}'.format(self['omin']['udilow{}'.format(frame)]), '{:.1f}'.format(self['oave']['udilow{}'.format(frame)]), '{:.1f}'.format(self['omax']['udilow{}'.format(frame)])]])
@@ -1105,8 +1371,8 @@ def udidacalcapply(self, scene, frames, rccmds, simnode, curres, pfile):
             self['omax']['kW/m2{}'.format(frame)] = max(kwhm2)
             self['omin']['kW/m2{}'.format(frame)] = min(kwhm2)
             self['oave']['kW/m2{}'.format(frame)] = sum(kwhm2)/reslen
-            self['livires']['kW{}'.format(frame)] =  (0.001*totfinalwatt).reshape(dno, hno).transpose()
-            self['livires']['kW/m2{}'.format(frame)] =  (0.001*totfinalwattm2).reshape(dno, hno).transpose()
+            self['livires']['kW{}'.format(frame)] =  (0.001*totfinalwatt).reshape(dno, hno).transpose().tolist()
+            self['livires']['kW/m2{}'.format(frame)] =  (0.001*totfinalwattm2).reshape(dno, hno).transpose().tolist()
             self['tablekwh{}'.format(frame)] = array([["", 'Minimum', 'Average', 'Maximum'], 
                 ['Irradiance (kW)', '{:.1f}'.format(self['omin']['kW{}'.format(frame)]), '{:.1f}'.format(self['oave']['kW{}'.format(frame)]), '{:.1f}'.format(self['omax']['kW{}'.format(frame)])]])
             self['tablekwhm2{}'.format(frame)] = array([["", 'Minimum', 'Average', 'Maximum'], 
@@ -1126,8 +1392,8 @@ def udidacalcapply(self, scene, frames, rccmds, simnode, curres, pfile):
             self['omax']['ase{}'.format(frame)] = max(aseres)
             self['omin']['ase{}'.format(frame)] = min(aseres)
             self['oave']['ase{}'.format(frame)] = sum(aseres)/reslen
-            self['livires']['asearea{}'.format(frame)] = (100 * totasearea/totarea).reshape(dno, hno).transpose()
-            self['livires']['sdaarea{}'.format(frame)] = (100 * totsdaarea/overallsdaarea).reshape(dno, hno).transpose()
+            self['livires']['asearea{}'.format(frame)] = (100 * totasearea/totarea).reshape(dno, hno).transpose().tolist()
+            self['livires']['sdaarea{}'.format(frame)] = (100 * totsdaarea/overallsdaarea).reshape(dno, hno).transpose().tolist()
             self['tablesda{}'.format(frame)] = array([["", 'Minimum', 'Average', 'Maximum'], 
                 ['sDA (% hours)', '{:.1f}'.format(self['omin']['sda{}'.format(frame)]), '{:.1f}'.format(self['oave']['sda{}'.format(frame)]), '{:.1f}'.format(self['omax']['sda{}'.format(frame)])]])
             self['tablease{}'.format(frame)] = array([["", 'Minimum', 'Average', 'Maximum'], 
@@ -1214,6 +1480,7 @@ def retcrits(simnode, matname):
                     crit = [['Percent', 80, 'DF', 2, '1'], ['Ratio', 100, 'Uni', 0.7, '0.5'],['Min', 100, 'PDF', 1.4, '0.5'], ['Percent', 100, 'Skyview', 1, '0.75']] 
                     ecrit = [['Percent', 80, 'DF', 4, '1'], ['Min', 100, 'PDF', 2.8, '0.75']] if simnode['coptions']['storey'] == '0' else [['Percent', 80, 'DF', 3, '1'], ['Min', 100, 'PDF', 2.1, '0.75']]
                 spacetype = 'Residential - Communal'
+
         elif simnode['coptions']['buildtype'] == '4':
             if mat.respacemenu == '0':
                 crit = [['Percent', 35, 'PDF', 2, '1']]
@@ -1259,7 +1526,23 @@ def retcrits(simnode, matname):
         crit.append(['Percent', 10, 'ASE', 1000, '1', 250])
                    
     return [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in crit[:]], [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in ecrit[:]], spacetype
-    
+
+# This function can be used to modify results with a driver function
+def ret_res_vals(scene, reslist):    
+    if scene.vi_res_py and bpy.app.driver_namespace.get('resmod'):
+        try:
+            return array([bpy.app.driver_namespace['resmod'](r) for r in reslist])
+        except Exception as e:
+            print(e)
+            return array(reslist)
+    elif scene.vi_res_mod:
+        try:
+            return array([eval('{}{}'.format(r, scene.vi_res_mod)) for r in reslist])
+        except:
+            return array(reslist)
+    else:
+        return array(reslist)
+        
 def lividisplay(self, scene): 
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
     
@@ -1282,6 +1565,7 @@ def lividisplay(self, scene):
         oreslist = [g[livires] for g in geom]
         self['omax'][str(frame)], self['omin'][str(frame)], self['oave'][str(frame)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         smaxres, sminres =  max(scene['liparams']['maxres'].values()), min(scene['liparams']['minres'].values())
+        
         if smaxres > sminres:        
             vals = (array([f[livires] for f in bm.faces]) - sminres)/(smaxres - sminres) if scene['liparams']['cp'] == '0' else \
                 (array([(sum([vert[livires] for vert in f.verts])/len(f.verts)) for f in bm.faces]) - sminres)/(smaxres - sminres)
@@ -1291,13 +1575,16 @@ def lividisplay(self, scene):
         if livires != res:
             for g in geom:
                 g[res] = g[livires]  
+                
         if scene['liparams']['unit'] == 'Sky View':
             nmatis = [(0, 19)[v == 1] for v in vals]
         else:
             bins = array([0.05 * i for i in range(21)])
             nmatis = clip(digitize(vals, bins, right = True) - 1, 0, 19, out=None)
+            
         bm.to_mesh(self.data)
         bm.free()
+        
         if len(frames) == 1:
             self.data.polygons.foreach_set('material_index', nmatis)
         elif len(frames) > 1:
@@ -1307,68 +1594,9 @@ def lividisplay(self, scene):
 def retvpvloc(context):
     return bpy_extras.view3d_utils.region_2d_to_origin_3d(context.region, context.space_data.region_3d, (context.region.width/2.0, context.region.height/2.0))
           
-def fvmat(self, mn, bound):
-#    fvname = on.replace(" ", "_") + self.name.replace(" ", "_") 
-    begin = '\n  {}\n  {{\n    type    '.format(mn)  
-    end = ';\n  }\n'
-    
-    if bound == 'p':
-        val = 'uniform {}'.format(self.flovi_b_sval) if not self.flovi_p_field else '$internalField'
-        pdict = {'0': self.flovi_bmwp_type, '1': self.flovi_bmip_type, '2': self.flovi_bmop_type, '3': 'symmetryPlane', '4': 'empty'}
-        ptdict = {'zeroGradient': 'zeroGradient', 'fixedValue': 'fixedValue;\n    value    {}'.format(val), 'calculated': 'calculated;\n    value    $internalField', 
-        'freestreamPressure': 'freestreamPressure', 'symmetryPlane': 'symmetryPlane', 'empty': 'empty'}
-#        if pdict[self.flovi_bmb_type] == 'zeroGradient':
-        entry = ptdict[pdict[self.flovi_bmb_type]]            
-#        return begin + entry + end 
-    
-    elif bound == 'U':
-        val = 'uniform ({} {} {})'.format(*self.flovi_b_vval) if not self.flovi_u_field else '$internalField'
-        Udict = {'0': self.flovi_bmwu_type, '1': self.flovi_bmiu_type, '2': self.flovi_bmou_type, '3': 'symmetryPlane', '4': 'empty'}
-        Utdict = {'fixedValue': 'fixedValue;\n    value    {}'.format(val), 'slip': 'slip', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField',
-                  'pressureInletOutletVelocity': 'pressureInletOutletVelocity;\n    value    $internalField', 'zeroGradient': 'zeroGradient', 'symmetryPlane': 'symmetryPlane', 
-                  'freestream': 'freestream;\n    freestreamValue    $internalField','calculated': 'calculated;\n    value    $internalField', 'empty': 'empty'}
-        entry = Utdict[Udict[self.flovi_bmb_type]]            
-#        return begin + entry + end
-        
-    elif bound == 'nut':
-        ndict = {'0': self.flovi_bmwnut_type, '1': self.flovi_bminut_type, '2': self.flovi_bmonut_type, '3': 'symmetryPlane', '4': 'empty'}
-        ntdict = {'nutkWallFunction': 'nutkWallFunction;\n    value    $internalField', 'nutUSpaldingWallFunction': 'nutUSpaldingWallFunction;\n    value    $internalField', 
-        'calculated': 'calculated;\n    value    $internalField', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField',  'symmetryPlane': 'symmetryPlane','empty': 'empty'}
-        entry = ntdict[ndict[self.flovi_bmb_type]]            
-#        return begin + entry + end
-
-    elif bound == 'k':
-        kdict = {'0': self.flovi_bmwk_type, '1': self.flovi_bmik_type, '2': self.flovi_bmok_type, '3': 'symmetryPlane', '4': 'empty'}
-        ktdict = {'fixedValue': 'fixedValue;\n    value    $internalField', 'kqRWallFunction': 'kqRWallFunction;\n    value    $internalField', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField',
-        'calculated': 'calculated;\n    value    $internalField', 'symmetryPlane': 'symmetryPlane', 'empty': 'empty'}
-        entry = ktdict[kdict[self.flovi_bmb_type]]            
-#        return begin + entry + end
-        
-    elif bound == 'e':
-        edict = {'0': self.flovi_bmwe_type, '1': self.flovi_bmie_type, '2': self.flovi_bmoe_type, '3': 'symmetryPlane', '4': 'empty'}
-        etdict = {'symmetryPlane': 'symmetryPlane', 'empty': 'empty', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField', 'fixedValue': 'fixedValue;\n    value    $internalField', 
-                  'epsilonWallFunction': 'epsilonWallFunction;\n    value    $internalField', 'calculated': 'calculated;\n    value    $internalField', 'symmetryPlane': 'symmetryPlane', 'empty': 'empty'}
-        entry = etdict[edict[self.flovi_bmb_type]]            
-#        return begin + entry + end
-        
-    elif bound == 'o':
-        odict = {'0': self.flovi_bmwo_type, '1': self.flovi_bmio_type, '2': self.flovi_bmoo_type, '3': 'symmetryPlane', '4': 'empty'}
-        otdict = {'symmetryPlane': 'symmetryPlane', 'empty': 'empty', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField', 'zeroGradient': 'zeroGradient', 
-                  'omegaWallFunction': 'omegaWallFunction;\n    value    $internalField', 'fixedValue': 'fixedValue;\n    value    $internalField'}
-        entry = otdict[odict[self.flovi_bmb_type]]            
-#        return begin + entry + end
-        
-    elif bound == 'nutilda':
-        ntdict = {'0': self.flovi_bmwnutilda_type, '1': self.flovi_bminutilda_type, '2': self.flovi_bmonutilda_type, '3': 'symmetryPlane', '4': 'empty'}
-        nttdict = {'fixedValue': 'fixedValue;\n    value    $internalField', 'inletOutlet': 'inletOutlet;\n    inletValue    $internalField\n    value    $internalField', 'empty': 'empty', 
-                   'zeroGradient': 'zeroGradient', 'freestream': 'freestream\n    freeStreamValue  $internalField\n', 'symmetryPlane': 'symmetryPlane'} 
-        entry = nttdict[ntdict[self.flovi_bmb_type]]            
-    return begin + entry + end
-        
-            
 def radpoints(o, faces, sks):
     fentries = ['']*len(faces) 
-    mns = [m.name.replace(" ", "_") for m in o.data.materials]
+    mns = [m['radname'] for m in o.data.materials]
 #    mrms = [m.radmatmenu for m in o.data.materials]
     on = o.name.replace(" ", "_")
     if sks:
@@ -1438,6 +1666,8 @@ def viparams(op, scene):
     scene['viparams']['filedir'] = fd
     scene['viparams']['newdir'] = nd 
     scene['viparams']['filebase'] = fb
+    if not scene.get('spparams'):
+        scene['spparams'] = {}
     if not scene.get('liparams'):
         scene['liparams'] = {}
     scene['liparams']['objfilebase'] = ofb
@@ -1447,7 +1677,7 @@ def viparams(op, scene):
     if not scene.get('enparams'):
         scene['enparams'] = {}
     scene['enparams']['idf_file'] = idf
-    scene['enparams']['epversion'] = '8.6'
+    scene['enparams']['epversion'] = '8.8'
     if not scene.get('flparams'):
         scene['flparams'] = {}
     scene['flparams']['offilebase'] = offb
@@ -1672,15 +1902,12 @@ def boundpoly(obj, mat, poly, enng):
             outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]              
             if insock.links:
                 bobj = bpy.data.objects[insock.links[0].from_node.zone]
-                bpoly = bobj.data.polygons[int(insock.links[0].from_socket.name.split('_')[-2])]
-#                if bobj.data.materials[bpoly.material_index] == mat:# and max(bpolyloc - polyloc) < 0.001 and abs(bpoly.area - poly.area) < 0.01:
-                return(("Surface", node.inputs['{}_{}_b'.format(mat.name, poly.index)].links[0].from_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
-        
+                return(('', '', '', ''))
+                
             elif outsock.links:
-                bobj = bpy.data.objects[outsock.links[0].to_node.zone]
-                bpoly = bobj.data.polygons[int(outsock.links[0].to_socket.name.split('_')[-2])]
-#                if bobj.data.materials[bpoly.material_index] == mat:# and max(bpolyloc - polyloc) < 0.001 and abs(bpoly.area - poly.area) < 0.01:
-                return(("Surface", node.outputs['{}_{}_b'.format(mat.name, poly.index)].links[0].to_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
+                bobj = outsock.links[0].to_node.zone
+                return(("Zone", bobj, "NoSun", "NoWind"))
+                
             else:
                 return(("Adiabatic", "", "NoSun", "NoWind"))
 
@@ -1690,29 +1917,6 @@ def boundpoly(obj, mat, poly, enng):
         return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))
-
-def objvol(op, obj):
-    bm , floor, roof, mesh = bmesh.new(), [], [], obj.data
-    bm.from_object(obj, bpy.context.scene)
-    for f in mesh.polygons:
-        if obj.data.materials[f.material_index].envi_con_type == 'Floor':
-            floor.append((facearea(obj, f), (obj.matrix_world*mathutils.Vector(f.center))[2]))
-        elif obj.data.materials[f.material_index].envi_con_type == 'Roof':
-            roof.append((facearea(obj, f), (obj.matrix_world*mathutils.Vector(f.center))[2]))
-    zfloor = list(zip(*floor))
-    if not zfloor and op:
-        op.report({'INFO'},"Zone has no floor area")
-
-    return(bm.calc_volume()*obj.scale[0]*obj.scale[1]*obj.scale[2])
-
-def ceilheight(obj, vertz):
-    mesh = obj.data
-    for vert in mesh.vertices:
-        vertz.append((obj.matrix_world * vert.co)[2])
-    zmax, zmin = max(vertz), min(vertz)
-    ceiling = [max((obj.matrix_world * mesh.vertices[poly.vertices[0]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[1]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[2]].co)[2]) for poly in mesh.polygons if max((obj.matrix_world * mesh.vertices[poly.vertices[0]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[1]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[2]].co)[2]) > 0.9 * zmax]
-    floor = [min((obj.matrix_world * mesh.vertices[poly.vertices[0]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[1]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[2]].co)[2]) for poly in mesh.polygons if min((obj.matrix_world * mesh.vertices[poly.vertices[0]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[1]].co)[2], (obj.matrix_world * mesh.vertices[poly.vertices[2]].co)[2]) < zmin + 0.1 * (zmax - zmin)]
-    return(sum(ceiling)/len(ceiling)-sum(floor)/len(floor))
 
 def vertarea(mesh, vert):
     area = 0
@@ -1724,9 +1928,9 @@ def vertarea(mesh, vert):
             ovs, oes = [], []
             fvs = [le.verts[(0, 1)[le.verts[0] == vert]] for le in vert.link_edges]
             ofaces = [oface for oface in faces if len([v for v in oface.verts if v in face.verts]) == 2]    
+            
             for oface in ofaces:
-                oes.append([e for e in face.edges if e in oface.edges])
-                
+                oes.append([e for e in face.edges if e in oface.edges])                
                 ovs.append([i for i in face.verts if i in oface.verts])
             
             if len(ovs) == 1:                
@@ -1738,6 +1942,7 @@ def vertarea(mesh, vert):
             else:
                return 0
             area += mathutils.geometry.area_tri(vert.co, *eps) + mathutils.geometry.area_tri(face.calc_center_median(), *eps)
+
     elif len(faces) == 1:
         eps = [(ev.verts[0].co +ev.verts[1].co)/2 for ev in vert.link_edges]
         eangle = (vert.link_edges[0].verts[0].co - vert.link_edges[0].verts[1].co).angle(vert.link_edges[1].verts[0].co - vert.link_edges[1].verts[1].co)
@@ -1761,7 +1966,7 @@ def vsarea(obj, vs):
             i += 1
         return(area)
 
-def wind_rose(maxws, wrsvg, wrtype):
+def wind_rose(maxws, wrsvg, wrtype, colors):
     zp, scene = 0, bpy.context.scene    
     bm = bmesh.new()
     wrme = bpy.data.meshes.new("Wind_rose")   
@@ -1815,22 +2020,27 @@ def wind_rose(maxws, wrsvg, wrtype):
     if wrtype in ('0', '1', '3', '4'):            
         thick = scale * 0.005 if wrtype == '4' else scale * 0.0005
         faces = bmesh.ops.inset_individual(bm, faces=bm.faces, thickness = thick, use_even_offset = True)['faces']
+        
         if wrtype == '4':
             [bm.faces.remove(f) for f in bm.faces if f not in faces]
-        else:
-            for face in faces:
-                face.material_index = wro.data.materials[:].index(wro.data.materials['wr-000000'])
+        else:            
+            bi = wro.data.materials[:].index(wro.data.materials['wr-000000'])
 
+            for face in faces:
+                face.material_index = bi
+            
     bm.to_mesh(wro.data)
     bm.free()
-    
+
     bpy.ops.mesh.primitive_circle_add(vertices = 132, fill_type='NGON', radius=scale*1.2, view_align=False, enter_editmode=False, location=(0, 0, -0.01))
     wrbo = bpy.context.active_object
+    
     if 'wr-base'not in [mat.name for mat in bpy.data.materials]:
         bpy.data.materials.new('wr-base')
         bpy.data.materials['wr-base'].diffuse_color = (1,1,1)
     bpy.ops.object.material_slot_add()
     wrbo.material_slots[-1].material = bpy.data.materials['wr-base']
+
     return (objoin((wrbo, wro)), scale)
     
 def compass(loc, scale, wro, mat):
@@ -1846,9 +2056,8 @@ def compass(loc, scale, wro, mat):
     matrot = Matrix.Rotation(pi*0.25, 4, 'Z')
     
     for i in range(1, 11):
+        # diameter becomes radius post 2.79
         bmesh.ops.create_circle(bm, cap_ends=False, diameter=scale*((i**2)/10)*0.1, segments=132,  matrix=Matrix.Rotation(pi/64, 4, 'Z')*Matrix.Translation((0, 0, 0)))
-    bmesh.ops.create_circle(bm, cap_ends=False, diameter=scale*1.075, segments=132,  matrix=Matrix.Rotation(pi/64, 4, 'Z')*Matrix.Translation((0, 0, 0)))
-    bmesh.ops.create_circle(bm, cap_ends=False, diameter=scale*1.175, segments=132,  matrix=Matrix.Rotation(pi/64, 4, 'Z')*Matrix.Translation((0, 0, 0)))
     
     for edge in bm.edges:
         edge.select_set(False) if edge.index % 3 or edge.index > 1187 else edge.select_set(True)
@@ -1856,11 +2065,13 @@ def compass(loc, scale, wro, mat):
     bmesh.ops.delete(bm, geom = [edge for edge in bm.edges if edge.select], context = 2)
     newgeo = bmesh.ops.extrude_edge_only(bm, edges = bm.edges, use_select_history=False)
     
-    for v, vert in enumerate(newgeo['geom'][:1584]):
+    for v, vert in enumerate(newgeo['geom'][:1320]):
         vert.co = vert.co - (vert.co - coo.location).normalized() * scale * (0.0025, 0.005)[v > 1187]
         vert.co[2] = 0
-           
+
+    # diameter becomes radius post 2.79       
     bmesh.ops.create_circle(bm, cap_ends=True, diameter=scale *0.005, segments=8, matrix=Matrix.Rotation(-pi/8, 4, 'Z')*Matrix.Translation((0, 0, 0)))
+    
     matrot = Matrix.Rotation(pi*0.25, 4, 'Z')
     degmatrot = Matrix.Rotation(pi*0.125, 4, 'Z')
     tmatrot = Matrix.Rotation(0, 4, 'Z')
@@ -1959,8 +2170,7 @@ def livisimacc(simnode):
     return(simnode.csimacc if context in ('Compliance', 'CBDM') else simnode.simacc)
 
 def drawpoly(x1, y1, x2, y2, r, g, b, a):
-#    bgl.glEnable(bgl.GL_BLEND)
-#    bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_CONSTANT_COLOR)
+    bgl.glLineWidth(1)
     bgl.glColor4f(r, g, b, a)
     bgl.glBegin(bgl.GL_POLYGON)
     bgl.glVertex2i(x1, y2)
@@ -1968,7 +2178,6 @@ def drawpoly(x1, y1, x2, y2, r, g, b, a):
     bgl.glVertex2i(x2, y1)
     bgl.glVertex2i(x1, y1)
     bgl.glEnd()
-#    bgl.glDisable(bgl.GL_BLEND)
     bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
     
 def drawtri(posx, posy, l, d, hscale, radius):
@@ -2028,7 +2237,7 @@ def drawwedge(c, phis, rs, col, w, h):
     bgl.glEnable(bgl.GL_LINE_SMOOTH)    
     bgl.glBlendFunc(bgl.GL_SRC_ALPHA, bgl.GL_ONE_MINUS_SRC_ALPHA);
     bgl.glHint(bgl.GL_LINE_SMOOTH_HINT, bgl.GL_FASTEST)
-    (z, lw, col) = (0.1, 5, col) if col else (0.05, 1.5, [0, 0, 0, 0.25])
+    (z, lw, col) = (0.1, 3, col) if col else (0.05, 1.5, [0, 0, 0, 0.25])
     bgl.glColor4f(*col)
     bgl.glLineWidth(lw)
     bgl.glBegin(bgl.GL_LINE_LOOP)
@@ -2045,6 +2254,7 @@ def radial2xy(c, theta, phi, w, h):
     return c[0] + theta * sin(math.pi * phi/180) * w, c[1] + theta * math.cos(math.pi * phi/180) * h
     
 def drawloop(x1, y1, x2, y2):
+    bgl.glLineWidth(1)
     bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
     bgl.glBegin(bgl.GL_LINE_LOOP)
     bgl.glVertex2i(x1, y2)
@@ -2054,15 +2264,11 @@ def drawloop(x1, y1, x2, y2):
     bgl.glEnd()
 
 def drawsquare(c, w, h, col):
-#    bgl.glEnable(bgl.GL_BLEND)
-#    bgl.glEnable(bgl.GL_DEPTH_TEST)
-#    bgl.glEnable(bgl.GL_LINE_SMOOTH)
     vxs = (c[0] + 0.5 * w, c[0] + 0.5 * w, c[0] - 0.5 * w, c[0] - 0.5 * w)
     vys = (c[1] - 0.5 * h, c[1] + 0.5 * h, c[1] + 0.5 * h, c[1] - 0.5 * h)
-#    bgl.glEnable(bgl.GL_DEPTH_TEST)
+
     if col:
         bgl.glColor4f(*col)
-#        bgl.glLineWidth(5)
         z = 0.1
         bgl.glBegin(bgl.GL_POLYGON)
     else:        
@@ -2074,12 +2280,7 @@ def drawsquare(c, w, h, col):
         bgl.glVertex3f(vxs[v], vys[v], z)
     bgl.glLineWidth(1)
     bgl.glColor4f(0, 0, 0, 1)
-#    bgl.glDisable(bgl.GL_DEPTH_TEST)
     bgl.glEnd()
-    
-#    bgl.glDisable(bgl.GL_TEXTURE_2D)
-#    bgl.glDisable(bgl.GL_BLEND)
-#    bgl.glFlush()
 
 def drawfont(text, fi, lencrit, height, x1, y1):
     blf.position(fi, x1, height - y1 - lencrit*26, 0)
@@ -2103,8 +2304,7 @@ def mtx2vals(mtxlines, fwd, node, times):
     for m, mtxline in enumerate(mtxlines):
         if 'NROWS' in mtxline:
             patches = int(mtxline.split('=')[1])
-#        elif 'NCOLS' in mtxline:
-#            hours = int(mtxline.split('=')[1])
+            
         elif mtxline == '\n':
             startline = m + 1
             break
@@ -2155,14 +2355,14 @@ def retobjs(otypes):
     scene = bpy.context.scene
     validobs = [o for o in scene.objects if o.is_visible(scene)]
     if otypes == 'livig':
-        return([o for o in validobs if o.type == 'MESH' and o.data.materials and not (o.parent and os.path.isfile(o.ies_name)) and not o.vi_type == '4' \
+        return([o for o in validobs if o.type == 'MESH' and o.data.materials and not (o.parent and os.path.isfile(o.ies_name)) and o.vi_type not in ('4', '5') \
         and o.lires == 0 and o.get('VIType') not in ('SPathMesh', 'SunMesh', 'Wind_Plane', 'SkyMesh')])
     elif otypes == 'livigeno':
         return([o for o in validobs if o.type == 'MESH' and o.data.materials and not any([m.livi_sense for m in o.data.materials])])
     elif otypes == 'livigengeosel':
         return([o for o in validobs if o.type == 'MESH' and o.select == True and o.data.materials and not any([m.livi_sense for m in o.data.materials])])
     elif otypes == 'livil':
-        return([o for o in validobs if (o.type == 'LAMP' or o.vi_type == '4') and o.layers[scene.active_layer] == True])
+        return([o for o in validobs if o.type == 'LAMP' or o.vi_type == '4'])
     elif otypes == 'livic':
         return([o for o in validobs if o.type == 'MESH' and li_calcob(o, 'livi') and o.lires == 0])
     elif otypes == 'livir':
@@ -2179,10 +2379,7 @@ def radmesh(scene, obs, export_op):
                 export_op.report({'INFO'}, o.name+" has an antimatter, photon port, emission or mirror material. Basic export routine used with no modifiers.")
                 o['merr'] = 1 
         selobj(scene, o)
-#        selmesh('selenm')                        
-#        if [edge for edge in o.data.edges if edge.select]:
-#            export_op.report({'INFO'}, o.name+" has a non-manifold mesh. Basic export routine used with no modifiers.")
-#            o['merr'] = 1
+
         if not o.get('merr'):
             o['merr'] = 0
 
@@ -2243,21 +2440,21 @@ def retdp(mres, dp):
     return dp
 
 def draw_index_distance(posis, res, fontsize, fontcol, shadcol, distances):
-    if len(distances):
+    if distances.size:
         try:
             dp = 0 if max(res) > 100 else 1
-            nres = ['{:.{precision}f}'.format(r, precision = dp) for r in res]
+            nres = char.mod('%.{}f'.format(dp), res)
             fsdist = (fontsize/distances).astype(int8)
-            xposis = posis[:,0]
-            yposis = posis[:,1]
-#            [(blf.size(0, fontsize, fsdist[ri]), blf.position(0, xposis[ri] - int(0.5*blf.dimensions(0, nr)[0]), yposis[ri] - int(0.5 * blf.dimensions(0, nr)[1]), 0.99), blf.draw(0, nr)) for ri, nr in enumerate(nres)]
+            xposis = posis[0::2]
+            yposis = posis[1::2]
+            
             for ri, nr in enumerate(nres):
-                if distances[ri] > 1.25:
-                    blf.size(0, fsdist[ri], bpy.context.user_preferences.system.dpi)
-                    blf.position(0, xposis[ri] - int(0.5*blf.dimensions(0, nr)[0]), yposis[ri] - int(0.5 * blf.dimensions(0, nr)[1]), 0.99)
-                    blf.draw(0, nr)
+                blf.size(0, fsdist[ri], bpy.context.user_preferences.system.dpi)
+                blf.position(0, xposis[ri] - int(0.5*blf.dimensions(0, nr)[0]), yposis[ri] - int(0.5 * blf.dimensions(0, nr)[1]), 0.99)
+                blf.draw(0, nr)
+
         except Exception as e:
-            print(e)
+            print('Drawing index error: ', e)
 
 def draw_index(posis, res, fontsize, fontcol, shadcol): 
     nres = ['{}'.format(format(r, '.{}f'.format(retdp(max(res), 0)))) for ri, r in enumerate(res)]    
@@ -2291,45 +2488,89 @@ def edgelen(ob, edge):
     mathutils.Vector(vdiff).length
 
 def sunpath1(self, context):
-    sunpath()
+    sunpath(context.scene)
 
 def sunpath2(scene):
-    sunpath()
+    sunpath(scene)
 
-def sunpath():
-    scene = bpy.context.scene
+def sunpath(scene):
     suns = [ob for ob in scene.objects if ob.get('VIType') == 'Sun']
-    skyspheres = [ob for ob in scene.objects if ob.get('VIType') == 'SkyMesh']
+    if scene['spparams']['suns'] == '0':
+        
+        skyspheres = [ob for ob in scene.objects if ob.get('VIType') == 'SkyMesh']
+        
+        if suns and 0 in (suns[0]['solhour'] == scene.solhour, suns[0]['solday'] == scene.solday):
+            sunobs = [ob for ob in scene.objects if ob.get('VIType') == 'SunMesh']                
+            spathobs = [ob for ob in scene.objects if ob.get('VIType') == 'SPathMesh']
+            alt, azi, beta, phi = solarPosition(scene.solday, scene.solhour, scene.latitude, scene.longitude)
+            if spathobs:
+                suns[0].location.z = 100 * sin(beta)
+                suns[0].location.x = -(100**2 - (suns[0].location.z)**2)**0.5 * sin(phi)
+                suns[0].location.y = -(100**2 - (suns[0].location.z)**2)**0.5 * cos(phi)
+            suns[0].rotation_euler = pi * 0.5 - beta, 0, -phi
     
-    if suns and 0 in (suns[0]['solhour'] == scene.solhour, suns[0]['solday'] == scene.solday):
-        sunobs = [ob for ob in scene.objects if ob.get('VIType') == 'SunMesh']
-        spathobs = [ob for ob in scene.objects if ob.get('VIType') == 'SPathMesh']
-        beta, phi = solarPosition(scene.solday, scene.solhour, scene.latitude, scene.longitude)[2:]
-        if spathobs:
-            suns[0].location.z = 100 * sin(beta)
-            suns[0].location.x = -(100**2 - (suns[0].location.z)**2)**0.5 * sin(phi)
-            suns[0].location.y = -(100**2 - (suns[0].location.z)**2)**0.5 * cos(phi)
-        suns[0].rotation_euler = pi * 0.5 - beta, 0, -phi
+            if scene.render.engine == 'CYCLES':
+                if scene.world.node_tree:
+                    for stnode in [no for no in scene.world.node_tree.nodes if no.bl_label == 'Sky Texture']:
+                        stnode.sun_direction = -sin(phi), -cos(phi), sin(beta)
+                        for bnode in [no for no in scene.world.node_tree.nodes if no.bl_label == 'Background']:
+                            bnode.inputs[1].default_value = 1.5 + sin(beta) * 0.5
+                if suns[0].data.node_tree:
+                    for blnode in [node for node in suns[0].data.node_tree.nodes if node.bl_label == 'Blackbody']:
+                        blnode.inputs[0].default_value = 3000 + 2500*sin(beta)**0.5 if beta > 0 else 2500
+                    for emnode in [node for node in suns[0].data.node_tree.nodes if node.bl_label == 'Emission']:
+                        emnode.inputs[1].default_value = 10 * sin(beta)**0.5 if beta > 0 else 0
+                if sunobs and sunobs[0].data.materials[0].node_tree:
+                    for smblnode in [node for node in sunobs[0].data.materials[0].node_tree.nodes if sunobs[0].data.materials and node.bl_label == 'Blackbody']:
+                        smblnode.inputs[0].default_value = 3000 + 2500*sin(beta)**0.5 if beta > 0 else 2500
+                if skyspheres and not skyspheres[0].hide and skyspheres[0].data.materials[0].node_tree:
+                    for stnode in [no for no in skyspheres[0].data.materials[0].node_tree.nodes if no.bl_label == 'Sky Texture']:
+                        stnode.sun_direction = sin(phi), -cos(phi), sin(beta)
+    
+            suns[0]['solhour'], suns[0]['solday'] = scene.solhour, scene.solday
+            suns[0].hide = True if alt <= 0 else False
+            if suns[0].children:
+                suns[0].children[0].hide = True if alt <= 0 else False
+            return
 
-        if scene.render.engine == 'CYCLES':
-            if scene.world.node_tree:
-                for stnode in [no for no in scene.world.node_tree.nodes if no.bl_label == 'Sky Texture']:
-                    stnode.sun_direction = -sin(phi), -cos(phi), sin(beta)
-            if suns[0].data.node_tree:
-                for blnode in [node for node in suns[0].data.node_tree.nodes if node.bl_label == 'Blackbody']:
-                    blnode.inputs[0].default_value = 2500 + 3000*sin(beta)**0.5 if beta > 0 else 2500
-                for emnode in [node for node in suns[0].data.node_tree.nodes if node.bl_label == 'Emission']:
-                    emnode.inputs[1].default_value = 10 * sin(beta)**0.5 if beta > 0 else 0
-            if sunobs and sunobs[0].data.materials[0].node_tree:
-                for smblnode in [node for node in sunobs[0].data.materials[0].node_tree.nodes if sunobs[0].data.materials and node.bl_label == 'Blackbody']:
-                    smblnode.inputs[0].default_value = 2500 + 3000*sin(beta)**0.5 if beta > 0 else 2500
-            if skyspheres and not skyspheres[0].hide and skyspheres[0].data.materials[0].node_tree:
-                for stnode in [no for no in skyspheres[0].data.materials[0].node_tree.nodes if no.bl_label == 'Sky Texture']:
-                    stnode.sun_direction = sin(phi), -cos(phi), sin(beta)
+    elif scene['spparams']['suns'] == '1':
+        for d, day in enumerate((20, 50, 80, 110, 140, 171, 201, 231, 261, 292, 323, 354)):
+            alt, azi, beta, phi = solarPosition(day, scene.solhour, scene.latitude, scene.longitude)
+            suns[d].location.z = 100 * sin(beta)
+            suns[d].location.x = -(100**2 - (suns[d].location.z)**2)**0.5 * sin(phi)
+            suns[d].location.y = -(100**2 - (suns[d].location.z)**2)**0.5 * cos(phi)
+            suns[d].rotation_euler = pi * 0.5 - beta, 0, -phi
+            suns[d].hide = True if alt <= 0 else False
+            if suns[d].children:
+                suns[d].children[0].hide = True if alt <= 0 else False
+            suns[d].data.energy = scene.sunsstrength
+            
+            if scene.render.engine == 'CYCLES':
+                if suns[d].data.node_tree:
+                    for emnode in [node for node in suns[d].data.node_tree.nodes if node.bl_label == 'Emission']:
+                        emnode.inputs[1].default_value = scene.sunsstrength
+                    
+            suns[d].data.shadow_soft_size = scene.sunssize
+    
+    elif scene['spparams']['suns'] == '2':
+        for h in range(24):
+            alt, azi, beta, phi = solarPosition(scene.solday, h, scene.latitude, scene.longitude)
+            suns[h].location.z = 100 * sin(beta)
+            suns[h].location.x = -(100**2 - (suns[h].location.z)**2)**0.5 * sin(phi)
+            suns[h].location.y = -(100**2 - (suns[h].location.z)**2)**0.5 * cos(phi)
+            suns[h].rotation_euler = pi * 0.5 - beta, 0, -phi
+            suns[h].hide = True if alt <= 0 else False
+            if suns[h].children:
+                suns[h].children[0].hide = True if alt <= 0 else False
+            suns[h].data.energy = scene.sunsstrength
+            
+            if scene.render.engine == 'CYCLES':
+                if suns[h].data.node_tree:
+                    for emnode in [node for node in suns[h].data.node_tree.nodes if node.bl_label == 'Emission']:
+                        emnode.inputs[1].default_value = scene.sunsstrength
 
-        suns[0]['solhour'], suns[0]['solday'] = scene.solhour, scene.solday
-        return
-
+            suns[h].data.shadow_soft_size = scene.sunssize
+                
 def epwlatilongi(scene, node):
     with open(node.weather, "r") as epwfile:
         fl = epwfile.readline()
@@ -2380,16 +2621,16 @@ def solarRiseSet(doy, beta, lat, lon, riseset):
         phi = 0    
     return(phi*radToDeg)
 
-def set_legend(ax):
-    l = ax.legend(borderaxespad = -4)
-    plt.setp(l.get_texts(), fontsize=8)
+#def set_legend(ax):
+#    l = ax.legend(borderaxespad = -4)
+#    plt.setp(l.get_texts(), fontsize=8)
 
-def wr_axes():
-    fig = plt.figure(figsize=(8, 8), dpi=150, facecolor='w', edgecolor='w')
-    rect = [0.1, 0.1, 0.8, 0.8]
-    ax = WindroseAxes(fig, rect, facecolor='w')
-    fig.add_axes(ax)
-    return(fig, ax)
+#def wr_axes(plt):
+#    fig = plt.figure(figsize=(8, 8), dpi=150, facecolor='w', edgecolor='w')
+#    rect = [0.1, 0.1, 0.8, 0.8]
+#    ax = WindroseAxes(fig, rect, facecolor='w')
+#    fig.add_axes(ax)
+#    return(fig, ax)
 
 def skframe(pp, scene, oblist):
     for frame in range(scene['liparams']['fs'], scene['liparams']['fe'] + 1):
@@ -2489,264 +2730,11 @@ def retdates(sdoy, edoy, y):
         
 def li_calcob(ob, li):
     if not ob.data.materials:
-        return False
+        ob.licalc = 0
     else:
-        ob.licalc = 1 if [face.index for face in ob.data.polygons if ob.data.materials[face.material_index].mattype == '1'] else 0
-        return ob.licalc
+        ob.licalc = 1 if [face.index for face in ob.data.polygons if ob.data.materials[face.material_index] and ob.data.materials[face.material_index].mattype == '1'] else 0
+    return ob.licalc
 
-# FloVi functions
-def fvboundwrite(o):
-    boundary = ''
-    for mat in o.data.materials:        
-        boundary += "  {}\n  {{\n    type {};\n    faces\n    (\n".format(mat.name, ("wall", "patch", "patch", "symmetryPlane", "empty")[int(mat.flovi_bmb_type)])#;\n\n"
-        faces = [face for face in o.data.polygons if o.data.materials[face.material_index] == mat]
-        for face in faces:
-            boundary += "      ("+" ".join([str(v) for v in face.vertices])+")\n"
-        boundary += "    );\n  }\n"
-    boundary += ");\n\nmergePatchPairs\n(\n);"
-    return boundary
-    
-def fvbmwrite(o, expnode):
-    omw, bmovs = o.matrix_world, [vert for vert in o.data.vertices]
-    xvec, yvec, zvec = (omw*bmovs[3].co - omw*bmovs[0].co).normalized(), (omw*bmovs[2].co - omw*bmovs[3].co).normalized(), (omw*bmovs[4].co - omw*bmovs[0].co).normalized() 
-    ofvpos = [[(omw*bmov.co - omw*bmovs[0].co)*vec for vec in (xvec, yvec, zvec)] for bmov in bmovs]
-    bmdict = "FoamFile\n  {\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  object      blockMeshDict;\n  }\n\nconvertToMeters 1.0;\n\n" 
-    bmdict += "vertices\n(\n" + "\n".join(["  ({0:.3f} {1:.3f} {2:.3f})" .format(*ofvpo) for ofvpo in ofvpos]) +"\n);\n\n"
-    bmdict += "blocks\n(\n  hex (0 3 2 1 4 7 6 5) ({} {} {}) simpleGrading ({} {} {})\n);\n\n".format(expnode.bm_xres, expnode.bm_yres, expnode.bm_zres, expnode.bm_xgrad, expnode.bm_ygrad, expnode.bm_zgrad) 
-    bmdict += "edges\n(\n);\n\n"  
-    bmdict += "boundary\n(\n" 
-    bmdict += fvboundwrite(o)
-    return bmdict
-    
-def fvblbmgen(mats, ffile, vfile, bfile, meshtype):
-    scene = bpy.context.scene
-    matfacedict = {mat.name:[0, 0] for mat in mats}
-    
-    for line in bfile.readlines():
-        if line.strip() in matfacedict:
-            mat = line.strip()
-        elif '_' in line and line.strip().split('_')[1] in matfacedict:
-            mat = line.strip().split('_')[1]
-        if 'nFaces' in line:
-            matfacedict[mat][1] = int(line.split()[1].strip(';'))
-        if 'startFace' in line:
-            matfacedict[mat][0] = int(line.split()[1].strip(';'))
-    bobs = [ob for ob in scene.objects if ob.get('VIType') and ob['VIType'] == 'FloViMesh']
-    
-    if bobs:
-        o = bobs[0]
-        selobj(scene, o)
-        while o.data.materials:
-            bpy.ops.object.material_slot_remove()
-    else:
-        bpy.ops.object.add(type='MESH', layers=(False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True))
-        o = bpy.context.object
-        o['VIType'] = 'FloViMesh'
-    
-    o.name = meshtype
-    for mat in mats:
-        if mat.name not in o.data.materials:
-            bpy.ops.object.material_slot_add()
-            o.material_slots[-1].material = mat 
-    matnamedict = {mat.name: m for  m, mat in enumerate(o.data.materials)}
-    
-    bm = bmesh.new()
-    for line in [line for line in vfile.readlines() if line[0] == '(' and len(line.split(' ')) == 3]:
-        bm.verts.new().co = [float(vpos) for vpos in line[1:-2].split(' ')]
-    if hasattr(bm.verts, "ensure_lookup_table"):
-        bm.verts.ensure_lookup_table()
-    for l, line in enumerate([line for line in ffile.readlines() if '(' in line and line[0].isdigit() and len(line.split(' ')) == int(line[0])]):
-        newf = bm.faces.new([bm.verts[int(fv)] for fv in line[2:-2].split(' ')])
-        for facerange in matfacedict.items():
-            if l in range(facerange[1][0], facerange[1][0] + facerange[1][1]):
-                newf.material_index = matnamedict[facerange[0]]
-    bm.to_mesh(o.data)
-    bm.free()
-
-def fvbmr(scene, o):
-    points = '{\n    version     2.0;\n    format      ascii;\n    class       vectorField;\n    location    "constant/polyMesh";\n    object      points;\n}\n\n{}\n(\n'.format(len(o.data.verts))
-    points += ''.join(['({} {} {})\n'.format(o.matrix_world * v.co) for v in o.data.verts]) + ')'
-    with open(os.path.join(scene['flparams']['ofcpfilebase'], 'points'), 'r') as pfile:
-        pfile.write(points)
-    faces = '{\n    version     2.0;\n    format      ascii;\n    class       faceList;\n    location    "constant/polyMesh";\n    object      faces;\n}\n\n{}\n(\n'.format(len(o.data.faces))
-    faces += ''.join(['({} {} {} {})\n'.format(f.vertices) for f in o.data.faces]) + ')'
-    with open(os.path.join(scene['flparams']['ofcpfilebase'], 'faces'), 'r') as ffile:
-        ffile.write(faces)
-    
-def fvvarwrite(scene, obs, node):
-    '''Turbulence modelling: k and epsilon required for kEpsilon, k and omega required for kOmega, nutilda required for SpalartAllmaras, nut required for all
-        Bouyancy modelling: T''' 
-    (pentry, Uentry, nutildaentry, nutentry, kentry, eentry, oentry) = ["FoamFile\n{{\n  version     2.0;\n  format      ascii;\n  class       vol{}Field;\n  object      {};\n}}\n\ndimensions [0 {} {} 0 0 0 0];\ninternalField   uniform {};\n\nboundaryField\n{{\n".format(*var) for var in (('Scalar', 'p', '2', '-2', '{}'.format(node.pval)), ('Vector', 'U', '1', '-1' , '({} {} {})'.format(*node.uval)), ('Scalar', 'nuTilda', '2', '-1' , '{}'.format(node.nutildaval)), ('Scalar', 'nut', '2', '-1' , '{}'.format(node.nutval)), 
-    ('Scalar', 'k', '2', '-2' , '{}'.format(node.kval)), ('Scalar', 'epsilon', '2', '-3' , '{}'.format(node.epval)), ('Scalar', 'omega', '0', '-1' , '{}'.format(node.oval)))]
-    
-    for o in obs:
-        for mat in o.data.materials: 
-            matname = '{}_{}'.format(o.name, mat.name) if o.vi_type == '3' else mat.name 
-            if mat.mattype == '2':
-                pentry += mat.fvmat(matname, 'p')
-                Uentry += mat.fvmat(matname, 'U')
-                if node.solver != 'icoFoam':
-                    nutentry += mat.fvmat(matname, 'nut')
-                    if node.turbulence ==  'SpalartAllmaras':
-                        nutildaentry += mat.fvmat(matname, 'nutilda')
-                    elif node.turbulence ==  'kEpsilon':
-                        kentry += mat.fvmat(matname, 'k')
-                        eentry += mat.fvmat(matname, 'e')
-                    elif node.turbulence ==  'kOmega':
-                        kentry += mat.fvmat(matname, 'k')
-                        oentry += mat.fvmat(matname, 'o')
-
-    pentry += '}'
-    Uentry += '}'
-    nutentry += '}'
-    kentry += '}'
-    eentry += '}'
-    oentry += '}'
-    
-    with open(os.path.join(scene['flparams']['of0filebase'], 'p'), 'w') as pfile:
-        pfile.write(pentry)
-    with open(os.path.join(scene['flparams']['of0filebase'], 'U'), 'w') as Ufile:
-        Ufile.write(Uentry)
-    if node.solver != 'icoFoam':
-        with open(os.path.join(scene['flparams']['of0filebase'], 'nut'), 'w') as nutfile:
-            nutfile.write(nutentry)
-        if node.turbulence == 'SpalartAllmaras':
-            with open(os.path.join(scene['flparams']['of0filebase'], 'nuTilda'), 'w') as nutildafile:
-                nutildafile.write(nutildaentry)
-        if node.turbulence == 'kEpsilon':
-            with open(os.path.join(scene['flparams']['of0filebase'], 'k'), 'w') as kfile:
-                kfile.write(kentry)
-            with open(os.path.join(scene['flparams']['of0filebase'], 'epsilon'), 'w') as efile:
-                efile.write(eentry)
-        if node.turbulence == 'kOmega':
-            with open(os.path.join(scene['flparams']['of0filebase'], 'k'), 'w') as kfile:
-                kfile.write(kentry)
-            with open(os.path.join(scene['flparams']['of0filebase'], 'omega'), 'w') as ofile:
-                ofile.write(oentry)
-                
-def fvmattype(mat, var):
-    if mat.flovi_bmb_type == '0':
-        matbptype = ['zeroGradient'][int(mat.flovi_bmwp_type)]
-        matbUtype = ['fixedValue'][int(mat.flovi_bmwu_type)]
-    elif mat.flovi_bmb_type in ('1', '2'):
-        matbptype = ['freestreamPressure'][int(mat.flovi_bmiop_type)]
-        matbUtype = ['fixedValue'][int(mat.flovi_bmiou_type)]
-    elif mat.flovi_bmb_type == '3':
-        matbptype = 'empty'
-        matbUtype = 'empty'
-    
-def fvcdwrite(solver, dt, et):
-    pw = 0 if solver == 'icoFoam' else 1
-    return 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  location    "system";\n  object      controlDict;\n}\n\n' + \
-            'application     {};\nstartFrom       startTime;\nstartTime       0;\nstopAt          endTime;\nendTime         {};\n'.format(solver, et)+\
-            'deltaT          {};\nwriteControl    timeStep;\nwriteInterval   {};\npurgeWrite      {};\nwriteFormat     ascii;\nwritePrecision  6;\n'.format(dt, 1, pw)+\
-            'writeCompression off;\ntimeFormat      general;\ntimePrecision   6;\nrunTimeModifiable true;\n\n'
-
-def fvsolwrite(node):
-    ofheader = 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  location    "system";\n  object    fvSolution;\n}\n\n' + \
-        'solvers\n{\n  p\n  {\n    solver          PCG;\n    preconditioner  DIC;\n    tolerance       1e-06;\n    relTol          0;\n  }\n\n' + \
-        '  "(U|k|epsilon|omega|R|nuTilda)"\n  {\n    solver          smoothSolver;\n    smoother        symGaussSeidel;\n    tolerance       1e-05;\n    relTol          0;  \n  }\n}\n\n'
-    if node.solver == 'icoFoam':
-        ofheader += 'PISO\n{\n  nCorrectors     2;\n  nNonOrthogonalCorrectors 0;\n  pRefCell        0;\n  pRefValue       0;\n}\n\n' + \
-        'solvers\n{\n    p\n    {\n        solver          GAMG;\n        tolerance       1e-06;\n        relTol          0.1;\n        smoother        GaussSeidel;\n' + \
-        '        nPreSweeps      0;\n        nPostSweeps     2;\n        cacheAgglomeration true;\n        nCellsInCoarsestLevel 10;\n        agglomerator    faceAreaPair;\n'+ \
-        '        mergeLevels     1;\n    }\n\n    U\n    {\n        solver          smoothSolver;\n        smoother        GaussSeidel;\n        nSweeps         2;\n' + \
-        '        tolerance       1e-08;\n        relTol          0.1;\n    }\n\n    nuTilda\n    {\n        solver          smoothSolver;\n        smoother        GaussSeidel;\n' + \
-        '        nSweeps         2;\n        tolerance       1e-08;\n        relTol          0.1;\n    }\n}\n\n'
-    elif node.solver == 'simpleFoam':   
-        ofheader += 'SIMPLE\n{{\n  nNonOrthogonalCorrectors 0;\n  pRefCell        0;\n  pRefValue       0;\n\n    residualControl\n  {{\n    "(p|U|k|epsilon|omega|nut|nuTilda)" {};\n  }}\n}}\n'.format(node.convergence)
-        ofheader += 'relaxationFactors\n{\n    fields\n    {\n        p               0.3;\n    }\n    equations\n    {\n' + \
-            '        U               0.7;\n        k               0.7;\n        epsilon           0.7;\n      omega           0.7;\n        nuTilda           0.7;\n    }\n}\n\n'
-#        if node.turbulence == 'kEpsilon':
-#            ofheader += 'relaxationFactors\n{\n    fields\n    {\n        p               0.3;\n    }\n    equations\n    {\n' + \
-#            '        U               0.7;\n        k               0.7;\n        epsilon           0.7;\n    }\n}\n\n'
-#        elif node.turbulence == 'kOmega':
-#            ofheader += 'relaxationFactors\n{\n    fields\n    {\n        p               0.3;\n    }\n    equations\n    {\n' + \
-#            '        U               0.7;\n        k               0.7;\n        omega           0.7;\n    }\n}\n\n'
-#        elif node.turbulence == 'SpalartAllmaras':
-#            ofheader += 'relaxationFactors\n{\n    fields\n    {\n        p               0.3;\n    }\n    equations\n    {\n' + \
-#            '        U               0.7;\n        k               0.7;\n        nuTilda           0.7;\n    }\n}\n\n'
-    return ofheader
-
-def fvschwrite(node):
-    ofheader = 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  location    "system";\n  object    fvSchemes;\n}\n\n'
-    if node.solver == 'icoFoam':
-        return ofheader + 'ddtSchemes\n{\n  default         Euler;\n}\n\ngradSchemes\n{\n  default         Gauss linear;\n  grad(p)         Gauss linear;\n}\n\n' + \
-            'divSchemes\n{\n  default         none;\n  div(phi,U)      Gauss linear;\n}\n\nlaplacianSchemes\n{\n  default         Gauss linear orthogonal;\n}\n\n' + \
-            'interpolationSchemes\n{\n  default         linear;\n}\n\n' + \
-            'snGradSchemes{  default         orthogonal;}\n\nfluxRequired{  default         no;  p;\n}'
-    else:
-        ofheader += 'ddtSchemes\n{\n    default         steadyState;\n}\n\ngradSchemes\n{\n    default         Gauss linear;\n}\n\ndivSchemes\n{\n    '
-        if node.turbulence == 'kEpsilon':
-            ofheader += 'default         none;\n    div(phi,U)   bounded Gauss upwind;\n    div(phi,k)      bounded Gauss upwind;\n    div(phi,epsilon)  bounded Gauss upwind;\n    div((nuEff*dev(T(grad(U))))) Gauss linear;\n}\n\n'
-        elif node.turbulence == 'kOmega':
-            ofheader += 'default         none;\n    div(phi,U)   bounded Gauss upwind;\n    div(phi,k)      bounded Gauss upwind;\n    div(phi,omega)  bounded Gauss upwind;\n    div((nuEff*dev(T(grad(U))))) Gauss linear;\n}\n\n'
-        elif node.turbulence == 'SpalartAllmaras':
-            ofheader += 'default         none;\n    div(phi,U)   bounded Gauss linearUpwind grad(U);\n    div(phi,nuTilda)      bounded Gauss linearUpwind grad(nuTilda);\n    div((nuEff*dev(T(grad(U))))) Gauss linear;\n}\n\n'
-        ofheader += 'laplacianSchemes\n{\n    default         Gauss linear corrected;\n}\n\n' + \
-        'interpolationSchemes\n{\n    default         linear;\n}\n\nsnGradSchemes\n{\n    default         corrected;\n}\n\n' + \
-        'fluxRequired\n{\n    default         no;\n    p               ;\n}\n'
-    return ofheader
-
-def fvtppwrite(solver):
-    ofheader = 'FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n    location    "constant";\n    object      transportProperties;\n}\n\n'
-    if solver == 'icoFoam':
-        return ofheader + 'nu              nu [ 0 2 -1 0 0 0 0 ] 0.01;\n'
-    else:
-        return ofheader + 'transportModel  Newtonian;\n\nrho             rho [ 1 -3 0 0 0 0 0 ] 1;\n\nnu              nu [ 0 2 -1 0 0 0 0 ] 1e-05;\n\n' + \
-        'CrossPowerLawCoeffs\n{\n    nu0             nu0 [ 0 2 -1 0 0 0 0 ] 1e-06;\n    nuInf           nuInf [ 0 2 -1 0 0 0 0 ] 1e-06;\n    m               m [ 0 0 1 0 0 0 0 ] 1;\n' + \
-        '    n               n [ 0 0 0 0 0 0 0 ] 1;\n}\n\n' + \
-        'BirdCarreauCoeffs\n{\n    nu0             nu0 [ 0 2 -1 0 0 0 0 ] 1e-06;\n    nuInf           nuInf [ 0 2 -1 0 0 0 0 ] 1e-06;\n' + \
-        '    k               k [ 0 0 1 0 0 0 0 ] 0;\n    n               n [ 0 0 0 0 0 0 0 ] 1;\n}'
-        
-def fvraswrite(turb):
-    ofheader = 'FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n    location    "constant";\n    object      RASProperties;\n}\n\n'
-    return ofheader + 'RASModel        {};\n\nturbulence      on;\n\nprintCoeffs     on;\n'.format(turb)
-    
-def fvshmwrite(node, o, **kwargs):    
-    layersurf = '({}|{})'.format(kwargs['ground'][0].name, o.name) if kwargs and kwargs['ground'] else o.name 
-    ofheader = 'FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n    object      snappyHexMeshDict;\n}\n\n'
-    ofheader += 'castellatedMesh    {};\nsnap    {};\naddLayers    {};\ndebug    {};\n\n'.format('true', 'true', 'true', 0)
-    ofheader += 'geometry\n{{\n    {0}.obj\n    {{\n        type triSurfaceMesh;\n        name {0};\n    }}\n}};\n\n'.format(o.name)
-    ofheader += 'castellatedMeshControls\n{{\n  maxLocalCells {};\n  maxGlobalCells {};\n  minRefinementCells {};\n  maxLoadUnbalance 0.10;\n  nCellsBetweenLevels {};\n'.format(node.lcells, node.gcells, int(node.gcells/100), node.ncellsbl)
-    ofheader += '  features\n  (\n    {{\n      file "{}.eMesh";\n      level {};\n    }}\n  );\n\n'.format(o.name, node.level)
-    ofheader += '  refinementSurfaces\n  {{\n    {}\n    {{\n      level ({} {});\n    }}\n  }}\n\n  '.format(o.name, node.surflmin, node.surflmax) 
-    ofheader += '  resolveFeatureAngle 30;\n  refinementRegions\n  {}\n\n'
-    ofheader += '  locationInMesh ({} {} {});\n  allowFreeStandingZoneFaces true;\n}}\n\n'.format(0.1, 0.1, 0.1)
-    ofheader += 'snapControls\n{\n  nSmoothPatch 3;\n  tolerance 2.0;\n  nSolveIter 30;\n  nRelaxIter 5;\n  nFeatureSnapIter 10;\n  implicitFeatureSnap false;\n  explicitFeatureSnap true;\n  multiRegionFeatureSnap false;\n}\n\n'
-    ofheader += 'addLayersControls\n{{\n  relativeSizes true;\n  layers\n  {{\n    "{}.*"\n    {{\n      nSurfaceLayers {};\n    }}\n  }}\n\n'.format(layersurf, node.layers)
-    ofheader += '  expansionRatio 1.0;\n  finalLayerThickness 0.3;\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 3;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n' + \
-                '  nSmoothThickness 10;\n  maxFaceThicknessRatio 0.5;\n  maxThicknessToMedialRatio 0.3;\n  minMedianAxisAngle 90;\n  nBufferCellsNoExtrude 0;\n  nLayerIter 50;\n}\n\n'
-    ofheader += 'meshQualityControls\n{\n  #include "meshQualityDict"\n  nSmoothScale 4;\n  errorReduction 0.75;\n}\n\n'
-    ofheader += 'writeFlags\n(\n  scalarLevels\n  layerSets\n  layerFields\n);\n\nmergeTolerance 1e-6;\n'
-    return ofheader
-
-def fvmqwrite():
-    ofheader = 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  object      meshQualityDict;\n}\n\n'
-    ofheader += '#include "$WM_PROJECT_DIR/etc/caseDicts/meshQualityDict"'
-    return ofheader
-    
-def fvsfewrite(oname):
-    ofheader = 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  object      surfaceFeatureExtractDict;\n}\n\n'
-    ofheader += '{}.obj\n{{\n  extractionMethod    extractFromSurface;\n\n  extractFromSurfaceCoeffs\n  {{\n    includedAngle   150;\n  }}\n\n    writeObj\n    yes;\n}}\n'.format(oname)
-    return ofheader
-
-def fvobjwrite(scene, o, bmo):
-    objheader = '# FloVi obj exporter\no {}\n'.format(o.name)
-    objheader = '# FloVi obj exporter\n'
-    bmomw, bmovs = bmo.matrix_world, [vert for vert in bmo.data.vertices]
-    omw, ovs = o.matrix_world, [vert for vert in o.data.vertices]
-    xvec, yvec, zvec = (bmomw*bmovs[3].co - bmomw*bmovs[0].co).normalized(), (bmomw*bmovs[2].co - bmomw*bmovs[3].co).normalized(), (bmomw*bmovs[4].co - bmomw*bmovs[0].co).normalized() 
-    ofvpos = [[(omw*ov.co - bmomw*bmovs[0].co)*vec for vec in (xvec, yvec, zvec)] for ov in ovs]
-    bm = bmesh.new()
-    bm.from_mesh(o.data)
-    vcos = ''.join(['v {} {} {}\n'.format(*ofvpo) for ofvpo in ofvpos])
-    with open(os.path.join(scene['flparams']['ofctsfilebase'], '{}.obj'.format(o.name)), 'w') as objfile:
-        objfile.write(objheader+vcos)
-        for m, mat in enumerate(o.data.materials):
-            objfile.write('g {}\n'.format(mat.name) + ''.join(['f {} {} {}\n'.format(*[v.index + 1 for v in f.verts]) for f in bmesh.ops.triangulate(bm, faces = bm.faces)['faces'] if f.material_index == m]))
-        objfile.write('#{}'.format(len(bm.faces)))
-    bm.free()
     
 def sunposenvi(scene, sun, dirsol, difsol, mdata, ddata, hdata):
     frames = range(scene.frame_start, scene.frame_end)
@@ -2757,11 +2745,6 @@ def sunposenvi(scene, sun, dirsol, difsol, mdata, ddata, hdata):
     sizevals = [beamvals[t]/skyvals[t] for t in range(len(times))]
     values = list(zip(sizevals, beamvals, skyvals))
     sunapply(scene, sun, values, solposs, frames)
-
-def hdrsky(hdrfile, hdrmap, hdrangle, hdrradius):
-    hdrangle = '1 {:.3f}'.format(hdrangle * math.pi/180) if hdrangle else '1 0'
-    hdrfn = {'0': 'sphere2latlong', '1': 'sphere2angmap'}[hdrmap]
-    return("# Sky material\nvoid colorpict hdr_env\n7 red green blue '{}' {}.cal sb_u sb_v\n0\n{}\n\nhdr_env glow env_glow\n0\n0\n4 1 1 1 0\n\nenv_glow bubble sky\n0\n0\n4 0 0 0 {}\n\n".format(hdrfile, hdrfn, hdrangle, hdrradius))
        
 def sunposlivi(scene, skynode, frames, sun, stime):
     sun.data.shadow_method, sun.data.shadow_ray_samples, sun.data.sky.use_sky = 'RAY_SHADOW', 8, 1
@@ -2778,7 +2761,21 @@ def sunposlivi(scene, skynode, frames, sun, stime):
     shaddict = {'0': 0.01, '1': 2, '2': 5, '3': 5}
     values = list(zip([shaddict[str(skynode['skynum'])] for t in range(len(times))], beamvals, skyvals))
     sunapply(scene, sun, values, solposs, frames)
-
+    
+def sunposh(context, suns):
+    scene = context.scene
+    sps = [solarPosition(scene.solday, i, scene.latitude, scene.longitude) for i in range(0, 23)]
+    spsvalid = [sp[0] > 0 for sp in sps]
+    if sum(spsvalid) > len(suns):
+        for i in range(sum(spsvalid) - len(suns)):
+            bpy.ops.object.lamp_add(type = "SUN")
+            suns.append(context.active_object)
+    elif sum(spsvalid) < len(suns):    
+        [scene.objects.unlink(sun) for sun in suns[sum(spsvalid)]]
+        
+    for sun in suns:
+        pass
+        
 def sunapply(scene, sun, values, solposs, frames):
     sun.data.animation_data_clear()
     sun.animation_data_clear()

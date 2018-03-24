@@ -16,6 +16,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
  # -*- coding: utf-8 -*-
+ 
 #from __future__ import unicode_literals
 import bpy, blf, colorsys, bgl, mathutils, bmesh, datetime, os, inspect, math
 from bpy_extras import view3d_utils
@@ -25,7 +26,11 @@ from numpy import array, arange, repeat
 from numpy import sum as nsum
 from numpy import min as nmin
 from numpy import max as nmax
+from numpy import append as nappend
+
 try:
+    import matplotlib
+    matplotlib.use('qt5agg', warn = False, force = True)
     import matplotlib.pyplot as plt
     import matplotlib.cm as mcm  
     import matplotlib.colors as mcolors
@@ -36,16 +41,16 @@ except:
     mp = 0
 
 from . import livi_export
-from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare
+from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max
 from .vi_func import retdp, objmode, drawcircle, drawbsdfcircle, drawwedge, drawtri, setscenelivivals, draw_time, retcols, draw_index_distance
 from .envi_func import retenvires, recalculate_text
 
 nh = 768
 enunitdict = {'Heating (W)': 'Watts (W)', 'Cooling (W)': 'Watts (W)', 'CO2 (ppm)': 'PPM', 'Solar gain (W)': 'Watts (W)', 'Temperature (degC)': u'Temperature (\u00B0C)', 'PMV': 'PMV', 'PPD (%)': '%', 'Air heating (W)': 'W', 
-              'Air cooling (W)': 'W', 'HR heating (W)': 'W', 'Heat balance (W)': 'W', 'Occupancy': 'Persons', 'Humidity (%)': '(%)', 'Infiltration (m3/hr)': 'm3/hr', 'Infiltration (ACH)': 'ACH'}
+              'Air cooling (W)': 'W', 'HR heating (W)': 'W', 'Heat balance (W)': 'W', 'Occupancy': 'Persons', 'Humidity (%)': '(%)', 'Infiltration (m3/hr)': 'm3/hr', 'Infiltration (ACH)': 'ACH', 'Equipment (W)': 'Watts (W)'}
 entitledict = {'Heating (W)': 'Heating Consumption', 'Cooling (W)': 'Cooling Consumption', 'CO2 (ppm)': r'CO$_2$ Concentration', 'Solar gain (W)': 'Solar Gain', 'Temperature (degC)': 'Temperature', 'PMV': 'Predicted Mean Vote', 
                'PPD (%)': 'Predicted Percentage of Dissatisfied', 'Air heating (W)': 'Air Heating', 'Air cooling (W)': 'Air Cooling', 'HR heating (W)': 'Heat recovery', 'Heat balance (W)': 'Heat Balance', 'Occupancy': 'Occupancy',
-                'Humidity (%)': 'Humidity', 'Infiltration (m3/hr)': 'Infiltration', 'Infiltration (ACH)': 'Infiltration'}
+                'Humidity (%)': 'Humidity', 'Infiltration (m3/hr)': 'Infiltration', 'Infiltration (ACH)': 'Infiltration', 'Equipment (W)': 'Equipment Gains'}
 kfsa = array([0.02391, 0.02377, 0.02341, 0.02738, 0.02933, 0.03496, 0.04787, 0.05180, 0.13552])
 kfact = array([0.9981, 0.9811, 0.9361, 0.8627, 0.7631, 0.6403, 0.4981, 0.3407, 0.1294])
 #envaldict = {'Heating (W)': 'Watts (W)', 'Cooling (W)': 'Watts (W)', 'CO2 (ppm)': 'PPM', 'Solar gain (W)': 'Watts (W)', 'Temperature (degC)': (scene.en_temp_min, scene.en_temp_max)}
@@ -55,7 +60,8 @@ def envals(unit, scene, data):
     'Solar gain (W)': (scene.en_shg_min, scene.en_shg_max), 'Temperature (degC)': (scene.en_temp_min, scene.en_temp_max), 'PMV': (scene.en_pmv_min, scene.en_pmv_max), 'PPD (%)': (scene.en_ppd_min, scene.en_ppd_max),
     'Air heating (W)': (scene.en_aheat_min, scene.en_aheat_max), 'Air cooling (W)': (scene.en_acool_min, scene.en_acool_max), 'HR heating (W)': (scene.en_hrheat_min, scene.en_hrheat_max), 
     'Heat balance (W)': (scene.en_heatb_min, scene.en_heatb_max),  'Occupancy': (scene.en_occ_min, scene.en_occ_max),'Humidity (%)': (scene.en_hum_min, scene.en_hum_max),'Infiltration (ACH)': (scene.en_iach_min, scene.en_iach_max),
-    'Infiltration (m3/hr)': (scene.en_im3s_min, scene.en_im3s_max)}
+    'Infiltration (m3/hr)': (scene.en_im3s_min, scene.en_im3s_max), 'Equipment (W)': (scene.en_eq_min, scene.en_eq_max)}
+
     if unit in envaldict:
         return envaldict[unit]
     else:
@@ -240,9 +246,9 @@ class linumdisplay():
     def draw(self, context):
         self.u = 0
         self.scene = context.scene
-        self.fontmult = 2 if context.space_data.region_3d.is_perspective else 500
+        self.fontmult = 2 #if context.space_data.region_3d.is_perspective else 500
         
-        if not self.scene.get('viparams') or self.scene['viparams']['vidisp'] not in ('lipanel', 'sspanel', 'lcpanel'):
+        if not self.scene.get('viparams') or self.scene['viparams']['vidisp'] not in ('svfpanel', 'lipanel', 'sspanel', 'lcpanel'):
             self.scene.vi_display = 0
             return
         if self.scene.frame_current not in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1):
@@ -277,8 +283,9 @@ class linumdisplay():
         if self.level != self.scene.vi_disp_3dlevel:
             self.level = self.scene.vi_disp_3dlevel
             self.u = 1
-        
+
         blf_props(self.scene, self.width, self.height)
+        
         if self.u:            
             self.update(context)
         else:              
@@ -289,7 +296,7 @@ class linumdisplay():
             bpy.context.user_preferences.system.window_draw_method = bpy.context.user_preferences.system.window_draw_method
            
     def update(self, context):
-        self.allpcs, self.alldepths, self.allres = [], [], []
+        self.allpcs, self.alldepths, self.allres = array([]), array([]), array([])
         try:
             for ob in self.obd:
                 if ob.data.get('shape_keys') and str(self.fn) in [sk.name for sk in ob.data.shape_keys.key_blocks] and ob.active_shape_key.name != str(self.fn):
@@ -321,8 +328,8 @@ class linumdisplay():
                             (faces, distances) = map(list, zip(*[[f, distances[i]] for i, f in enumerate(faces) if not self.scene.ray_cast(fcos[i], direcs[i], distance=distances[i])[0]]))
         
                         face2d = [view3d_utils.location_3d_to_region_2d(context.region, context.region_data, f.calc_center_median_weighted()) for f in faces]
-                        (faces, self.pcs, self.depths) = map(list, zip(*[[f, face2d[fi], distances[fi]] for fi, f in enumerate(faces) if face2d[fi] and 0 < face2d[fi][0] < self.width and 0 < face2d[fi][1] < self.height]))          
-                        self.res = [f[livires] for f in faces]
+                        (faces, pcs, depths) = map(list, zip(*[[f, face2d[fi], distances[fi]] for fi, f in enumerate(faces) if face2d[fi] and 0 < face2d[fi][0] < self.width and 0 < face2d[fi][1] < self.height]))          
+                        res = [f[livires] for f in faces] if not self.scene.vi_res_mod else [eval('{}{}'.format(f[livires], self.scene.vi_res_mod)) for f in faces]
                     
                     elif bm.verts.layers.float.get('res{}'.format(self.scene.frame_current)):                        
                         verts = [v for v in geom if not v.hide and v.select and (context.space_data.region_3d.view_location - self.view_location).dot(v.co + self.scene.vi_display_rp_off * v.normal.normalized() - self.view_location)/((context.space_data.region_3d.view_location-self.view_location).length * (v.co + self.scene.vi_display_rp_off * v.normal.normalized() - self.view_location).length) > 0]
@@ -334,20 +341,19 @@ class linumdisplay():
                             (verts, distances) = map(list, zip(*[[v, distances[i]] for i, v in enumerate(verts) if not self.scene.ray_cast(vcos[i], direcs[i], distance=distances[i])[0]]))
                             
                         vert2d = [view3d_utils.location_3d_to_region_2d(context.region, context.region_data, v.co) for v in verts]
-                        (verts, self.pcs, self.depths) = map(list, zip(*[[v, vert2d[vi], distances[vi]] for vi, v in enumerate(verts) if vert2d[vi] and 0 < vert2d[vi][0] < self.width and 0 < vert2d[vi][1] < self.height]))
-                        self.res = [v[livires] for v in verts]
-                    
+                        (verts, pcs, depths) = map(list, zip(*[[v, vert2d[vi], distances[vi]] for vi, v in enumerate(verts) if vert2d[vi] and 0 < vert2d[vi][0] < self.width and 0 < vert2d[vi][1] < self.height]))
+                        res = [v[livires] for v in verts] if not self.scene.vi_res_mod else [eval('{}{}'.format(v[livires], self.scene.vi_res_mod)) for v in verts]
+                        
                     bm.free()
                 
                 except Exception as e:
-                    self.pcs, self.depths, self.res = [], [], []
+                    pcs, depths, res = [], [], []
                     
-                self.allpcs += self.pcs
-                self.alldepths += self.depths
-                self.allres += self.res
-            self.allpcs  = array(self.allpcs)
-            self.alldepths = array(self.alldepths)
-            self.allres = array(self.allres)            
+                self.allpcs = nappend(self.allpcs, array(pcs))
+                self.alldepths = nappend(self.alldepths, array(depths))
+                self.allres = nappend(self.allres, array(res))
+
+            self.alldepths = self.alldepths/nmin(self.alldepths)        
             draw_index_distance(self.allpcs, self.allres, self.fontmult * self.scene.vi_display_rp_fs, self.scene.vi_display_rp_fc, self.scene.vi_display_rp_fsh, self.alldepths)    
 
         except Exception as e:
@@ -402,6 +408,7 @@ def en_air(self, context, temp, ws, wd, hu):
         blf.position(font_id, int(leftwidth + hscale * 255), int(topheight - hscale * 20), 0)
         blf.draw(font_id, "D: {:.0f}deg".format(wd[scene.frame_current]))
         blf.disable(0, 4)
+        
         for i in range(1, 6):
             drawcircle(mathutils.Vector((posx, posy)), 0.15 * hscale * radius * i, 36, 0, 0.7, 0, 0, 0) 
 
@@ -444,175 +451,7 @@ def en_air(self, context, temp, ws, wd, hu):
         drawpoly(int(leftwidth + hscale * 80), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 130), botheight, 1, *colorsys.hsv_to_rgb(1 - reslevel, 1.0, 1.0))
         drawloop(int(leftwidth + hscale * 80 - 1), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 130), botheight)      
         blf.disable(0, 4)
-    
-class en_temp_panel():
-    metrics = []
-    location = (0,0)
-    hum_location = (0,0)
-    co2_location = (0,0)
-    heat_location = (0,0)
-    cool_location = (0,0)
-
-    def __init__(self):
-        self.expand = 0
-
-    def xyminmax(self):
-        return (self.location[0] - 50, self.location[1] - 50, self.location[0] + 50, self.location[1] + 50)
-                
-    def metrics(scene, resnode):
-        rl = resnode['reslists']
-        zrl = list(zip(*rl))
-        reszones = [o.name.upper() for o in bpy.data.objects if o.name.upper() in zrl[2]]
-        if not bpy.context.active_object or 'EN_'+bpy.context.active_object.name.upper() not in reszones:
-            return
-        height, font_id = context.region.height, 0
-        hscale = height/nh
-        startx, starty, rowheight, totwidth = 20, height - 20, 20, 200
-        resstart = 24 * (resnode['Start'] - resnode.dsdoy)
-        resend = resstart + 24 * (1 + resnode['End'] - resnode['Start'])
-        eznames = ['EN_{}'.format(o.name.upper()) for o in bpy.context.selected_objects]
-        for ezname in eznames:
-            tdata = [t.split()[resstart:resend] for ti, t in enumerate(zrl[4]) if zrl[3][ti] == 'Temperature (degC)' and zrl[2][ti] == ezname]
-            metrics += [rl[ri][3] for ri in range(len(rl)) if rl[ri][2] == ezname]
-        if 'Temperature (degC)' in set(metrics):
-            tp = temp_panel()
-            tp.location = (startx, starty)
-    
-def en_panel(self, context, resnode):
-    scene = context.scene
-    rl = resnode['reslists']
-    zrl = list(zip(*rl))
-    reszones = [o.name.upper() for o in bpy.data.objects if o.name.upper() in zrl[2]]
-    if not bpy.context.active_object or 'EN_'+bpy.context.active_object.name.upper() not in reszones:
-        return
-    height, font_id = context.region.height, 0
-    hscale = height/nh
-    startx, starty, rowheight, totwidth = 20, height - 20, 20, 200
-    resstart = 24 * (resnode['Start'] - resnode.dsdoy)
-    resend = resstart + 24 * (1 + resnode['End'] - resnode['Start'])
-    ezname = 'EN_'+bpy.context.active_object.name.upper()
-    metrics = set([rl[ri][3] for ri in range(len(rl)) if rl[ri][2] == ezname])
-    metricno = 6 * (0, 1)['Temperature (degC)' in metrics] + 6 * (0, 1)['Humidity (%)' in metrics] + 8 * (0, 1)['Heating (W)' in metrics] + 8 * (0, 1)['Zone air heating (W)' in metrics] + 8 * (0, 1)['Cooling (W)' in metrics] + 6 * (0, 1)['CO2 (ppm)' in metrics]
-    rowno = 1
-    if metricno:
-        drawpoly(startx, starty, startx + int(hscale*totwidth), starty - int(hscale*rowheight*(1 + metricno)), 0.7, 1, 1, 1)
-        drawloop(startx, starty, startx + int(hscale*totwidth), starty - int(hscale*rowheight*(1 + metricno)))
-        blf.enable(0, 4)
-        blf.shadow(0, 3, 0, 0, 0, 0.5)
-        blf.size(font_id, 20, int(height/14))
-        bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
-        
-        if 'Temperature (degC)' in metrics:
-            tdata = [t.split()[resstart:resend] for ti, t in enumerate(zrl[4]) if zrl[3][ti] == 'Temperature (degC)' and zrl[2][ti] == ezname]
-            vals = [float(t) for t in tdata[0]]
-            avval, maxval, minval, percenta, percentb = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val > scene.en_temp_max for val in vals])/len(vals), 100 * sum([val < scene.en_temp_min for val in vals])/len(vals) 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'Temperatures:')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.1f}'.format(scene.en_temp_max), '% below {:.1f}'.format(scene.en_temp_min))):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.1f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2
-        
-        if 'Humidity (%)' in metrics:
-            hdata = [h.split()[resstart:resend] for hi, h in enumerate(zrl[4]) if zrl[3][hi] == 'Humidity (%)' and zrl[2][hi] == ezname]
-            vals = [float(h) for h in hdata[0]]
-            avval, maxval, minval, percenta, percentb = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val > scene.en_hum_max for val in vals])/len(vals), 100 * sum([val < scene.en_hum_min for val in vals])/len(vals) 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'Humidities:')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.1f}'.format(scene.en_hum_max), '% below {:.1f}'.format(scene.en_hum_min))):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.1f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2
-        
-        if 'Heating (W)' in metrics:
-            hdata = [h.split()[resstart:resend] for hi, h in enumerate(zrl[4]) if zrl[3][hi] == 'Heating (W)' and zrl[2][hi] == ezname]
-            vals = [float(h) for h in hdata[0]]
-            avval, maxval, minval, percenta, percentb, kwh, kwhm2 = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val >= scene.en_heat_max for val in vals])/len(vals), 100 * sum([val <= scene.en_heat_min for val in vals])/len(vals), 0.001 * sum(vals), 0.001 * sum(vals)/bpy.data.objects['en_'+bpy.context.active_object.name]['floorarea'] 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'Heating (W):')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.1f}'.format(scene.en_heat_max), '% at min {:.1f}'.format(scene.en_heat_min), 'kWh', 'kWh/m^2')):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb, kwh, kwhm2)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.0f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2
             
-        if 'Zone air heating (W)' in metrics:
-            hdata = [h.split()[resstart:resend] for hi, h in enumerate(zrl[4]) if zrl[3][hi] == 'Zone air heating (W)' and zrl[2][hi] == ezname]
-            vals = [float(h) for h in hdata[0]]
-            avval, maxval, minval, percenta, percentb, kwh, kwhm2 = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val >= scene.en_heat_max for val in vals])/len(vals), 100 * sum([val <= scene.en_heat_min for val in vals])/len(vals), 0.001 * sum(vals), 0.001 * sum(vals)/bpy.data.objects['en_'+bpy.context.active_object.name]['floorarea'] 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'Air heating (W):')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.0f}'.format(scene.en_heat_max), '% at min {:.0f}'.format(scene.en_heat_min), 'kWh', 'kWh/m^2')):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb, kwh, kwhm2)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.1f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2
-            
-        if 'Cooling (W)' in metrics:
-            cdata = [c.split()[resstart:resend] for ci, c in enumerate(zrl[4]) if zrl[3][ci] == 'Cooling (W)' and zrl[2][ci] == ezname]
-            vals = [float(c) for c in cdata[0]]                
-            avval, maxval, minval, percenta, percentb, kwh, kwhm2 = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val >= scene.en_heat_max for val in vals])/len(vals), 100 * sum([val <= scene.en_heat_min for val in vals])/len(vals), 0.001 * sum(vals), 0.001 * sum(vals)/bpy.data.objects['en_'+bpy.context.active_object.name]['floorarea'] 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'Cooling (W):')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.0f}'.format(scene.en_heat_max), '% at min {:.0f}'.format(scene.en_heat_min), 'kWh', 'kWh/m^2')):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb, kwh, kwhm2)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.1f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2
-        
-        if 'CO2 (ppm)' in metrics:
-            cdata = [c.split()[resstart:resend] for ci, c in enumerate(zrl[4]) if zrl[3][ci] == 'CO2 (ppm)' and zrl[2][ci] == ezname]
-            vals = [float(c) for c in cdata[0]] 
-            avval, maxval, minval, percenta, percentb = sum(vals)/len(vals), max(vals), min(vals), 100 * sum([val >= scene.en_co2_max for val in vals])/len(vals), 100 * sum([val <= scene.en_co2_min for val in vals])/len(vals) 
-            blf.position(font_id, int(startx + hscale * 10), int(starty - hscale * rowheight * rowno), 0)
-            blf.draw(font_id, 'CO2 (ppm):')
-            for tt, text in enumerate(('Average:', 'Maximum:', 'Minimum:', '% above {:.0f}'.format(scene.en_co2_max), '% at min {:.0f}'.format(scene.en_co2_min))):
-                blf.position(font_id, int(startx + hscale*10), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, text)
-            for tt, text in enumerate((avval, maxval, minval, percenta, percentb)):
-                blf.position(font_id, int(startx +  hscale*(totwidth * 0.6 + 10)), int(starty - hscale * rowheight * (rowno + tt + 1)), 0)
-                blf.draw(font_id, '{:.0f}'.format(text))
-            bgl.glBegin(bgl.GL_LINES)
-            bgl.glVertex2i(startx + int(hscale * totwidth * 0.2), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glVertex2i(startx + int(hscale*totwidth * 0.8), int(starty - hscale * rowheight * (rowno + tt + 1.25)))
-            bgl.glEnd()
-            rowno += tt + 2    
-        
-        blf.disable(0, 4)        
-    return
-        
 class Base_Display():
     def __init__(self, pos, width, height, iname, xdiff, ydiff):
         self.pos = pos
@@ -651,23 +490,24 @@ class wr_legend(Base_Display):
         Base_Display.__init__(self, pos, width, height, iname, xdiff, ydiff)
         
     def update(self, context):
-        simnode = bpy.data.node_groups[context.scene['viparams']['restree']].nodes[context.scene['viparams']['resnode']]        
+        scene = context.scene
+        simnode = bpy.data.node_groups[scene['viparams']['restree']].nodes[scene['viparams']['resnode']]        
         self.cao = context.active_object
-        if self.cao and self.cao.get('VIType') and self.cao['VIType'] == 'Wind_Plane':
-            scene = context.scene
+
+        if self.cao and self.cao.get('VIType') and self.cao['VIType'] == 'Wind_Plane':            
             levels = self.cao['nbins']
             maxres = self.cao['maxres']
         else:
             levels = simnode['nbins']
             maxres = simnode['maxres']
-        self.cols = retcols(context.scene, levels)
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), levels)
         
-        if not context.scene.get('liparams'):
+        if not scene.get('liparams'):
             scene.vi_display = 0
             return
 
         self.resvals = ['{0:.0f} - {1:.0f}'.format(2*i, 2*(i+1)) for i in range(simnode['nbins'])]
-        self.resvals[-1] = self.resvals[-1][:-int(len('{:.0f}'.format(maxres)))] + u"\u221E"  
+        self.resvals[-1] = self.resvals[-1][:-int(len('{:.0f}'.format(maxres)))] + "Inf"  
         
     def drawopen(self, context):
         draw_legend(self, context.scene, 'Speed (m/s)')
@@ -682,7 +522,6 @@ class wr_scatter(Base_Display):
         if self.cao and self.cao.get('ws'):
             self.unit = context.scene.wind_type 
             zdata = array(self.cao['ws']) if context.scene.wind_type == '0' else array(self.cao['wd'])
-#            (title, cbtitle) = ('Wind Speed', 'Speed (m/s)') if self.type_select else ('Wind Direction', u'Direction (\u00B0)')
             (title, cbtitle) = ('Wind Speed', 'Speed (m/s)') if context.scene.wind_type == '0' else ('Wind Direction', u'Direction (\u00B0)')
             self.plt = plt
             draw_dhscatter(self, context.scene, self.cao['days'], self.cao['hours'], zdata, title, 'Days', 'Hours', cbtitle, nmin(zdata), nmax(zdata))  
@@ -759,9 +598,9 @@ class en_scatter(Base_Display):
         self.gimage = 'scatter.png'
 
         try:
-            if self.unit:
+            if self.unit and self.cao.get('days'):
                 zdata, hours, days = array(self.cao[self.resstring][self.unit]).reshape(len(self.cao['days']), 24).T, self.cao['hours'], self.cao['days']        
-                title = self.cao.name
+                title = self.cao.name                
                 self.minmax = envals(self.unit, scene, zdata)    
                 cbtitle = enunitdict[self.unit]
                 self.plt = plt
@@ -986,13 +825,16 @@ def comp_disp(self, context, simnode):
         self.dhscatter.draw(context, width, height)
 
 def cbdm_disp(self, context, simnode):
-    if self._handle_disp:
-        width, height = context.region.width, context.region.height
-        self.legend.draw(context, width, height)
-        self.table.draw(context, width, height)
-    
-        if context.scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Ave lux', 'Min lux', 'kWh', 'kWh/m2'):
-            self.dhscatter.draw(context, width, height)
+    try:
+        if self._handle_disp:
+            width, height = context.region.width, context.region.height
+            self.legend.draw(context, width, height)
+            self.table.draw(context, width, height)
+    except:
+        pass
+
+    if context.scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Ave lux', 'Min lux', 'kWh', 'kWh/m2'):
+        self.dhscatter.draw(context, width, height)
         
 def en_disp(self, context, simnode):
     try:
@@ -1019,8 +861,35 @@ class ss_legend(Base_Display):
     def update(self, context):
         scene = context.scene
         self.cao = context.active_object        
-        self.cols = retcols(context.scene, 20)
-        self.col, self.maxres, self.minres, self.scale = scene.vi_leg_col, scene.vi_leg_max, scene.vi_leg_min, scene.vi_leg_scale
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        (self.minres, self.maxres) = leg_min_max(scene)        
+        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
+        dplaces = retdp(self.maxres, 1)
+        resdiff = self.maxres - self.minres
+        
+        if not context.scene.get('liparams'):
+            scene.vi_display = 0
+            return
+
+        self.resvals = [format(self.minres + i*(resdiff)/20, '.{}f'.format(dplaces)) for i in range(21)] if self.scale == '0' else \
+                        [format(self.minres + (1 - log10(i)/log10(21))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, 22)[::-1]]
+                        
+        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
+        
+    def drawopen(self, context):
+        scene = context.scene
+        draw_legend(self, scene, 'Sunlit Time (%)' if not scene.vi_leg_unit else scene.vi_leg_unit)
+        
+class svf_legend(Base_Display):
+    def __init__(self, pos, width, height, iname, xdiff, ydiff):
+        Base_Display.__init__(self, pos, width, height, iname, xdiff, ydiff)
+        
+    def update(self, context):
+        scene = context.scene
+        self.cao = context.active_object        
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        (self.minres, self.maxres) = leg_min_max(scene)
+        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
         dplaces = retdp(self.maxres, 1)
         resdiff = self.maxres - self.minres
         
@@ -1034,7 +903,8 @@ class ss_legend(Base_Display):
         self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
         
     def drawopen(self, context):
-        draw_legend(self, context.scene, 'Sunlit Time (%)')
+        scene = context.scene
+        draw_legend(self, scene, 'Sky View' if not scene.vi_leg_unit else scene.vi_leg_unit)
     
 class basic_legend(Base_Display):
     def __init__(self, pos, width, height, iname, xdiff, ydiff):
@@ -1043,8 +913,9 @@ class basic_legend(Base_Display):
     def update(self, context):
         scene = context.scene
         self.cao = context.active_object        
-        self.cols = retcols(context.scene, 20)
-        self.col, self.maxres, self.minres, self.scale = scene.vi_leg_col, scene.vi_leg_max, scene.vi_leg_min, scene.vi_leg_scale
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        (self.minres, self.maxres) = leg_min_max(scene)
+        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
         dplaces = retdp(self.maxres, 1)
         resdiff = self.maxres - self.minres
         
@@ -1058,13 +929,21 @@ class basic_legend(Base_Display):
         self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
         
     def drawopen(self, context):
-        draw_legend(self, context.scene, context.scene['liparams']['unit'])
+        scene = context.scene
+        draw_legend(self, scene, scene['liparams']['unit'] if not scene.vi_leg_unit else scene.vi_leg_unit)
     
 def ss_disp(self, context, simnode):
     try:
         width, height = context.region.width, context.region.height
         self.legend.draw(context, width, height)
         self.dhscatter.draw(context, width, height)
+    except:
+        pass
+    
+def svf_disp(self, context, simnode):
+    try:
+        width, height = context.region.width, context.region.height
+        self.legend.draw(context, width, height)
     except:
         pass
 #    self.dhscatter.draw(context, width, height)
@@ -1150,9 +1029,9 @@ class bsdf(Base_Display):
         for phii, phi in enumerate(self.phis):
             for w in range(phi):
                 if self.patch_select == patch:
-                    z, lw, col = 0.06, 5, (1, 0, 0, 1) 
+                    z, lw, col = 0.06, 3, (1, 0, 0, 1) 
                 elif self.patch_hl == patch:
-                    z, lw, col = 0.06, 5, (1, 1, 0, 1)
+                    z, lw, col = 0.06, 3, (1, 1, 0, 1)
                 else:
                     z, lw, col = 0.05, 1, 0
     
@@ -1185,8 +1064,7 @@ class bsdf(Base_Display):
         bgl.glFlush()
         
     def update(self, context):
-        self.mat = context.object.active_material
-        
+        self.mat = context.object.active_material        
         bsdf = minidom.parseString(self.mat['bsdf']['xml'])
 #        coltype = [path.firstChild.data for path in bsdf.getElementsByTagName('ColumnAngleBasis')]
 #        rowtype = [path.firstChild.data for path in bsdf.getElementsByTagName('RowAngleBasis')]
@@ -1228,7 +1106,7 @@ class bsdf(Base_Display):
         sa = repeat(kfsa, self.phis)
         act = repeat(kfact, self.phis)
         patchdat = selectdat[self.patch_select] * act * sa * 100
-        bg = self.plt.Rectangle((0, 0), 2 * math.pi, 1, color=mcm.get_cmap(scene.vi_leg_col)((0, 0.01)[scene.vi_leg_scale == '1']), zorder = 0)      
+        bg = self.plt.Rectangle((0, 0), 2 * math.pi, 1, color=mcm.get_cmap(scene.vi_leg_col)((0, 0.01)[scene.vi_bsdfleg_scale == '1']), zorder = 0)      
 
         for ring in range(1, 10):
             angdiv = math.pi/self.phis[ring - 1]
@@ -1243,8 +1121,8 @@ class bsdf(Base_Display):
                     self.plt.text(0.5 * (phi1 + phi2), y, ('{:.1f}', '{:.0f}')[patchdat[p] >= 10].format(patchdat[p]), ha="center", va = 'center', family='sans-serif', size=10)
                 p += 1
                 
-        pc = PatchCollection(patches, norm=mcolors.LogNorm(vmin=self.leg_min + 0.01, vmax = self.leg_max), cmap=self.col) if scene.vi_leg_scale == '1' else PatchCollection(patches, cmap=self.col)        
-        pc.set_linewidth(repeat(array([0, 0.5]), array([1, 144])))
+        pc = PatchCollection(patches, norm=mcolors.LogNorm(vmin=self.leg_min + 0.01, vmax = self.leg_max), cmap=self.col, linewidths = [0] + 144*[0.5], edgecolors = ('black',)) if scene.vi_bsdfleg_scale == '1' else PatchCollection(patches, cmap=self.col, linewidths = [0] + 144*[0.5], edgecolors = ('black',))        
+#        pc.set_linewidth(repeat(array([0, 0.5]), array([1, 144])))
         pc.set_array(patchdat)
         
         ax.add_collection(pc)
@@ -1256,9 +1134,11 @@ class bsdf(Base_Display):
                         
     def save(self, scene):
         self.plt.savefig(os.path.join(scene['viparams']['newdir'], 'images', 'bsdfplot.png'), bbox_inches='tight')
+
         if 'bsdfplot.png' not in [i.name for i in bpy.data.images]:
             self.gimage = bpy.data.images.load(os.path.join(scene['viparams']['newdir'], 'images', 'bsdfplot.png'))
         else:
+            bpy.data.images['bsdfplot.png'].filepath = os.path.join(scene['viparams']['newdir'], 'images', 'bsdfplot.png')
             bpy.data.images['bsdfplot.png'].reload()
             self.gimage = bpy.data.images['bsdfplot.png']
    
@@ -1315,6 +1195,7 @@ def draw_legend(self, scene, unit):
     mydimen = blf.dimensions(font_id, unit)[1]
     fontscale = max(titxdimen/(xdiff * 0.9), resxdimen/(xdiff * 0.6), mydimen * 1.25/lh)
     blf.size(font_id, 12, int(300/fontscale))
+
     if not self.resize:
         self.lspos = [self.spos[0], self.spos[1] - ydiff]
         self.lepos = [self.lspos[0] + xdiff, self.spos[1]]            
@@ -1363,12 +1244,14 @@ def draw_dhscatter(self, scene, x, y, z, tit, xlab, ylab, zlab, valmin, valmax):
     y = [y[0] - 0.5] + [yval + 0.5 for yval in y]
     self.plt.figure(figsize=(6 + len(x)/len(y), 6))
     
-    self.plt.title(tit, size = 18).set_position([.5, 1.025])
+    self.plt.title(tit, size = 20).set_position([.5, 1.025])
     self.plt.xlabel(xlab, size = 18)
     self.plt.ylabel(ylab, size = 18)
     self.plt.pcolor(x, y, z, cmap=self.col, vmin=valmin, vmax=valmax)#, norm=plt.matplotlib.colors.LogNorm())#, edgecolors='b', linewidths=1, vmin = 0, vmax = 4000)
     self.plt.colorbar(use_gridspec=True).set_label(label=zlab,size=20)
-    self.plt.axis([min(x),max(x),min(y),max(y)], size = 19)
+    self.plt.axis([min(x),max(x),min(y),max(y)])
+    self.plt.xticks(size = 16)
+    self.plt.yticks(size = 16)
     self.plt.tight_layout(rect=[0, 0, 1 + ((len(x)/len(y)) - 1) * 0.005, 1])
 
 def draw_barchart(self, scene, x, y, tit, xlab, ylab, ymin, ymax):
@@ -1379,6 +1262,7 @@ def draw_barchart(self, scene, x, y, tit, xlab, ylab, ymin, ymax):
     self.plt.ylabel(ylab, size = 18)
     cols = [(yval - ymin)/(ymax - ymin) for yval in y]
     self.plt.bar(x, y, align='center', color = [mcm.get_cmap(self.col)(i) for i in cols])
+    self.plt.xticks(x)
     self.plt.tight_layout(rect=[0, 0, 1 + ((len(x)/len(y)) - 1) * 0.005, 1])
     
 def save_plot(self, scene, filename):
@@ -1466,7 +1350,7 @@ def draw_table(self):
 
     maxrowtextheight = max([max([blf.dimensions(font_id, '{}'.format(e))[1] for e in entry if e])  for entry in self.rcarray.T])
     rowtextheight = maxrowtextheight + 0.1 * self.ydiff/rowno
-    rowscale = (rowno * rowtextheight)/(self.ydiff - self.xdiff * 0.05)
+    rowscale = (rowno * rowtextheight)/(self.ydiff - self.xdiff * 0.025)
     rowheight = int((self.ydiff - self.xdiff * 0.01)/rowno)
 #    rowoffset = 0.5 * maxrowtextheight
     rowtops = [int(self.lepos[1]  - self.xdiff * 0.005 - r * rowheight) for r in range(rowno)]
@@ -1476,7 +1360,7 @@ def draw_table(self):
     if abs(max(colscale, rowscale) - 1) > 0.05:
         self.fontdpi = int(self.fontdpi/max(colscale, rowscale))
    
-    blf.size(font_id, 44, self.fontdpi)
+    blf.size(font_id, 48, self.fontdpi)
     drawpoly(self.lspos[0], self.lspos[1], self.lepos[0], self.lepos[1], 1, 1, 1, 1)        
     drawloop(self.lspos[0], self.lspos[1], self.lepos[0], self.lepos[1])       
     bgl.glEnable(bgl.GL_BLEND)
@@ -1527,8 +1411,7 @@ def setcols(self, context):
     cmap = mcm.get_cmap(scene.vi_leg_col)
     
     for o in [o for o in bpy.data.objects if o.get('VIType') and o['VIType'] in ('envi_temp', 'envi_hum', 'envi_heat', 'envi_cool', 'envi_co2', 'envi_pmv', 'envi_ppd', 'envi_aheat', 'envi_acool', 'envi_hrheat', 'envi_shg') and o.get(resstring)]:
-        if (o['max'], o['min']) != mmdict[o['VIType']] or o['cmap'] != scene.vi_leg_col:
-#            (rmax, rmin) = mmdict[o['VIType']]    
+        if (o['max'], o['min']) != mmdict[o['VIType']] or o['cmap'] != scene.vi_leg_col:  
             (o['max'], o['min']) = mmdict[o['VIType']]  
             o['cmap'] = scene.vi_leg_col
             rdiff = o['max'] - o['min']
@@ -1551,4 +1434,3 @@ def setcols(self, context):
     scene.frame_set(fc)
     if recalculate_text not in bpy.app.handlers.frame_change_pre:
         bpy.app.handlers.frame_change_pre.append(recalculate_text) 
-
