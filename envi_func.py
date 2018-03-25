@@ -3,6 +3,12 @@ from collections import OrderedDict
 from numpy import arange, array
 from numpy import sum as nsum
 
+def get_mat(node):
+    for material in bpy.data.materials:
+        if node.id_data == material.envi_nodes:
+            break
+    return material
+
 def retenresdict(scene):
     return {'Temp': ('Temperature (degC)', scene.en_temp_max, scene.en_temp_min, u"\u00b0C"), 'Hum': ('Humidity (%)', scene.en_hum_max, scene.en_hum_min, '%'),
            'CO2': ('CO2 (ppm)', scene.en_co2_max, scene.en_co2_min, 'ppm'), 'Heat': ('Heating (W)', scene.en_heat_max, scene.en_heat_min, 'W'), 'Cool': ('Cooling (W)', scene.en_cool_max, scene.en_cool_min, 'W'),

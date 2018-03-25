@@ -187,8 +187,31 @@ class envi_constructions(object):
         paramvs = [mn] + cln#'{}-{}'.format(con[name][0], nl)]
         idf_file.write(epentry('Construction', params, paramvs))
 
-def retmatdict(self, t, l):   
-    if self.envi_con_type in ('Wall', 'Roof', 'Floor', 'Door', 'Ceiling'):
+#def retmatdict(self, t, l):   
+#    if self.envi_con_type in ('Wall', 'Roof', 'Floor', 'Door', 'Ceiling'):
+#        typelist = [("0", "Brick", "Choose a material from the brick database"),("1", "Cladding", "Choose a material from the cladding database"), ("2", "Concrete", "Choose a material from the concrete database"),("3", "Metal", "Choose a material from the metal database"),
+#                   ("4", "Stone", "Choose a material from the stone database"),("5", "Wood", "Choose a material from the wood database"),
+#                   ("6", "Gas", "Choose a material from the gas database"),("7", "Insulation", "Choose a material from the insulation database"),
+#                    ("8", "PCM", "Choose a material from the phase change database")]
+#        matdict = {'0': envi_materials().brick_dat.keys(), '1': envi_materials().cladding_dat.keys(), '2': envi_materials().concrete_dat.keys(), '3': envi_materials().metal_dat.keys(), '4': envi_materials().stone_dat.keys(),
+#                   '5': envi_materials().wood_dat.keys(), '6': envi_materials().gas_dat.keys(), '7': envi_materials().insulation_dat.keys(), '8': envi_materials().pcm_dat.keys()}
+#
+#    elif self.envi_con_type == 'Window':
+#        if not l % 2:
+#            typelist = [("0", "Glass", "Choose a material from the glass database")]
+#            matdict = {'0': envi_materials().glass_dat.keys()}  
+#        else:
+#            typelist = [("0", "Gas", "Choose a material from the gas database")]
+#            matdict = {'0': envi_materials().wgas_dat.keys()}
+#    else:
+#        typelist = [('', '', '')]
+#    if t:
+#        return typelist
+#    else:
+#        return matdict
+    
+def retmatdict(envi_con_type, t, l):  
+    if envi_con_type in ('Wall', 'Roof', 'Floor', 'Door', 'Ceiling'):
         typelist = [("0", "Brick", "Choose a material from the brick database"),("1", "Cladding", "Choose a material from the cladding database"), ("2", "Concrete", "Choose a material from the concrete database"),("3", "Metal", "Choose a material from the metal database"),
                    ("4", "Stone", "Choose a material from the stone database"),("5", "Wood", "Choose a material from the wood database"),
                    ("6", "Gas", "Choose a material from the gas database"),("7", "Insulation", "Choose a material from the insulation database"),
@@ -196,7 +219,7 @@ def retmatdict(self, t, l):
         matdict = {'0': envi_materials().brick_dat.keys(), '1': envi_materials().cladding_dat.keys(), '2': envi_materials().concrete_dat.keys(), '3': envi_materials().metal_dat.keys(), '4': envi_materials().stone_dat.keys(),
                    '5': envi_materials().wood_dat.keys(), '6': envi_materials().gas_dat.keys(), '7': envi_materials().insulation_dat.keys(), '8': envi_materials().pcm_dat.keys()}
 
-    elif self.envi_con_type == 'Window':
+    elif envi_con_type == 'Window':
         if not l % 2:
             typelist = [("0", "Glass", "Choose a material from the glass database")]
             matdict = {'0': envi_materials().glass_dat.keys()}  
@@ -205,6 +228,7 @@ def retmatdict(self, t, l):
             matdict = {'0': envi_materials().wgas_dat.keys()}
     else:
         typelist = [('', '', '')]
+        matdict = {} 
     if t:
         return typelist
     else:
@@ -272,4 +296,13 @@ def retuval(mat):
         return uv
     else:
         return 1.0
-    
+
+def envi_layertype(self, context):   
+    return retmatdict(self.envi_con_type, 1, self.bl_idname == 'envi_gl_node')   
+          
+def envi_layer(self, context):  
+    if self.materialtype:
+        return [((mat, mat, 'Layer material')) for mat in list(retmatdict(self.envi_con_type, 0, self.bl_idname == 'envi_gl_node')[self.materialtype])]  
+    else:
+        return [('', '', '')]                  
+     

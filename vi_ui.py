@@ -250,6 +250,9 @@ class VIMatPanel(bpy.types.Panel):
         newrow(layout, 'Material type', cm, "mattype")
         if cm.mattype == '0':
             rmmenu(layout, cm)
+            if not context.material.envi_nodes:# in bpy.data.node_groups:
+                row = layout.row()
+                row.operator("material.envi_node", text = "Create EnVi Nodes")
             newrow(layout, "EnVi Construction Type:", cm, "envi_con_type")
             row = layout.row()
             row.label('U-value (W/m^2.K): {}'.format(cm.envi_material_uv))

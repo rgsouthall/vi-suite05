@@ -1331,6 +1331,17 @@ class NODE_OT_EnGExport(bpy.types.Operator):
         node.postexport()
         return {'FINISHED'}
 
+class MAT_EnVi_Node(bpy.types.Operator):
+    bl_idname = "material.envi_node"
+    bl_label = "EnVi Material export"
+    nodeid = bpy.props.StringProperty()
+
+    def invoke(self, context, event):
+        if not context.material.envi_nodes:
+            bpy.ops.node.new_node_tree(type='EnViMatN', name = context.material.name) 
+            context.material.envi_nodes = bpy.data.node_groups[context.material.name]
+        return {'FINISHED'}
+    
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
     bl_idname = "node.enexport"
     bl_label = "Export"

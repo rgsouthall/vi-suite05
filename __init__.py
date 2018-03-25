@@ -19,7 +19,7 @@
 bl_info = {
     "name": "VI-Suite",
     "author": "Ryan Southall",
-    "version": (0, 4, 13),
+    "version": (0, 5, 1),
     "blender": (2, 7, 9),
     "api":"",
     "location": "Node Editor & 3D View > Properties Panel",
@@ -37,7 +37,7 @@ if "bpy" in locals():
     imp.reload(vi_func)
     imp.reload(envi_mat)
 else:
-    from .vi_node import vinode_categories, envinode_categories
+    from .vi_node import vinode_categories, envinode_categories, envimatnode_categories
     from .envi_mat import envi_materials, envi_constructions, envi_layero, envi_layer1, envi_layer2, envi_layer3, envi_layer4, envi_layerotype, envi_layer1type, envi_layer2type, envi_layer3type, envi_layer4type, envi_con_list
     from .vi_func import iprop, bprop, eprop, fprop, sprop, fvprop, sunpath1, radmat, radbsdf, retsv, cmap
     from .vi_func import rtpoints, lhcalcapply, udidacalcapply, compcalcapply, basiccalcapply, lividisplay, setscenelivivals
@@ -133,10 +133,22 @@ def select_nodetree(dummy):
         vings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'ViN']
         if vings:
             space.node_tree = vings[0]
+
     for space in getEnViEditorSpaces():
         envings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'EnViN']
         if envings:
             space.node_tree = envings[0]
+            
+    for space in getEnViMaterialSpaces():
+        try:
+            if space.node_tree != bpy.context.active_object.active_material.envi_nodes:
+                envings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'EnViMatN' and ng == bpy.context.active_object.active_material.envi_nodes]
+                if envings:
+                    space.node_tree = envings[0]
+        except:
+            pass
+        
+bpy.app.handlers.scene_update_post.append(select_nodetree)
         
 def getViEditorSpaces():
     if bpy.context.screen:
@@ -147,6 +159,12 @@ def getViEditorSpaces():
 def getEnViEditorSpaces():
     if bpy.context.screen:
         return [area.spaces.active for area in bpy.context.screen.areas if area and area.type == "NODE_EDITOR" and area.spaces.active.tree_type == "EnViN" and not area.spaces.active.edit_tree]
+    else:
+        return []
+
+def getEnViMaterialSpaces():
+    if bpy.context.screen:        
+        return [area.spaces.active for area in bpy.context.screen.areas if area and area.type == "NODE_EDITOR" and area.spaces.active.tree_type == "EnViMatN"]
     else:
         return []
         
@@ -376,6 +394,7 @@ def register():
     Material.BSDF = bprop("", "Flag to signify a BSDF material", False)
 
 # EnVi material definitions
+    Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
                     ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
     Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
@@ -717,6 +736,7 @@ def register():
 
     nodeitems_utils.register_node_categories("Vi Nodes", vinode_categories)
     nodeitems_utils.register_node_categories("EnVi Nodes", envinode_categories)
+    nodeitems_utils.register_node_categories("EnVi Mat Nodes", envimatnode_categories)
     
     if update_chart_node not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(update_chart_node)
