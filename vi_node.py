@@ -1877,6 +1877,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         self.inputs[0].hide = True if self.envi_con_type in ("Window", "None") or self.envi_con_makeup != "1" else False
         self.inputs[1].hide = True if self.envi_con_type != "Window" or self.envi_con_makeup != "1" else False
 #        self.inputs[2].hide = True if self.envi_con_type != "Window" else False
+        get_mat(self, 0).envi_type = self.envi_con_type
         self.valid()
     
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
@@ -2045,7 +2046,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             nodecolour(self, 0)
             
     def ep_write(self):
-        matname = get_mat(self).name
+        matname = get_mat(self, 1).name
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
             mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
@@ -2055,6 +2056,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             
             for pm, presetmat in enumerate(mats):   
                 matlist = list(envi_mats.matdat[presetmat])
+                print(matlist)
                 layer_name = '{}-layer-{}'.format(matname, pm)
                 if envi_mats.namedict.get(presetmat) == None:
                     envi_mats.namedict[presetmat] = 0
@@ -2189,7 +2191,6 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab), 
                        '{:.3f}'.format(self.sab), '{:.3f}'.format(self.vab)]
         
-        print(epentry("Material", params, paramvs))
         return epentry("Material", params, paramvs)
             
 class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):

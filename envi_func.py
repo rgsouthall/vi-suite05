@@ -3,9 +3,9 @@ from collections import OrderedDict
 from numpy import arange, array
 from numpy import sum as nsum
 
-def get_mat(node):
+def get_mat(node, ee):
     for material in bpy.data.materials:
-        if node.id_data == material.envi_nodes:
+        if node.id_data == material.envi_nodes and material.envi_export == ee:
             break
     return material
 
