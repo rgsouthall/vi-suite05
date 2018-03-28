@@ -245,7 +245,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 obound = ('win-', 'door-')[emnode.envi_con_type == 'Door']+obco if obco else obco
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
-                                paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', '', '1', len(face.verts)] + \
+                                paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', '{}-frame'.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
                                 ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*0.95, yav+(vco[1]-yav)*0.95, zav+(vco[2]-zav)*0.95)) for vco in vcos]
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
                 

@@ -2013,28 +2013,30 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     newrow(layout, "Outer p:", self, "fop")
                     newrow(layout, "Inner p:", self, "fip")
                     newrow(layout, "Conductance:", self, "ftc") 
-                    newrow(layout, "Name:", self, "fratio")
-                    newrow(layout, "Thickness:", self, "fsa")
-                    newrow(layout, "Coeff A:", self, "fva")
-                    newrow(layout, "Coeff B:", self, "fte")
-                    newrow(layout, "Divider:", self, "dt")
+                    newrow(layout, "Cond. ratio:", self, "fratio")
+                    newrow(layout, "Solar absorp.:", self, "fsa")
+                    newrow(layout, "Visible trans.:", self, "fva")
+                    newrow(layout, "Thermal emmis.:", self, "fte")
+                    newrow(layout, "Divider type:", self, "dt")
         
                     if self.dt != '0':
-                        newrow(layout, "Viscosity A:", self, "dw")
-                        newrow(layout, "Viscosity A:", self, "dhd")
-                        newrow(layout, "Viscosity A:", self, "dvd")
-                        newrow(layout, "SHC A:", self, "dop")
-                        newrow(layout, "SHC A:", self, "dip")
-                        newrow(layout, "SHC A:", self, "dtc")
-                        newrow(layout, "Mol Weight:", self, "dratio")
-                        newrow(layout, "SHR:", self, "dsa")
-                        newrow(layout, "SHR:", self, "dva")
-                        newrow(layout, "SHR:", self, "dte")
-                        newrow(layout, "SHR:", self, "orsa")
-                        newrow(layout, "SHR:", self, "isd")
-                        newrow(layout, "SHR:", self, "issa")
-                        newrow(layout, "SHR:", self, "ird")
-                        newrow(layout, "SHR:", self, "irsa")
+                        row = layout.row()
+                        row.label('--Divider--')
+                        newrow(layout, " Div. width:", self, "dw")
+                        newrow(layout, " Div. No. (h):", self, "dhd")
+                        newrow(layout, " Div. No. (v):", self, "dvd")
+                        newrow(layout, " Div. Outer p:", self, "dop")
+                        newrow(layout, " Div. Inner p:", self, "dip")
+                        newrow(layout, " Div. Cond.:", self, "dtc")
+                        newrow(layout, " Div. ratio:", self, "dratio")
+                        newrow(layout, " Div SOl:", self, "dsa")
+                        newrow(layout, " Div Vis:", self, "dva")
+                        newrow(layout, " Div emiss:", self, "dte")
+                    newrow(layout, "Reveal sol. abs.:", self, "orsa")
+                    newrow(layout, "Sill depth:", self, "isd")
+                    newrow(layout, "Sill sol. abs.:", self, "issa")
+                    newrow(layout, "Reveal depth:", self, "ird")
+                    newrow(layout, "I reveal sol. abs:", self, "irsa")
                     
     def update(self):
         self.valid()
@@ -2056,8 +2058,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             
             for pm, presetmat in enumerate(mats):   
                 matlist = list(envi_mats.matdat[presetmat])
-                print(matlist)
                 layer_name = '{}-layer-{}'.format(matname, pm)
+                
                 if envi_mats.namedict.get(presetmat) == None:
                     envi_mats.namedict[presetmat] = 0
                     envi_mats.thickdict[presetmat] = [self.thicklist[pm]/1000]
@@ -2076,6 +2078,43 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     ep_text += epentry("Material", params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Glazing':
+                    if self.fclass == '1':
+                        fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance', 
+                                   'Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance', 'Frame Solar Absorptance', 'Frame Visible Absorptance', 
+                                   'Frame Thermal Emissivity', 'Divider Type', 'Divider Width', 'Number of Horizontal Dividers', 'Number of Vertical Dividers',
+                                   'Divider Outside Projection', 'Divider Inside Projection', 'Divider Conductance', 'Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance',
+                                   'Divider Solar Absorptance', 'Divider Visible Absorptance', 'Divider Thermal Emissivity', 'Outside Reveal Solar Absorptance',
+                                   'Inside Sill Depth (m)', 'Inside Sill Solar Absorptance', 'Inside Reveal Depth (m)', 'Inside Reveal Solar Absorptance')
+                        fparamvs = ('{}-frame'.format(matname), self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte, self.dt,
+                                    self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd, 
+                                    self.issa, self.ird, self.irsa)
+                        ep_text += epentry('WindowProperty:FrameAndDivider', fparams, fparamvs)
+ #WindowProperty:FrameAndDivider,
+#      TestFrameAndDivider, ! 
+#      0.05, ! 
+#      0.04, ! 
+#      0.03, ! 
+#      5.0,  ! 
+#      1.3,  ! 
+#      0.8,  ! 
+#      0.8,  ! 
+#      0.9,  ! 
+#      DividedLite, ! 
+#      0.03, ! 
+#      2,    ! 
+#      2,    ! 
+#      0.03, ! 
+#      0.03, ! 
+#      5.0,  ! 
+#      1.3,  ! 
+#      0.8,  ! 
+#      0.8,  ! 
+#      0.9,  ! 
+#      0.7,  ! 
+#      0.25, ! 
+#      0.6,  ! 
+#      0.2,  ! 
+#      0.5;  !                        
                     params = ('Name', 'Optical Data Type', 'Window Glass Spectral Data Set Name', 'Thickness (m)', 'Solar Transmittance at Normal Incidence', 'Front Side Solar Reflectance at Normal Incidence',
                   'Back Side Solar Reflectance at Normal Incidence', 'Visible Transmittance at Normal Incidence', 'Front Side Visible Reflectance at Normal Incidence', 'Back Side Visible Reflectance at Normal Incidence',
                   'Infrared Transmittance at Normal Incidence', 'Front Side Infrared Hemispherical Emissivity', 'Back Side Infrared Hemispherical Emissivity', 'Conductivity (W/m-K)',
@@ -2110,6 +2149,70 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             con_text = epentry('Construction', params, paramvs)
             return con_text + ep_text
 
+class ENVI_Frame_Node(Node, ENVI_Material_Nodes):
+    '''Node defining an EnVi window frame'''
+    bl_idname = 'envi_frame_node'
+    bl_label = 'EnVi frame'
+
+    fw = FloatProperty(name = "m", description = "Frame Width", min = 0.0, max = 10, default = 0.00008, precision = 5)
+    fop = FloatProperty(name = "m", description = "Frame Outside Projection", min = 0.0, max = 10, default = 0, precision = 5)
+    fip = FloatProperty(name = "m", description = "Frame Inside Projection", min = 0.0, max = 10, default = 0, precision = 5)
+    ftc = FloatProperty(name = "W/m.K", description = "Frame Conductance", min = 0.0, max = 10, default = 0)
+    fratio = FloatProperty(name = "W/m.K", description = "Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance", min = 0.0, max = 10, default = 0, precision = 5)
+    fsa = FloatProperty(name = "W/m.K", description = "Frame Solar Absorptance", min = 0.0, max = 10, default = 0)
+    fva = FloatProperty(name = "W/m.K", description = "Frame Visible Absorptance", min = 0.0, max = 10, default = 0)
+    fte = FloatProperty(name = "W/m.K", description = "Frame Thermal Emissivity", min = 0.0, max = 10, default = 0)
+    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Define the divider properties")], 
+                                        name = "", description = "Type of divider", default = "0")
+    dw = FloatProperty(name = "W/m.K", description = "Divider Width", min = 0.0, max = 10, default = 0)
+    dhd = FloatProperty(name = "W/m.K", description = "Number of Horizontal Dividers", min = 0.0, max = 10, default = 0)
+    dvd = FloatProperty(name = "W/m.K", description = "Number of Vertical Dividers", min = 0.0, max = 10, default = 0)
+    dop = FloatProperty(name = "W/m.K", description = "Divider Outside Projection", min = 0.0, max = 10, default = 0)
+    dip = FloatProperty(name = "W/m.K", description = "Divider Inside Projection", min = 0.0, max = 10, default = 0)
+    dtc = FloatProperty(name = "W/m.K", description = "Divider Conductance", min = 0.0, max = 10, default = 0)
+    dratio = FloatProperty(name = "W/m.K", description = "Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance", min = 0.0, max = 10, default = 0)
+    dsa = FloatProperty(name = "W/m.K", description = "Divider Solar Absorptance", min = 0.0, max = 10, default = 0)
+    dva = FloatProperty(name = "W/m.K", description = "Divider Visible Absorptance", min = 0.0, max = 10, default = 0)
+    dte = FloatProperty(name = "W/m.K", description = "Divider Thermal Emissivity", min = 0.0, max = 10, default = 0)
+    orsa = FloatProperty(name = "W/m.K", description = "Outside Reveal Solar Absorptance", min = 0.0, max = 10, default = 0)
+    isd = FloatProperty(name = "W/m.K", description = "Inside Sill Depth (m)", min = 0.0, max = 10, default = 0)
+    issa = FloatProperty(name = "W/m.K", description = "Inside Sill Solar Absorptance", min = 0.0, max = 10, default = 0)
+    ird = FloatProperty(name = "W/m.K", description = "Inside Reveal Depth (m)", min = 0.0, max = 10, default = 0)
+    irsa = FloatProperty(name = "W/m.K", description = "Inside Reveal Solar Absorptance", min = 0.0, max = 10, default = 0)
+    
+    def init(self, context):
+        self.outputs.new('envi_f_sock', 'Frame')
+
+    def draw_buttons(self, context, layout):
+        if self.outputs['Frame'].links:
+            row = layout.row()
+            row.label("Frame:")
+            newrow(layout, "Width:", self, "fw")
+            newrow(layout, "Outer p:", self, "fop")
+            newrow(layout, "Inner p:", self, "fip")
+            newrow(layout, "Conductance:", self, "ftc") 
+            newrow(layout, "Name:", self, "fratio")
+            newrow(layout, "Thickness:", self, "fsa")
+            newrow(layout, "Coeff A:", self, "fva")
+            newrow(layout, "Coeff B:", self, "fte")
+            newrow(layout, "Divider:", self, "dt")
+
+            if self.dt != '0':
+                newrow(layout, "Viscosity A:", self, "dw")
+                newrow(layout, "Viscosity A:", self, "dhd")
+                newrow(layout, "Viscosity A:", self, "dvd")
+                newrow(layout, "SHC A:", self, "dop")
+                newrow(layout, "SHC A:", self, "dip")
+                newrow(layout, "SHC A:", self, "dtc")
+                newrow(layout, "Mol Weight:", self, "dratio")
+                newrow(layout, "SHR:", self, "dsa")
+                newrow(layout, "SHR:", self, "dva")
+                newrow(layout, "SHR:", self, "dte")
+                newrow(layout, "SHR:", self, "orsa")
+                newrow(layout, "SHR:", self, "isd")
+                newrow(layout, "SHR:", self, "issa")
+                newrow(layout, "SHR:", self, "ird")
+                newrow(layout, "SHR:", self, "irsa")
                            
 class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi opaque material layer'''
@@ -2529,98 +2632,10 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
   
         return epentry('WindowMaterial:Blind', params, paramvs)
           
-class ENVI_Frame_Node(Node, ENVI_Material_Nodes):
-    '''Node defining an EnVi window frame'''
-    bl_idname = 'envi_frame_node'
-    bl_label = 'EnVi frame'
 
-    fw = FloatProperty(name = "m", description = "Frame Width", min = 0.0, max = 10, default = 0.00008, precision = 5)
-    fop = FloatProperty(name = "m", description = "Frame Outside Projection", min = 0.0, max = 10, default = 0, precision = 5)
-    fip = FloatProperty(name = "m", description = "Frame Inside Projection", min = 0.0, max = 10, default = 0, precision = 5)
-    ftc = FloatProperty(name = "W/m.K", description = "Frame Conductance", min = 0.0, max = 10, default = 0)
-    fratio = FloatProperty(name = "W/m.K", description = "Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance", min = 0.0, max = 10, default = 0, precision = 5)
-    fsa = FloatProperty(name = "W/m.K", description = "Frame Solar Absorptance", min = 0.0, max = 10, default = 0)
-    fva = FloatProperty(name = "W/m.K", description = "Frame Visible Absorptance", min = 0.0, max = 10, default = 0)
-    fte = FloatProperty(name = "W/m.K", description = "Frame Thermal Emissivity", min = 0.0, max = 10, default = 0)
-    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Define the divider properties")], 
-                                        name = "", description = "Type of divider", default = "0")
-    dw = FloatProperty(name = "W/m.K", description = "Divider Width", min = 0.0, max = 10, default = 0)
-    dhd = FloatProperty(name = "W/m.K", description = "Number of Horizontal Dividers", min = 0.0, max = 10, default = 0)
-    dvd = FloatProperty(name = "W/m.K", description = "Number of Vertical Dividers", min = 0.0, max = 10, default = 0)
-    dop = FloatProperty(name = "W/m.K", description = "Divider Outside Projection", min = 0.0, max = 10, default = 0)
-    dip = FloatProperty(name = "W/m.K", description = "Divider Inside Projection", min = 0.0, max = 10, default = 0)
-    dtc = FloatProperty(name = "W/m.K", description = "Divider Conductance", min = 0.0, max = 10, default = 0)
-    dratio = FloatProperty(name = "W/m.K", description = "Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance", min = 0.0, max = 10, default = 0)
-    dsa = FloatProperty(name = "W/m.K", description = "Divider Solar Absorptance", min = 0.0, max = 10, default = 0)
-    dva = FloatProperty(name = "W/m.K", description = "Divider Visible Absorptance", min = 0.0, max = 10, default = 0)
-    dte = FloatProperty(name = "W/m.K", description = "Divider Thermal Emissivity", min = 0.0, max = 10, default = 0)
-    orsa = FloatProperty(name = "W/m.K", description = "Outside Reveal Solar Absorptance", min = 0.0, max = 10, default = 0)
-    isd = FloatProperty(name = "W/m.K", description = "Inside Sill Depth (m)", min = 0.0, max = 10, default = 0)
-    issa = FloatProperty(name = "W/m.K", description = "Inside Sill Solar Absorptance", min = 0.0, max = 10, default = 0)
-    ird = FloatProperty(name = "W/m.K", description = "Inside Reveal Depth (m)", min = 0.0, max = 10, default = 0)
-    irsa = FloatProperty(name = "W/m.K", description = "Inside Reveal Solar Absorptance", min = 0.0, max = 10, default = 0)
-    
-    def init(self, context):
-        self.outputs.new('envi_f_sock', 'Frame')
-
-    def draw_buttons(self, context, layout):
-        if self.outputs['Frame'].links:
-            row = layout.row()
-            row.label("Frame:")
-            newrow(layout, "Width:", self, "fw")
-            newrow(layout, "Outer p:", self, "fop")
-            newrow(layout, "Inner p:", self, "fip")
-            newrow(layout, "Conductance:", self, "ftc") 
-            newrow(layout, "Name:", self, "fratio")
-            newrow(layout, "Thickness:", self, "fsa")
-            newrow(layout, "Coeff A:", self, "fva")
-            newrow(layout, "Coeff B:", self, "fte")
-            newrow(layout, "Divider:", self, "dt")
-
-            if self.dt != '0':
-                newrow(layout, "Viscosity A:", self, "dw")
-                newrow(layout, "Viscosity A:", self, "dhd")
-                newrow(layout, "Viscosity A:", self, "dvd")
-                newrow(layout, "SHC A:", self, "dop")
-                newrow(layout, "SHC A:", self, "dip")
-                newrow(layout, "SHC A:", self, "dtc")
-                newrow(layout, "Mol Weight:", self, "dratio")
-                newrow(layout, "SHR:", self, "dsa")
-                newrow(layout, "SHR:", self, "dva")
-                newrow(layout, "SHR:", self, "dte")
-                newrow(layout, "SHR:", self, "orsa")
-                newrow(layout, "SHR:", self, "isd")
-                newrow(layout, "SHR:", self, "issa")
-                newrow(layout, "SHR:", self, "ird")
-                newrow(layout, "SHR:", self, "irsa")
 
     
-#WindowProperty:FrameAndDivider,
-#      TestFrameAndDivider, ! Frame/Divider Name
-#      0.05, ! Frame Width
-#      0.04, ! Frame Outside Projection
-#      0.03, ! Frame Inside Projection
-#      5.0,  ! Frame Conductance
-#      1.3,  ! Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance
-#      0.8,  ! Frame Solar Absorptance
-#      0.8,  ! Frame Visible Absorptance
-#      0.9,  ! Frame Thermal Emissivity
-#      DividedLite, ! Divider Type
-#      0.03, ! Divider Width
-#      2,    ! Number of Horizontal Dividers
-#      2,    ! Number of Vertical Dividers
-#      0.03, ! Divider Outside Projection
-#      0.03, ! Divider Inside Projection
-#      5.0,  ! Divider Conductance
-#      1.3,  ! Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance
-#      0.8,  ! Divider Solar Absorptance
-#      0.8,  ! Divider Visible Absorptance
-#      0.9,  ! Divider Thermal Emissivity
-#      0.7,  ! Outside Reveal Solar Absorptance
-#      0.25, ! Inside Sill Depth (m)
-#      0.6,  ! Inside Sill Solar Absorptance
-#      0.2,  ! Inside Reveal Depth (m)
-#      0.5;  ! Inside Reveal Solar Absorptance
+
         
 #class DB(Panel):
 #    bl_label = 'DBID'
