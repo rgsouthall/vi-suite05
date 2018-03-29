@@ -1340,7 +1340,7 @@ class MAT_EnVi_Node(bpy.types.Operator):
         if not context.material.envi_nodes:
             bpy.ops.node.new_node_tree(type='EnViMatN', name = context.material.name) 
             context.material.envi_nodes = bpy.data.node_groups[context.material.name]
-            context.material.envi_type = 'Wall' 
+#            context.material.envi_type = 'None' 
         return {'FINISHED'}
     
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):

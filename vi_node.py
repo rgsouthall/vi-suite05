@@ -1916,7 +1916,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                     description = "Pre-set construction of custom layers", 
                                     default = "0", update = con_update)
     fmat = EnumProperty(items = [("0", "Wood", "Wooden frame"),
-                                   ("1", "Aluminium", "Aluminium frame")], 
+                                   ("1", "Aluminium", "Aluminium frame"),
+                                   ("2", "Plastic", "uPVC frame")], 
                                     name = "", 
                                     description = "Frame material", 
                                     default = "0", update = con_update)
@@ -1930,7 +1931,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     fsa = FloatProperty(name = "W/m.K", description = "Frame Solar Absorptance", min = 0.0, max = 10, default = 0)
     fva = FloatProperty(name = "W/m.K", description = "Frame Visible Absorptance", min = 0.0, max = 10, default = 0)
     fte = FloatProperty(name = "W/m.K", description = "Frame Thermal Emissivity", min = 0.0, max = 10, default = 0)
-    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Define the divider properties")], 
+    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Divided lites"), ("2", "Suspended", "Suspended divider")], 
                                         name = "", description = "Type of divider", default = "0")
     dw = FloatProperty(name = "W/m.K", description = "Divider Width", min = 0.0, max = 10, default = 0)
     dhd = FloatProperty(name = "W/m.K", description = "Number of Horizontal Dividers", min = 0.0, max = 10, default = 0)
@@ -2022,16 +2023,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     if self.dt != '0':
                         row = layout.row()
                         row.label('--Divider--')
-                        newrow(layout, " Div. width:", self, "dw")
-                        newrow(layout, " Div. No. (h):", self, "dhd")
-                        newrow(layout, " Div. No. (v):", self, "dvd")
-                        newrow(layout, " Div. Outer p:", self, "dop")
-                        newrow(layout, " Div. Inner p:", self, "dip")
-                        newrow(layout, " Div. Cond.:", self, "dtc")
-                        newrow(layout, " Div. ratio:", self, "dratio")
-                        newrow(layout, " Div SOl:", self, "dsa")
-                        newrow(layout, " Div Vis:", self, "dva")
-                        newrow(layout, " Div emiss:", self, "dte")
+                        newrow(layout, "    Width:", self, "dw")
+                        newrow(layout, "    No. (h):", self, "dhd")
+                        newrow(layout, "    No. (v):", self, "dvd")
+                        newrow(layout, "    Outer p:", self, "dop")
+                        newrow(layout, "    Inner p:", self, "dip")
+                        newrow(layout, "    Cond.:", self, "dtc")
+                        newrow(layout, "    Ratio:", self, "dratio")
+                        newrow(layout, "    SOl:", self, "dsa")
+                        newrow(layout, "    Vis:", self, "dva")
+                        newrow(layout, "    Emiss:", self, "dte")
                     newrow(layout, "Reveal sol. abs.:", self, "orsa")
                     newrow(layout, "Sill depth:", self, "isd")
                     newrow(layout, "Sill sol. abs.:", self, "issa")
@@ -2049,6 +2050,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             
     def ep_write(self):
         matname = get_mat(self, 1).name
+        
+        
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
             mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
@@ -2078,17 +2081,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     ep_text += epentry("Material", params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Glazing':
-                    if self.fclass == '1':
-                        fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance', 
-                                   'Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance', 'Frame Solar Absorptance', 'Frame Visible Absorptance', 
-                                   'Frame Thermal Emissivity', 'Divider Type', 'Divider Width', 'Number of Horizontal Dividers', 'Number of Vertical Dividers',
-                                   'Divider Outside Projection', 'Divider Inside Projection', 'Divider Conductance', 'Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance',
-                                   'Divider Solar Absorptance', 'Divider Visible Absorptance', 'Divider Thermal Emissivity', 'Outside Reveal Solar Absorptance',
-                                   'Inside Sill Depth (m)', 'Inside Sill Solar Absorptance', 'Inside Reveal Depth (m)', 'Inside Reveal Solar Absorptance')
-                        fparamvs = ('{}-frame'.format(matname), self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte, self.dt,
-                                    self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd, 
-                                    self.issa, self.ird, self.irsa)
-                        ep_text += epentry('WindowProperty:FrameAndDivider', fparams, fparamvs)
+                    
  #WindowProperty:FrameAndDivider,
 #      TestFrameAndDivider, ! 
 #      0.05, ! 
@@ -2127,7 +2120,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     paramvs = [layer_name] + [matlist[1]] + [self.thicklist[pm]]
                     ep_text += epentry("WindowMaterial:Gas", params, paramvs)
                     
-            return ep_text
+#            return ep_text
 
         elif self.envi_con_makeup == '1':            
             layer_nodes = []
@@ -2146,8 +2139,20 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 n += 1
 
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(n - 1)]
-            con_text = epentry('Construction', params, paramvs)
-            return con_text + ep_text
+            ep_text += epentry('Construction', params, paramvs)
+                
+        if self.envi_con_type =='Window' and self.fclass == '1':
+            fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance', 
+                       'Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance', 'Frame Solar Absorptance', 'Frame Visible Absorptance', 
+                       'Frame Thermal Emissivity', 'Divider Type', 'Divider Width', 'Number of Horizontal Dividers', 'Number of Vertical Dividers',
+                       'Divider Outside Projection', 'Divider Inside Projection', 'Divider Conductance', 'Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance',
+                       'Divider Solar Absorptance', 'Divider Visible Absorptance', 'Divider Thermal Emissivity', 'Outside Reveal Solar Absorptance',
+                       'Inside Sill Depth (m)', 'Inside Sill Solar Absorptance', 'Inside Reveal Depth (m)', 'Inside Reveal Solar Absorptance')
+            fparamvs = ['{}-frame'.format(matname)] +  ['{:.3f}'.format(p) for p in (self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte)] +\
+                        [('', 'DividedLite', 'Suspended')[int(self.dt)]] + ['{:.3f}'.format(p) for p in (self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd, 
+                        self.issa, self.ird, self.irsa)]
+            ep_text += epentry('WindowProperty:FrameAndDivider', fparams, fparamvs)
+        return ep_text
 
 class ENVI_Frame_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window frame'''

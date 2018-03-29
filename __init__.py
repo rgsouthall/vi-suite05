@@ -757,7 +757,8 @@ def unregister():
     bpy.utils.unregister_module(__name__)
     nodeitems_utils.unregister_node_categories("Vi Nodes")
     nodeitems_utils.unregister_node_categories("EnVi Nodes")
-    
+    nodeitems_utils.unregister_node_categories("EnVi Mat Nodes")
+
     if update_chart_node in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(update_chart_node)
 
