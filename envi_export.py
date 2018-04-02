@@ -73,10 +73,18 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             if mat.get("envi_nodes") and mat.envi_export == True:
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
-                        if emnode.envi_con_type =='Window' and emnode.envi_simple_glazing:
-                            em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
-                            ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
-
+                        if emnode.envi_con_type =='Window':
+#                            if emnode.fclass == '0':
+                            params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
+                            paramvs = ('{}-frame-layer{}'.format(mat.name, 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(mat.name), '{}-frame-layer{}'.format(mat.name, 0))
+                            en_idf.write(epentry('Material', params[:-2], paramvs[:-2]))
+                            en_idf.write(epentry('Construction', params[-2:], paramvs[-2:]))
+                                
+                            if emnode.envi_simple_glazing:
+                                em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
+                                ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
+                            else:                            
+                                en_idf.write(emnode.ep_write())
 #                        elif not (emnode.envi_con_makeup == '1' and not emnode.inputs['Outer layer']):
                         else:
                             conlist, mat['pcm'] = [], 0
@@ -240,13 +248,17 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                     
                                 xav, yav, zav = mathutils.Vector(face.calc_center_median())
                                 params = list(wfrparams) + ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
-                                paramvs = ['{}_{}'.format(obj.name, face.index), 'Wall', 'Frame', obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)] + ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]
+                                paramvs = ['{}_{}'.format(obj.name, face.index), 'Wall', '{}-frame'.format(mat.name), obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)] + ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]
                                 en_idf.write(epentry('BuildingSurface:Detailed', params, paramvs))    
                                 obound = ('win-', 'door-')[emnode.envi_con_type == 'Door']+obco if obco else obco
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
-                                paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', '{}-frame'.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
-                                ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*0.95, yav+(vco[1]-yav)*0.95, zav+(vco[2]-zav)*0.95)) for vco in vcos]
+                                if emnode.fclass == '0':
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', ''.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
+                                else:
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', '{}-fad'.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((vco[0] + (1, -1)[vco[0] - xav > 0]*(0.001+emnode.fw, 0)[abs(vco[0] - xav) < 0.0001], vco[1] + (1, -1)[vco[1] - yav > 0]*(0.001+emnode.fw, 0)[abs(vco[1] - yav) < 0.0001], vco[2] + (1, -1)[vco[2] - zav > 0]*(0.001+emnode.fw, 0)[abs(vco[2] - zav) < 0.0001])) for vco in vcos]
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
                 
                             elif emnode.envi_con_type == 'Shading' or obj.envi_type == '1':
