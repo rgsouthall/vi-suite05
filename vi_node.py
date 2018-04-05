@@ -1975,6 +1975,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             if self.envi_con_makeup == '0':
                 if self.envi_con_type == 'Window':
                     newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")
+
                     if self.envi_simple_glazing:
                         newrow(layout, 'U-Value:', self, "envi_sg_uv")
                         newrow(layout, 'SHGC:', self, "envi_sg_shgc")
@@ -2257,16 +2258,24 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
                 break
 
         layer_name = '{}-layer-{}'.format(material.name, ln)
-        params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')
-        
+        if self.materialtype != '6':
+            params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')
+            header = 'Material'
+        else:
+            params = ('Name', 'Resistance')
+            header = 'Material:AirGap'
+            
         if self.layer == '0':
             matlist = list(envi_mats.matdat[self.material])
-            paramvs = [layer_name, matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]            
+            if self.materialtype != '6':
+                paramvs = [layer_name, matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]    
+            else:
+                paramvs = [layer_name, matlist[2]]
         else:
             paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab), 
                        '{:.3f}'.format(self.sab), '{:.3f}'.format(self.vab)]
         
-        return epentry("Material", params, paramvs)
+        return epentry(header, params, paramvs)
             
 class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi transparent material layer'''
