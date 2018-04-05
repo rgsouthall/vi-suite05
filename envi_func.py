@@ -9,6 +9,15 @@ def get_mat(node, ee):
             break
     return material
 
+def get_con_node(mat):
+    if mat.get('envi_nodes'):
+        for node in mat.envi_nodes.nodes:
+            if node.bl_idname == 'EnViCon':
+                break
+        return node
+    else:
+        return None
+
 def retenresdict(scene):
     return {'Temp': ('Temperature (degC)', scene.en_temp_max, scene.en_temp_min, u"\u00b0C"), 'Hum': ('Humidity (%)', scene.en_hum_max, scene.en_hum_min, '%'),
            'CO2': ('CO2 (ppm)', scene.en_co2_max, scene.en_co2_min, 'ppm'), 'Heat': ('Heating (W)', scene.en_heat_max, scene.en_heat_min, 'W'), 'Cool': ('Cooling (W)', scene.en_cool_max, scene.en_cool_min, 'W'),

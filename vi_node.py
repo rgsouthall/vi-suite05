@@ -19,12 +19,12 @@
 
 import bpy, glob, os, inspect, datetime, shutil, time, math, mathutils, sys
 from bpy.props import EnumProperty, FloatProperty, IntProperty, BoolProperty, StringProperty, FloatVectorProperty
-from bpy.types import NodeTree, Node, NodeSocket, Operator, Panel
+from bpy.types import NodeTree, Node, NodeSocket
 from nodeitems_utils import NodeCategory, NodeItem
 from subprocess import Popen
 from .vi_func import socklink, uvsocklink, newrow, epwlatilongi, nodeid, nodeinputs, remlink, rettimes, sockhide, selobj, cbdmhdr, cbdmmtx
 from .vi_func import hdrsky, nodecolour, facearea, retelaarea, iprop, bprop, eprop, fprop, sunposlivi, retdates, validradparams, retpmap
-from .envi_func import retrmenus, resnameunits, enresprops, epentry, epschedwrite, processf, get_mat
+from .envi_func import retrmenus, resnameunits, enresprops, epentry, epschedwrite, processf, get_mat, get_con_node
 from .livi_export import livi_sun, livi_sky, livi_ground, hdrexport
 from .envi_mat import retuval, envi_materials, envi_constructions, envi_layer, envi_layertype, envi_con_list
 
@@ -3869,12 +3869,12 @@ class EnViZone(Node, EnViNodes):
         self.afs = 0
         obj = bpy.data.objects[self.zone]
         odm = obj.data.materials
-        bfacelist = sorted([face for face in obj.data.polygons if odm[face.material_index].envi_boundary == 1], key=lambda face: -face.center[2])
+        bfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_boundary == 1], key=lambda face: -face.center[2])
         buvals = [retuval(odm[face.material_index]) for face in bfacelist]
         bsocklist = ['{}_{}_b'.format(odm[face.material_index].name, face.index) for face in bfacelist]
-        sfacelist = sorted([face for face in obj.data.polygons if odm[face.material_index].envi_afsurface == 1 and odm[face.material_index].envi_con_type not in ('Window', 'Door')], key=lambda face: -face.center[2])
+        sfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_afsurface == 1 and get_con_node(odm[face.material_index]).envi_con_type not in ('Window', 'Door')], key=lambda face: -face.center[2])
         ssocklist = ['{}_{}_s'.format(odm[face.material_index].name, face.index) for face in sfacelist]
-        ssfacelist = sorted([face for face in obj.data.polygons if odm[face.material_index].envi_afsurface == 1 and odm[face.material_index].envi_con_type in ('Window', 'Door')], key=lambda face: -face.center[2])
+        ssfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_afsurface == 1 and get_con_node(odm[face.material_index]).envi_con_type in ('Window', 'Door')], key=lambda face: -face.center[2])
         sssocklist = ['{}_{}_ss'.format(odm[face.material_index].name, face.index) for face in ssfacelist]
 
         [self.outputs.remove(oname) for oname in self.outputs if oname.bl_idname in ('EnViBoundSocket', 'EnViSFlowSocket', 'EnViSSFlowSocket')]
