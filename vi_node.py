@@ -22,7 +22,7 @@ from bpy.props import EnumProperty, FloatProperty, IntProperty, BoolProperty, St
 from bpy.types import NodeTree, Node, NodeSocket
 from nodeitems_utils import NodeCategory, NodeItem
 from subprocess import Popen
-from .vi_func import socklink, uvsocklink, newrow, epwlatilongi, nodeid, nodeinputs, remlink, rettimes, sockhide, selobj, cbdmhdr, cbdmmtx
+from .vi_func import socklink, socklink2, uvsocklink, newrow, epwlatilongi, nodeid, nodeinputs, remlink, rettimes, sockhide, selobj, cbdmhdr, cbdmmtx
 from .vi_func import hdrsky, nodecolour, facearea, retelaarea, iprop, bprop, eprop, fprop, sunposlivi, retdates, validradparams, retpmap
 from .envi_func import retrmenus, resnameunits, enresprops, epentry, epschedwrite, processf, get_mat, get_con_node
 from .livi_export import livi_sun, livi_sky, livi_ground, hdrexport
@@ -1818,6 +1818,30 @@ class ENVI_OLayer_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.65, 0.16, 0.16, 1)
+
+    def ret_valid(self, node):
+        return ['OLayer']
+
+class ENVI_OutLayer_Socket(NodeSocket):
+    '''EnVi outer layer socket'''
+    bl_idname = 'envi_outl_sock'
+    bl_label = 'Outer layer socket'
+    valid = ['OLayer', 'Tlayer', 'ScreenLayer']
+
+    def draw(self, context, layout, node, text):
+        layout.label(text)
+
+    def draw_color(self, context, node):
+        if node.envi_con_type == 'Window':
+            return (0.65, 0.65, 1, 1)  
+        else:
+            return (0.65, 0.16, 0.16, 1)
+    
+    def ret_valid(self, node):
+        if node.envi_con_type == 'Window':
+            return ['TLayer', 'ScreenLayer', 'BlindLayer', 'ShadeLayer']
+        else:
+            return ['OLayer']
     
 class ENVI_TLayer_Socket(NodeSocket):
     '''EnVi transparent layer socket'''
@@ -1831,6 +1855,9 @@ class ENVI_TLayer_Socket(NodeSocket):
     def draw_color(self, context, node):
         return (0.65, 0.65, 1, 1.0)
 
+    def ret_valid(self, node):
+        return ['TLayer']
+    
 class ENVI_Frame_Socket(NodeSocket):
     '''EnVi frame socket'''
     bl_idname = 'envi_f_sock'
@@ -1855,6 +1882,9 @@ class ENVI_GLayer_Socket(NodeSocket):
     def draw_color(self, context, node):
         return (1, 1, 1, 1.0)
     
+    def ret_valid(self, node):
+        return ['GLayer']
+    
 class ENVI_SLayer_Socket(NodeSocket):
     '''EnVi shade layer socket'''
     bl_idname = 'envi_sl_sock'
@@ -1867,6 +1897,37 @@ class ENVI_SLayer_Socket(NodeSocket):
     def draw_color(self, context, node):
         return (0, 0, 0, 1.0)
 
+    def ret_valid(self, node):
+        return ['GLayer', 'Tlayer']
+    
+class ENVI_Screen_Socket(NodeSocket):
+    '''EnVi screen layer socket'''
+    bl_idname = 'envi_screen_sock'
+    bl_label = 'External screen layer socket'
+    valid = ['ScreenLayer']
+
+    def draw(self, context, layout, node, text):
+        layout.label(text)
+
+    def draw_color(self, context, node):
+        return (0.65, 0.65, 1, 1.0)
+    
+    def ret_valid(self, node):
+        return ['ScreenLayer']
+
+    
+class ENVI_SControl_Socket(NodeSocket):
+    '''EnVi shade control socket'''
+    bl_idname = 'envi_sc_sock'
+    bl_label = 'Shade control socket'
+    valid = ['SControl']
+
+    def draw(self, context, layout, node, text):
+        layout.label(text)
+
+    def draw_color(self, context, node):
+        return (0, 0, 0, 1.0)
+    
 class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi material construction'''
     bl_idname = 'EnViCon'
@@ -1874,12 +1935,27 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     bl_icon = 'FORCE_WIND'
     
     def con_update(self, context):
-        self.inputs[0].hide = True if self.envi_con_type in ("Window", "None") or self.envi_con_makeup != "1" else False
-        self.inputs[1].hide = True if self.envi_con_type != "Window" or self.envi_con_makeup != "1" else False
-        self.inputs['Frame'].hide = False if self.envi_con_type == "Window" and self.fclass == '0' and self.fmat == '3' else True
-        get_mat(self, 0).envi_type = self.envi_con_type
-        self.valid()
+#        self.inputs['Frame'].hide = False if self.envi_con_type == "Window" and self.fclass == '0' and self.fmat == '3' else True
+        if self.envi_con_makeup != "1":
+            for link in self.inputs['Outer layer'].links:
+                self.id_data.links.remove(link)
+            self.inputs['Outer layer'].hide = True
+        else:
+            self.inputs['Outer layer'].hide = False
+           
+        [link.from_node.update() for link in self.inputs['Outer layer'].links]
+        get_mat(self, 0).envi_type = self.envi_con_type        
+        self.update()
     
+    def frame_update(self, context):
+        if self.fclass == "0":
+            for link in self.inputs['Frame'].links:
+                self.id_data.links.remove(link)
+            self.inputs['Frame'].hide = True
+        else:
+            self.inputs['Frame'].hide = False
+        self.update()
+
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
                                             ("Roof", "Roof", "Roof construction"),
@@ -1914,7 +1990,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                    ("1", "Advanced", "Advanced frame designation")], 
                                     name = "", 
                                     description = "Pre-set construction of custom layers", 
-                                    default = "0", update = con_update)
+                                    default = "0", update = frame_update)
     fmat = EnumProperty(items = [("0", "Wood", "Wooden frame"),
                                    ("1", "Aluminium", "Aluminium frame"),
                                    ("2", "Plastic", "uPVC frame"),
@@ -1952,11 +2028,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     
     def init(self, context):
         self['nodeid'] = nodeid(self)
-        self.inputs.new('envi_ol_sock', 'Outer layer')
-        self.inputs.new('envi_tl_sock', 'Outer layer')
+        self.inputs.new('envi_outl_sock', 'Outer layer')
+        self.inputs['Outer layer'].hide = True
         self.inputs.new('envi_f_sock', 'Frame')
-        self.inputs[0].hide = True
-        self.inputs[1].hide = True
+#        self.inputs[0].hide = True
+#        self.inputs[1].hide = True
         self.inputs['Frame'].hide = True
         
     def draw_buttons(self, context, layout):
@@ -2039,10 +2115,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     newrow(layout, "Inner reveal sol. abs:", self, "irsa")
                     
     def update(self):
+#        socklink2(self.inputs['Outer layer'], self.id_data)
         self.valid()
     
     def valid(self):
-        if self.envi_con_makeup == '1' and not any([s.links for s in self.inputs[:] + self.outputs[:]]):
+        if (self.envi_con_makeup == '1' and not self.inputs['Outer layer'].links) or (not self.inputs['Frame'].links and not self.inputs['Frame'].hide):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
@@ -2092,23 +2169,43 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     ep_text += epentry("WindowMaterial:Gas", params, paramvs)
                     
         elif self.envi_con_makeup == '1':            
-            layer_nodes = []
-            in_sock = self.inputs[1] if self.envi_con_type == "Window" else self.inputs[0]
-            node = self
+            in_sock = self.inputs['Outer layer']# if self.envi_con_type == "Window" else self.inputs[0]
             n = 0
+            params = ['Name']
             paramvs = [matname]
             ep_text = ''
+            get_mat(self, 1).envi_shading = 0
             
             while in_sock.links:
                 node = in_sock.links[0].from_node
-                paramvs.append('{}-layer-{}'.format(matname, n)) 
+                if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node'):
+                    paramvs.append('{}-layer-{}'.format(matname, n)) 
+                    params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
+                    ep_text += node.ep_write(n)
+                    
+                else:
+                    get_mat(self, 1).envi_shading = 1
                 in_sock = node.inputs['Layer']
-                layer_nodes.append(node)
-                ep_text += node.ep_write(n)
                 n += 1
-
-            params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(n - 1)]
+                
             ep_text += epentry('Construction', params, paramvs)
+            
+            if get_mat(self, 1).envi_shading:
+                in_sock = self.inputs['Outer layer']
+                n = 0
+                params = ['Name'] 
+                paramvs = ['{}-shading'.format(matname)]
+                
+                while in_sock.links:
+                    node = in_sock.links[0].from_node
+                    paramvs.append('{}-layer-{}'.format(matname, n)) 
+                    params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
+                    in_sock = node.inputs['Layer']
+
+                    if node.bl_idname in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node'):
+                        ep_text += node.ep_write(n)
+                    n += 1
+                ep_text += epentry('Construction', params, paramvs)
                 
         if self.envi_con_type =='Window' and self.fclass == '1':
             fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance', 
@@ -2241,7 +2338,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Vis absorb:", self, "vab")
     
     def update(self):
-        socklink(self.outputs['Layer'], self['nodeid'].split('@')[1])
+        socklink2(self.outputs['Layer'], self.id_data)
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
@@ -2330,7 +2427,8 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Diffuse:", self, "diff")
 
     def update(self):
-        socklink(self.outputs['Layer'], self['nodeid'].split('@')[1])
+        socklink2(self.outputs['Layer'], self.id_data)
+
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
 
@@ -2391,6 +2489,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
+        self['nodeid'] = nodeid(self)
         self.outputs.new('envi_gl_sock', 'Layer')
         self.inputs.new('envi_tl_sock', 'Layer')
         
@@ -2417,6 +2516,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "SHR:", self, "shr")
 
     def update(self):
+        socklink(self.outputs['Layer'], self['nodeid'].split('@')[1])
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
@@ -2442,7 +2542,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
             paramvs = ['{}-layer-{}'.format(material.name, ln), 'Custom', '{:.3f}'.format(self.thi), '{:.3f}'.format(self.ccA), '{:.3f}'.format(self.ccB), 
                        '{:.3f}'.format(self.ccC), '{:.3f}'.format(self.vcA), '{:.3f}'.format(self.vcB), '{:.3f}'.format(self.vcC), '{:.3f}'.format(self.shcA),
                        '{:.3f}'.format(self.shcB), '{:.3f}'.format(self.shcC), '{:.3f}'.format(self.mw), '{:.3f}'.format(self.shr)]
-        print(epentry("WindowMaterial:Gas", params, paramvs))    
+   
         return epentry("WindowMaterial:Gas", params, paramvs)
 
 #def epentry(header, params, paramvs):
@@ -2471,9 +2571,11 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
+        self.inputs.new('envi_sc_sock', 'Control')
+        self['nodeid'] = nodeid(self)
         self.outputs.new('envi_sl_sock', 'Layer')
         self.inputs.new('envi_sl_sock', 'Layer')
-        
+                
     def draw_buttons(self, context, layout):
         if self.outputs['Layer'].links:
             newrow(layout, "Solar trans.:", self, "st")
@@ -2498,6 +2600,7 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
             nodecolour(self, 0)
             
     def update(self):
+        socklink2(self.outputs['Layer'], self.id_data)
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
@@ -2509,11 +2612,90 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
         params = ('Name', 'Solar transmittance', 'Solar Reflectance', 'Visible reflectance', 'Infrared Hemispherical Emissivity', 'Infrared Transmittance', 'Thickness {m}',
                   'Conductivity {W/m-K}', 'Shade to glass distance {m}', 'Top opening multiplier', 'Top opening multiplier', 'Bottom opening multiplier', 'Left-side opening multiplier',
                   'Right-side opening multiplier', 'Air flow permeability')
-        paramvs = ('{}-layer-{}'.format(material.name, ln), self.st, self.sr, self.vt, self.vr, self.ihe, self.it, self.thi, self.tc, self.sgd,
-                   self.tom, self.bom, self.lom, self.rom, self.afp)
+        paramvs = ['{}-layer-{}'.format(material.name, ln)] + ['{:.3f}'.format(p) for p in (self.st, self.sr, self.vt, self.vr, self.ihe, self.it, 0.001 * self.thi, self.tc, 0.001 * self.sgd,
+                   self.tom, self.bom, self.lom, self.rom, self.afp)]
   
-        return epentry('WindowMaterial:Shade', params, paramvs)
+        return epentry('WindowMaterial:Shade', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
         
+class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
+    '''Node defining an EnVi external screen'''
+    bl_idname = 'envi_screen_node'
+    bl_label = 'EnVi screen'
+    
+    rb = EnumProperty(items = [("DoNotModel", "DoNotModel", "Do not model reflected beam component"), 
+                               ("ModelAsDirectBeam", "ModelAsDirectBeam", "Model reflectred beam as beam"),
+                               ("ModelAsDiffuse", "ModelAsDiffuse", "Model reflected beam as diffuse")], 
+                                name = "", description = "Composition of the layer", default = "ModelAsDiffuse")
+    ta = EnumProperty(items = [("0", "0", "Angle of Resolution for Screen Transmittance Output Map"), 
+                               ("1", "1", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("2", "2", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("3", "3", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("5", "5", "Angle of Resolution for Screen Transmittance Output Map")], 
+                                name = "", description = "Angle of Resolution for Screen Transmittance Output Map", default = "0")
+
+    dsr = FloatProperty(name = "", description = "Diffuse solar reflectance", min = 0.0, max = 0.99, default = 0.5)
+    vr = FloatProperty(name = "", description = "Visible reflectance", min = 0.0, max = 1, default = 0.6)
+    the = FloatProperty(name = "", description = "Thermal Hemispherical Emissivity", min = 0.0, max = 1, default = 0.9)
+    tc = FloatProperty(name = "W/m.K", description = "Conductivity", min = 0.0001, max = 10, default = 0.1)
+    sme = FloatProperty(name = "mm", description = "Screen Material Spacing", min = 1, max = 1000, default = 50)
+    smd = FloatProperty(name = "mm", description = "Screen Material Diameter", min = 1, max = 1000, default = 25)
+    sgd = FloatProperty(name = "mm", description = "Screen to glass distance", min = 1, max = 1000, default = 25)
+    tom = FloatProperty(name = "", description = "Top opening multiplier", min = 0.0, max = 1, default = 0.5)
+    bom = FloatProperty(name = "", description = "Bottom opening multiplier", min = 0.0, max = 1, default = 0.5)
+    lom = FloatProperty(name = "", description = "Left-side opening multiplier", min = 0.0, max = 1, default = 0.5)
+    rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
+    envi_con_type = StringProperty(name = "", description = "Name")
+    
+    def init(self, context):
+        self['nodeid'] = nodeid(self)
+        self.outputs.new('envi_screen_sock', 'Outer Layer')
+        self.inputs.new('envi_sc_sock', 'Control')
+        self.inputs.new('envi_tl_sock', 'Layer')
+        
+    def draw_buttons(self, context, layout):
+        if self.outputs['Outer Layer'].links:
+            newrow(layout, "Reflected beam:", self, "rb")
+            newrow(layout, "Diffuse reflectance:", self, "dsr")
+            newrow(layout, "Visible reflectance:", self, "vr") 
+            newrow(layout, "Thermal emmisivity:", self, "the")
+            newrow(layout, "Conductivity:", self, "tc")
+            newrow(layout, "Material spacing:", self, "sme")
+            newrow(layout, "Material diameter:", self, "smd")
+            newrow(layout, "Distance:", self, "sgd")
+            newrow(layout, "Top mult.:", self, "tom")
+            newrow(layout, "Bottom mult.:", self, "bom")
+            newrow(layout, "Left milt.:", self, "lom")
+            newrow(layout, "Right mult.:", self, "rom")
+            newrow(layout, "Resolution angle:", self, "ta")
+    
+    def valid(self):
+        if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
+            nodecolour(self, 1)
+        else:
+            nodecolour(self, 0)
+            
+    def update(self):
+        socklink2(self.outputs['Outer Layer'], self.id_data)
+
+        if self.outputs['Outer Layer'].links:
+            self.envi_con_type = self.outputs['Outer Layer'].links[0].to_node.envi_con_type
+        self.valid()
+        
+    def ep_write(self, ln):
+        for material in bpy.data.materials:
+            if self.id_data == material.envi_nodes:
+                break
+            
+        params = ('Name', 'Reflected Beam Transmittance Accounting Method', 'Diffuse Solar Reflectance', 'Diffuse Visible Reflectance',
+                  'Thermal Hemispherical Emissivity', 'Conductivity (W/m-K)', 'Screen Material Spacing (m)', 'Screen Material Diameter (m)',
+                  'Screen-to-Glass Distance (m)', 'Top Opening Multiplier', 'Bottom Opening Multiplier', 'Left-Side Opening Multiplier', 
+                  'Right-Side Opening Multiplier', 'Angle of Resolution for Output Map (deg)')
+        
+        paramvs = ['{}-layer-{}'.format(material.name, ln), self.rb] + ['{:.3f}'.format(p) for p in (self.dsr, self.vr, self.the, self.tc, 0.001 * self.sme, 0.001 * self.smd,
+                   0.001 * self.sgd, self.tom, self.bom, self.lom, self.rom)] + [self.ta]
+  
+        return epentry('WindowMaterial:Screen', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
+    
 class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window blind'''
     bl_idname = 'envi_bl_node'
@@ -2552,6 +2734,8 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
+        self.inputs.new('envi_sc_sock', 'Control')
+        self['nodeid'] = nodeid(self)
         self.outputs.new('envi_sl_sock', 'Layer')
         self.inputs.new('envi_sl_sock', 'Layer')
         
@@ -2593,6 +2777,7 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
             nodecolour(self, 0)
             
     def update(self):
+        socklink2(self.outputs['Layer'], self.id_data)
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
@@ -2607,46 +2792,65 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
                   'Back Side Slat beam visible reflectance', 'Slat diffuse visible transmittance', "Front Side Slat diffuse visible reflectance", "Back Side Slat diffuse visible reflectance",
                   "Slat Infrared hemispherical transmittance", "Front Side Slat Infrared hemispherical emissivity", "Back Side Slat Infrared hemispherical emissivity", "Blind-to-glass distance",
                   "Blind top opening multiplier", "Blind bottom opening multiplier", "Blind left-side opening multiplier", "Blind right-side opening multiplier", "Minimum slat angle", "Maximum slat angle")
-        paramvs = ('{}-layer-{}'.format(material.name, ln), self.so, self.sw, self.ss, self.st, self.sa, self.stc, self.sbst, self.fbst, self.bbst, self.sdst, self.fdsr, self.bdsr, self.sbvt,
-                   self.fbvr, self.bbvr, self.sdvt, self.fdvr, self.bdvr, self.sit, self.sfie, self.sbie, self.bgd, self.tom, self.bom, self.lom, self.rom, self.minsa, self.maxsa)
+        paramvs = ['{}-layer-{}'.format(material.name, ln), ('Horizontal', 'Vertical')[int(self.so)]] + ['{:.3f}'.format(p) for p in (0.001 * self.sw, 0.001 * self.ss, 0.001 * self.st, self.sa, self.stc, self.sbst, self.fbst, self.bbst, self.sdst, self.fdsr, self.bdsr, self.sbvt,
+                   self.fbvr, self.bbvr, self.sdvt, self.fdvr, self.bdvr, self.sit, self.sfie, self.sbie, 0.001 * self.bgd, self.tom, self.bom, self.lom, self.rom, self.minsa, self.maxsa)]
   
-        return epentry('WindowMaterial:Blind', params, paramvs)
+        return epentry('WindowMaterial:Blind', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
           
 class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window shade control'''
     bl_idname = 'envi_sc_node'
     bl_label = 'EnVi shade control'
+        
+    ttuple = ("Alwayson", "Alwaysoff", "OnIfScheduleAllows", "OnIfHighSolarOnWindow", "OnIfHighHorizontalSolar", 
+              "OnIfHighOutdoorAirTemperature", 
+              "OnIfHighZoneAirTemperature", "OnIfHighZoneCooling", "OnIfHighGlare", "MeetDaylightIlluminanceSetpoint",
+              "OnNightIfLowOutdoorTempAndOffDay", "OnNightIfLowInsideTempAndOffDay", "OnNightIfHeatingAndOffDay",
+              "OnNightIfLowOutdoorTempAndOnDayIfCooling", "OnNightIfHeatingAndOnDayIfCooling", 
+              "OffNightAndOnDayIfCoolingAndHighSolarOnWindow", "OnNightAndOnDayIfCoolingAndHighSolarOnWindow", 
+              "OnIfHighOutdoorAirTempAndHighSolarOnWindow", "OnIfHighOutdoorAirTempAndHighHorizontalSolar")
     
-    
-    stype = EnumProperty(items = [("0", "InteriorShade", "Select from databse"), 
-                                ("1", "ExteriorShade", "Define custom material properties"),
-                                ("2", "BetweenGlassShade", "Define custom material properties"),
-                                ("3", "ExteriorScreen", "Define custom material properties"),
-                                ("4", "InteriorBlind", "Define custom material properties"),
-                                ("5", "ExteriorBlind", "Define custom material properties"),
-                                ("6", "BetweenGlassBlind", "Define custom material properties"),
-                                ("7", "SwitchableGlazing", "Define custom material properties"),
+    def type_menu(self, context):
+        try:
+            if self.outputs['Control'].links[0].to_node.bl_idname == 'envi_screen_node':
+                return [(self.ttuple[t], self.ttuple[t], self.ttuple[t]) for t in (0, 1, 2)]
+            elif self.outputs['Control'].links[0].to_node.bl_idname in ('envi_bl_node', 'envi_sl_node'):
+                return [(self.ttuple[t], self.ttuple[t], self.ttuple[t]) for t in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18)]
+            else:
+                return [(t, t, t) for t in self.ttuple]
+        except Exception as e:
+            print(e)
+            return [('None', 'None', 'None')]
+
+    ctype = EnumProperty(items = type_menu, name = "", description = "Shading device")
+    sp = FloatProperty(name = "", description = "Setpoint (W/m2, W or deg C)", min = 0.0, max = 1000, default = 20)
+    sac = EnumProperty(items = [("FixedSlatAngle", "Always on", "Shading component"), 
+                                ("ScheduledSlatAngle", "OnIfHighOutdoorAirTempAndHighSolarOnWindow", "Switchable glazing component"),
+                                ("BlockBeamSolar", "OnIfHighOutdoorAirTempAndHighHorizontalSolar", "Switchable glazing component")
                                 ],
-                                name = "", description = "Shading device", default = '0')
-    
+                                name = "", description = "Shading device", default = 'FixedSlatAngle')
+    sp2 = FloatProperty(name = "", description = "Setpoint 2 (W/m2, W or deg C)", min = 0.0, max = 1000, default = 20)
+      
     def init(self, context):
-        self.inputs.new('envi_bl_sock', 'Blind')
-        self.inputs.new('envi_sl_sock', 'Shade')
-        self.inputs.new('envi_schedule', 'Schedule')
+        self['nodeid'] = nodeid(self)
+        self.outputs.new('envi_sc_sock', 'Control')
+        self.inputs.new('EnViSchedSocket', 'Schedule')
 
     def draw_buttons(self, context, layout):
-        if self.outputs['Layer'].links:
-            newrow(layout, "Shading device:", self, "stype")
-    
+        newrow(layout, "Shading device:", self, 'ctype')
+        if self.ctype not in ('Always on', 'Always off', 'OnIfScheduleAllows', 'OnIfHighGlare', 'DaylightIlluminance'):
+            newrow(layout, "Set-point", self, 'sp')
+        if self.outputs['Control'].links and self.outputs['Control'].links[0].to_node.bl_idname == 'envi_blind_node':
+            newrow(layout, 'Slat angle:', self, 'sac')
+           
     def valid(self):
-        if not self.outputs["Layer"].links or not self.inputs["Layer"].links:
+        if not self.outputs["Control"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
             
     def update(self):
-        if self.outputs['Layer'].links:
-            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
+        socklink(self.outputs['Control'], self['nodeid'].split('@')[1])
         self.valid()
         
     def ep_write(self, ln):
@@ -2654,10 +2858,32 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
             if self.id_data == material.envi_nodes:
                 break
             
-        params = ('Name', 'Shading Type', 'Construction with Shading Name', 'Shading Control Type', 'Schedule Name', 'Setpoint {W/m2, W or deg C}', 'Shading Control Is Scheduled',
+        if self.outputs['Control'].links[0].to_node.bl_idname == 'envi_screen_node':
+            st = 'ExteriorScreen' 
+        elif self.outputs['Control'].links[0].to_node.bl_idname == 'envi_bl_node':
+            if ln == 0:
+                st = 'ExteriorBlind'
+            elif self.outputs['Control'].links[0].to_node.inputs['Layer'].links:
+                st = 'BetweenGlassBlind'
+            else:
+                st = 'InteriorBlind'
+        elif self.outputs['Control'].links[0].to_node.bl_idname == 'envi_sl_node':
+            if ln == 0:
+                st = 'ExteriorShade'
+            elif self.outputs['Control'].links[0].to_node.inputs['Layer'].links:
+                st = 'BetweenGlassShade'
+            else:
+                st = 'InteriorShade'
+        else:
+            st = 'SwitchableGlazing'
+        
+        (scs, sn) = ('Yes', '{}-shading-schedule-{}'.format(material.name, ln)) if self.inputs['Schedule'].links else ('No', '')
+                
+        params = ('Name', 'Shading Type', 'Construction with Shading Name', 'Shading Control Type', 'Schedule Name', 'Setpoint (W/m2, W or deg C)', 'Shading Control Is Scheduled',
                   'Glare Control Is Active', 'Shading Device Material Name', 'Type of Slat Angle Control for Blinds', 'Slat Angle Schedule Name')
-        paramvs = ('{}-shading-control'.format(material.name), self.stype)
+        paramvs = ('{}-shading-control'.format(material.name), st, '{}-shading'.format(material.name), self.ctype, sn, self.sp, scs, 'No', '', self.sac, '')
   
+        
         return epentry('WindowProperty:ShadingControl', params, paramvs)
         
 class EnViMatNodes:
@@ -2665,18 +2891,21 @@ class EnViMatNodes:
     def poll(cls, ntree):
         return ntree.bl_idname == 'EnViMatN'
     
-class EnViNodeCategory(NodeCategory):
+class EnViMatNodeCategory(NodeCategory):
     @classmethod
     def poll(cls, context):
         return context.space_data.tree_type == 'EnViMatN'
 
 envimatnode_categories = [
-        EnViNodeCategory("Layer", "Layer Node", items=[NodeItem("envi_ol_node", label="Opaque layer"),
+        EnViMatNodeCategory("Layer", "Layer Node", items=[NodeItem("envi_ol_node", label="Opaque layer"),
                                                        NodeItem("envi_tl_node", label="Transparency layer"),
-                                                       NodeItem("envi_gl_node", label="Gas layer"),
-                                                       NodeItem("envi_sl_node", label="Shading layer"),
-                                                       NodeItem("envi_bl_node", label="Blind layer")]), 
-        EnViNodeCategory("Type", "Type Node", items=[NodeItem("EnViCon", label="Construction Node"),
+                                                       NodeItem("envi_gl_node", label="Gas layer")]), 
+        EnViMatNodeCategory("Shading", "Shading Node", items=[NodeItem("envi_sl_node", label="Shading layer"),
+                                                       NodeItem("envi_bl_node", label="Blind layer"),
+                                                       NodeItem("envi_screen_node", label="Screen layer"),
+                                                       NodeItem("envi_sc_node", label="Shading Control Node"),
+                                                       NodeItem("EnViSched", label="Schedule")]),
+        EnViMatNodeCategory("Type", "Type Node", items=[NodeItem("EnViCon", label="Construction Node"),
                                                      NodeItem("envi_frame_node", label="Frame Node")])]
 
 # Generative nodes

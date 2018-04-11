@@ -73,7 +73,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             if mat.get("envi_nodes") and mat.envi_export == True:
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
-                        if emnode.envi_con_type =='Window':
+                        if emnode.envi_con_type == 'Window':
 #                            if emnode.fclass == '0':
                             params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
                             paramvs = ('{}-frame-layer{}'.format(mat.name, 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(mat.name), '{}-frame-layer{}'.format(mat.name, 0))
@@ -254,10 +254,10 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
                                 if emnode.fclass == '0':
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', ''.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
                                 else:
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', '{}-fad'.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '{}-fad'.format(mat.name), '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((vco[0] + (1, -1)[vco[0] - xav > 0]*(0.001+emnode.fw, 0)[abs(vco[0] - xav) < 0.0001], vco[1] + (1, -1)[vco[1] - yav > 0]*(0.001+emnode.fw, 0)[abs(vco[1] - yav) < 0.0001], vco[2] + (1, -1)[vco[2] - zav > 0]*(0.001+emnode.fw, 0)[abs(vco[2] - zav) < 0.0001])) for vco in vcos]
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
                 
@@ -568,12 +568,13 @@ def pregeo(op):
             bmesh.ops.remove_doubles(bm, verts = bm.verts, dist = 0.001)
             bmesh.ops.delete(bm, geom = [e for e in bm.edges if not e.link_faces] + [v for v in bm.verts if not v.link_faces])
             
-            if all([e.is_manifold for e in bm.edges]):
-                bmesh.ops.recalc_face_normals(bm, faces = bm.faces)
-            else:  
-                reversefaces = [face for face in bm.faces if get_con_node(en_obj.data.materials[face.material_index]).envi_con_type in ('Wall', 'Window', 'Floor', 'Roof', 'Door', 'Ceiling') and (face.calc_center_bounds()).dot(face.normal) < 0]                            
-                bmesh.ops.reverse_faces(bm, faces = reversefaces)
-                
+#            if all([e.is_manifold for e in bm.edges]):
+#                bmesh.ops.recalc_face_normals(bm, faces = bm.faces)
+#            else:  
+#                reversefaces = [face for face in bm.faces if get_con_node(en_obj.data.materials[face.material_index]).envi_con_type in ('Wall', 'Window', 'Floor', 'Roof', 'Door', 'Ceiling') and (face.calc_center_bounds()).dot(face.normal) < 0]                            
+#                bmesh.ops.reverse_faces(bm, faces = reversefaces)
+            
+            bmesh.ops.recalc_face_normals(bm, faces = bm.faces)    
             bmesh.ops.split_edges(bm, edges = bm.edges)
             bmesh.ops.dissolve_limit(bm, angle_limit = 0.01, verts = bm.verts)
             bm.faces.ensure_lookup_table()

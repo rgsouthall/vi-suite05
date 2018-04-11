@@ -819,7 +819,8 @@ class NODE_OT_LiFC(bpy.types.Operator):
                     
                     poverlay = '-p {}'.format(os.path.join(context.scene['viparams']['newdir'], 'images', 'temp.hdr')) if fcnode.contour and fcnode.overlay else ''
                     fccmd = 'falsecolor -i {} {} -pal {} {} {} {}'.format(os.path.abspath(im), poverlay, fcnode.coldict[fcnode.colour], legend, contour, divisions) 
-                    fcrun = Popen(fccmd.split(), stdout=fcfile, stderr = PIPE)                    
+                    fcrun = Popen(fccmd.split(), stdout=fcfile, stderr = PIPE) 
+                    os.remove(temp_file)
                 else:
                     poverlay = '-p <(pcond -e {0} {1})' .format(fcnode.disp, ofile) if fcnode.contour and fcnode.overlay else ''
                     fccmd = "bash -c 'falsecolor -i {} {} -pal {} {} {} {}'".format(bpy.path.abspath(im), poverlay, fcnode.coldict[fcnode.colour], legend, contour, divisions) 
@@ -829,8 +830,7 @@ class NODE_OT_LiFC(bpy.types.Operator):
                
                 for line in fcrun.stderr:
                     logentry('Falsecolour error: {}'.format(line))
-                if os.path.isfile(temp_file):
-                    os.remove(temp_file)
+                    
             if fcim not in [i.filepath for i in bpy.data.images]:
                 bpy.data.images.load(fcim)
             else:
