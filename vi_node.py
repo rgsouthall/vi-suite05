@@ -2294,6 +2294,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Class of layer", default = "0")
+    layer_name = StringProperty(name = "", description = "", default = "")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
     thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 10000, default = 100)
@@ -2313,6 +2314,9 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     tab = FloatProperty(name = "", description = "Thickness (mm)", min = 0, max = 1, default = 0.7)
     sab = FloatProperty(name = "", description = "Thickness (mm)", min = 0, max = 1, default = 0.7)
     vab = FloatProperty(name = "", description = "Thickness (mm)", min = 0, max = 1, default = 0.7)
+    pcm = BoolProperty(name = "", description = "Phase Change Material", default = 0)
+    tctc = FloatProperty(name = "", description = "Temp. coeff. for thermal conductivity (W/m-K2)", min = 0, max = 50, default = 0)
+    tempemps = StringProperty(name = "", description = "Temperature/empalthy pairs", default = "")
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
@@ -2336,6 +2340,11 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Therm absorb:", self, "tab")
             newrow(layout, "Solar absorb:", self, "sab")
             newrow(layout, "Vis absorb:", self, "vab")
+            newrow(layout, "PCM:", self, "pcm")
+
+            if self.pcm:
+                newrow(layout, "TCTC:", self, "tctc")
+                newrow(layout, "Temps:Emps", self, "tempemps")
     
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
@@ -2348,20 +2357,37 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
+    
+    def pcm_write(self, ln):
+        params = ['Name', 'Temperature Coefficient for Thermal Conductivity (W/m-K2)']
+        
+        if self.layer == '0':
+            paramvs = [layer_name, envi_mats.pcmd_dat[self.material][0]]
+            mtempemps = envi_mats.pcmd_dat[self.material][1]
+        else:
+            paramvs = [layer_name, self.tctc]
+            mtempemps = self.tempemps
             
+        for i, te in enumerate(mtempemps.split()):
+            params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
+            paramvs +=(te.split(':')[0], te.split(':')[1])
+         
+        print(epentry("MaterialProperty:PhaseChange", params, paramvs))    
+        return epentry("MaterialProperty:PhaseChange", params, paramvs)
+        
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
 
-        layer_name = '{}-layer-{}'.format(material.name, ln)
+        self.layer_name = '{}-layer-{}'.format(material.name, ln)
         if self.materialtype != '6':
             params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')
             header = 'Material'
         else:
             params = ('Name', 'Resistance')
             header = 'Material:AirGap'
-            
+
         if self.layer == '0':
             matlist = list(envi_mats.matdat[self.material])
             if self.materialtype != '6':
@@ -2402,6 +2428,7 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_tl_sock', 'Layer')
+        self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_gl_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
@@ -2816,6 +2843,7 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
                 return [(self.ttuple[t], self.ttuple[t], self.ttuple[t]) for t in (0, 1, 2)]
             elif self.outputs['Control'].links[0].to_node.bl_idname in ('envi_bl_node', 'envi_sl_node'):
                 return [(self.ttuple[t], self.ttuple[t], self.ttuple[t]) for t in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18)]
+#            elif self.outputs['Control'].links[0].to_node.bl_idname == 'envi_tl_node':                
             else:
                 return [(t, t, t) for t in self.ttuple]
         except Exception as e:
