@@ -18,7 +18,7 @@
 
 import bpy, os, itertools, subprocess, datetime, shutil, mathutils, bmesh
 from .vi_func import selobj, facearea, boundpoly, selmesh
-from .envi_func import epentry, epschedwrite
+from .envi_func import epentry, epschedwrite, get_con_node
 from .envi_mat import retuval
 
 dtdf = datetime.date.fromordinal
@@ -73,7 +73,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             if mat.get("envi_nodes") and mat.envi_export == True:
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
-                        if emnode.envi_con_type =='Window':
+                        if emnode.envi_con_type == 'Window':
 #                            if emnode.fclass == '0':
                             params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
                             paramvs = ('{}-frame-layer{}'.format(mat.name, 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(mat.name), '{}-frame-layer{}'.format(mat.name, 0))
@@ -254,10 +254,10 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
                                 if emnode.fclass == '0':
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', ''.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
                                 else:
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', ('', '{}-fad'.format(mat.name))[emnode.fclass == '1'], '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '{}-fad'.format(mat.name), '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((vco[0] + (1, -1)[vco[0] - xav > 0]*(0.001+emnode.fw, 0)[abs(vco[0] - xav) < 0.0001], vco[1] + (1, -1)[vco[1] - yav > 0]*(0.001+emnode.fw, 0)[abs(vco[1] - yav) < 0.0001], vco[2] + (1, -1)[vco[2] - zav > 0]*(0.001+emnode.fw, 0)[abs(vco[2] - zav) < 0.0001])) for vco in vcos]
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
                 
@@ -531,11 +531,12 @@ def pregeo(op):
             for s, sm in enumerate(en_obj.material_slots):
                 sm.material = bpy.data.materials['en_'+omats[s].name]
                 mat = sm.material
-                mct = 'Partition' if mat.envi_type == 'Wall' and mat.envi_boundary else mat.envi_type
+                emnode = get_con_node(mat)
+                mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
                               
                 if s in mis:
                     mat.envi_export = True    
-                if mat.envi_type in dcdict:
+                if emnode.envi_con_type in dcdict:
                     mat.diffuse_color = dcdict[mct]                            
 #                if mct not in ('None', 'Shading', 'Aperture', 'Window'):
 #                    print('mct', mct)
@@ -543,12 +544,12 @@ def pregeo(op):
                 
             for poly in en_obj.data.polygons:
                 mat = en_obj.data.materials[poly.material_index]
-                
-                for emnode in mat.envi_nodes.nodes:
-                    if emnode.bl_idname == 'EnViCon':
-                        break
+                emnode = get_con_node(mat)
+#                for emnode in mat.envi_nodes.nodes:
+#                    if emnode.bl_idname == 'EnViCon':
+#                        break
                 try:
-                    if poly.area < 0.001 or mat.envi_type == 'None' or emnode.use_custom_color:
+                    if poly.area < 0.001 or emnode.envi_con_type == 'None' or emnode.use_custom_color:
                         poly.select = True 
                 except:
                     poly.select = True
@@ -567,19 +568,20 @@ def pregeo(op):
             bmesh.ops.remove_doubles(bm, verts = bm.verts, dist = 0.001)
             bmesh.ops.delete(bm, geom = [e for e in bm.edges if not e.link_faces] + [v for v in bm.verts if not v.link_faces])
             
-            if all([e.is_manifold for e in bm.edges]):
-                bmesh.ops.recalc_face_normals(bm, faces = bm.faces)
-            else:  
-                reversefaces = [face for face in bm.faces if en_obj.data.materials[face.material_index].envi_type in ('Wall', 'Window', 'Floor', 'Roof', 'Door', 'Ceiling') and (face.calc_center_bounds()).dot(face.normal) < 0]                            
-                bmesh.ops.reverse_faces(bm, faces = reversefaces)
-                
+#            if all([e.is_manifold for e in bm.edges]):
+#                bmesh.ops.recalc_face_normals(bm, faces = bm.faces)
+#            else:  
+#                reversefaces = [face for face in bm.faces if get_con_node(en_obj.data.materials[face.material_index]).envi_con_type in ('Wall', 'Window', 'Floor', 'Roof', 'Door', 'Ceiling') and (face.calc_center_bounds()).dot(face.normal) < 0]                            
+#                bmesh.ops.reverse_faces(bm, faces = reversefaces)
+            
+            bmesh.ops.recalc_face_normals(bm, faces = bm.faces)    
             bmesh.ops.split_edges(bm, edges = bm.edges)
             bmesh.ops.dissolve_limit(bm, angle_limit = 0.01, verts = bm.verts)
             bm.faces.ensure_lookup_table()
-            regfaces = [face for face in bm.faces if not any((obj.data.materials[face.material_index].envi_boundary, obj.data.materials[face.material_index].envi_afsurface))]
+            regfaces = [face for face in bm.faces if not any((get_con_node(obj.data.materials[face.material_index]).envi_boundary, get_con_node(obj.data.materials[face.material_index]).envi_afsurface))]
             bmesh.ops.connect_verts_nonplanar(bm, angle_limit = 0.01, faces = regfaces)
             bmesh.ops.connect_verts_concave(bm, faces = regfaces)
-            bmesh.ops.triangulate(bm, faces = [face for face in bm.faces if obj.data.materials[face.material_index].envi_type in ('Window', 'Door') and ['{:.4f}'.format(fl.calc_angle()) for fl in face.loops] != ['1.5708'] * 4])
+            bmesh.ops.triangulate(bm, faces = [face for face in bm.faces if get_con_node(obj.data.materials[face.material_index]).envi_con_type in ('Window', 'Door') and ['{:.4f}'.format(fl.calc_angle()) for fl in face.loops] != ['1.5708'] * 4])
             bmesh.ops.remove_doubles(bm, verts = bm.verts, dist = 0.001)
             en_obj['auto_volume'] = bm.calc_volume()
             bm.to_mesh(en_obj.data)  
@@ -614,8 +616,9 @@ def pregeo(op):
                 if hasattr(node, 'zone') and node.zone == en_obj.name:
                     node.uvsockupdate()
     
-            if any([mat.envi_afsurface for mat in enomats]):
+            if any([get_con_node(mat).envi_afsurface for mat in enomats]):
                 enng['enviparams']['afn'] = 1
+                
                 if 'Control' not in [node.bl_label for node in enng.nodes]:
                     enng.nodes.new(type = 'AFNCon')         
                     enng.use_fake_user = 1
@@ -643,7 +646,7 @@ def pregeo(op):
                     bpy.ops.object.material_slot_remove()
 
             shadmat = bpy.data.materials['en_shading']
-            shadmat.envi_type = 'Shading'
+            get_con_node(shadmat).envi_con_type = 'Shading'
             en_obj.material_slots[0].material = shadmat
             en_obj.material_slots[0].material.diffuse_color = (1, 0, 0)
             en_obj.layers[1], en_obj.layers[0] = True, False

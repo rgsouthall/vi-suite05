@@ -2700,6 +2700,20 @@ def socklink(sock, ng):
     except:
         if sock.links:
             bpy.data.node_groups[ng].links.remove(sock.links[-1])
+
+def socklink2(sock, ng):
+    try:
+        valid1 = sock.ret_valid(sock.node)
+        
+        for link in sock.links:
+            valid2 = link.to_socket.ret_valid(link.to_socket.node)
+            print(valid1, valid2)
+            valset = set(valid1)&set(valid2) 
+            if not valset or len(valset) < min((len(valid1), len(valid2))):# or sock.node.use_custom_color:
+                ng.links.remove(link)
+    except:
+        if sock.links:
+            ng.links.remove(sock.links[-1])
             
 def uvsocklink(sock, ng):
     try:
