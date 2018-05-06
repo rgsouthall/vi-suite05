@@ -61,7 +61,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 
 
         en_idf.write("!-   ===========  ALL OBJECTS IN CLASS: MATERIAL & CONSTRUCTIONS ===========\n\n")
-        matcount, matname, namelist = [], [], []
+#        matcount, matname, namelist = [], [], []
 
 #        if 'Window' in [mat.envi_type for mat in bpy.data.materials] or 'Door' in [mat.envi_type for mat in bpy.data.materials]:
 #            params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
@@ -87,10 +87,11 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 en_idf.write(emnode.ep_write())
 #                        elif not (emnode.envi_con_makeup == '1' and not emnode.inputs['Outer layer']):
                         else:
-                            conlist, mat['pcm'] = [], 0
+#                            conlist, mat['pcm'] = [], 0
                             
                             if emnode.envi_con_type not in ('None', 'Shading', 'Aperture'):
                                 en_idf.write(emnode.ep_write())
+                                
 
                                 
 #        for mat in [mat for mat in bpy.data.materials if mat.envi_export == True and mat.envi_con_type != "None"]:
