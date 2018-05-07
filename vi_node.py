@@ -1919,7 +1919,7 @@ class ENVI_SGL_Socket(NodeSocket):
     '''EnVi switchable glazing layer socket'''
     bl_idname = 'envi_sgl_sock'
     bl_label = 'Switchable glazing layer socket'
-    valid = ['SGLayer']
+#    valid = ['SGLayer']
 
     def draw(self, context, layout, node, text):
         layout.label(text)
@@ -1928,7 +1928,7 @@ class ENVI_SGL_Socket(NodeSocket):
         return (0.65, 0.65, 1, 1.0)
     
     def ret_valid(self, node):
-        return ['SGLayer']
+        return ['TLayer']
     
 class ENVI_SControl_Socket(NodeSocket):
     '''EnVi shade control socket'''
@@ -1949,7 +1949,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     bl_icon = 'FORCE_WIND'
     
     def con_update(self, context):
-#        self.inputs['Frame'].hide = False if self.envi_con_type == "Window" and self.fclass == '0' and self.fmat == '3' else True
+        self.id_data['envi_con_type'] = self.envi_con_type
         if self.envi_con_makeup != "1":
             for link in self.inputs['Outer layer'].links:
                 self.id_data.links.remove(link)
@@ -2204,7 +2204,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             while in_sock.links:
                 node = in_sock.links[0].from_node
 
-                if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node'):
+                if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):
                     paramvs.append('{}-layer-{}'.format(matname, n)) 
                     params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
                     ep_text += node.ep_write(n)                    
@@ -2223,12 +2223,14 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 
                 while in_sock.links:
                     node = in_sock.links[0].from_node
-                    paramvs.append('{}-layer-{}'.format(matname, n)) 
-                    params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
+                    if node.outputs['Layer'].links[0].to_node.bl_idname != 'envi_sgl_node':
+                        paramvs.append('{}-layer-{}'.format(matname, n)) 
+                        params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
                     in_sock = node.inputs['Layer']
 
-                    if node.bl_idname in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node'):
+                    if node.bl_idname in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):
                         ep_text += node.ep_write(n)
+                    
                     n += 1
                 ep_text += epentry('Construction', params, paramvs)
                 
@@ -2439,16 +2441,16 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
-    thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 10000, default = 100)
+    thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 1000, default = 6)
 #    name = StringProperty(name = "", description = "Name")
-    tc = FloatProperty(name = "W/m.K", description = "Thermal Conductivity (W/m.K)", min = 0.1, max = 10000, default = 100)
+    tc = FloatProperty(name = "W/m.K", description = "Thermal Conductivity (W/m.K)", min = 0.1, max = 10, default = 0.8)
     stn = FloatProperty(name = "", description = "Solar normal transmittance", min = 0, max = 1, default = 0.7)
     fsn = FloatProperty(name = "", description = "Solar front normal reflectance", min = 0, max = 1, default = 0.7)
     bsn = FloatProperty(name = "", description = "Solar back normal reflectance", min = 0, max = 1, default = 0.7)
     vtn = FloatProperty(name = "", description = "Visible Transmittance at Normal Incidence", min = 0, max = 1, default = 0.7)
-    fvrn = FloatProperty(name = "", description = "Front Side Visible Reflectance at Normal Incidence", min = 0, max = 1, default = 0.7)
-    bvrn = FloatProperty(name = "", description = "Back Side Visible Reflectance at Normal Incidence", min = 0, max = 1, default = 0.7)
-    itn = FloatProperty(name = "", description = "Infrared Transmittance at Normal Incidence", min = 0, max = 1, default = 0.7)
+    fvrn = FloatProperty(name = "", description = "Front Side Visible Reflectance at Normal Incidence", min = 0, max = 1, default = 0.1)
+    bvrn = FloatProperty(name = "", description = "Back Side Visible Reflectance at Normal Incidence", min = 0, max = 1, default = 0.1)
+    itn = FloatProperty(name = "", description = "Infrared Transmittance at Normal Incidence", min = 0, max = 1, default = 0.1)
     fie = FloatProperty(name = "", description = "Front Side Infrared Hemispherical Emissivity'", min = 0, max = 1, default = 0.7)
     bie = FloatProperty(name = "", description = "Back Side Infrared Hemispherical Emissivity", min = 0, max = 1, default = 0.7)
     diff = BoolProperty(name = "", description = "Diffusing", default = 0)
@@ -2457,7 +2459,7 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_tl_sock', 'Layer')
-        self.inputs.new('envi_sc_sock', 'Control')
+#        self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_gl_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
@@ -2529,7 +2531,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
-    thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 10000, default = 100)
+    thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 1000, default = 14)
     ccA = FloatProperty(name = "W/m.K", description = "Conductivity coefficient A", min = 0.1, max = 10, default = 0.003, precision = 5)
     ccB = FloatProperty(name = "W/m.K^2", description = "Conductivity coefficient B", min = 0.0, max = 10, default = 0.00008, precision = 5)
     ccC = FloatProperty(name = "W/m.K^3", description = "Conductivity coefficient C", min = 0.0, max = 10, default = 0, precision = 5)
@@ -2874,8 +2876,10 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
+        self.inputs.new('envi_sc_sock', 'Control')
         self['nodeid'] = nodeid(self)
         self.inputs.new('envi_sgl_sock', 'Layer')
+        self.outputs.new('envi_sgl_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
         if self.inputs['Layer'].links:
@@ -2900,10 +2904,11 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Diffuse:", self, "diff")
 
     def update(self):
+
 #        socklink2(self.outputs['Layer'], self.id_data)
 
-#        if self.inputs['Layer'].links:
-#            self.envi_con_type = self.inputs['Layer'].links[0].from_node.envi_con_type
+        if self.outputs['Layer'].links:
+            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
 
         self.valid()
     
@@ -2933,7 +2938,7 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
                        '{:.3f}'.format(self.vtn), '{:.3f}'.format(self.fvrn), '{:.3f}'.format(self.bvrn), '{:.3f}'.format(self.itn),
                        '{:.3f}'.format(self.fie), '{:.3f}'.format(self.bie), '{:.3f}'.format(self.tc), 1, ('No', 'Yes')[self.diff]]
 
-        return epentry("WindowMaterial:Glazing", params, paramvs)   
+        return epentry("WindowMaterial:Glazing", params, paramvs)   + self.inputs['Control'].links[0].from_node.ep_write(ln) 
           
 class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window shade control'''
@@ -2992,13 +2997,13 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
             
     def update(self):
         socklink(self.outputs['Control'], self['nodeid'].split('@')[1])
-        socklink2(self.outputs['Layer'], self.id_data)
-        if self.outputs['Control'].links and self.outputs['Control'].links[0].to_node.bl_idname == 'envi_tl_node':
-            self.outputs['Layer'].hide = False
-        else:
-            for link in self.outputs['Shade'].links:
-                self.id_data.links.remove(link)
-            self.outputs['Layer'].hide = True
+#        socklink2(self.outputs['Layer'], self.id_data)
+#        if self.outputs['Control'].links and self.outputs['Control'].links[0].to_node.bl_idname == 'envi_tl_node':
+#            self.outputs['Layer'].hide = False
+#        else:
+#            for link in self.outputs['Shade'].links:
+#                self.id_data.links.remove(link)
+#            self.outputs['Layer'].hide = True
         self.valid()
         
     def ep_write(self, ln):
