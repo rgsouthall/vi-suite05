@@ -2623,9 +2623,9 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
-        self.inputs.new('envi_sc_sock', 'Control')
-        self['nodeid'] = nodeid(self)
         self.outputs.new('envi_sl_sock', 'Layer')
+        self.inputs.new('envi_sc_sock', 'Control')
+#        self['nodeid'] = nodeid(self)        
         self.inputs.new('envi_sl_sock', 'Layer')
                 
     def draw_buttons(self, context, layout):
@@ -2699,8 +2699,8 @@ class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
-        self['nodeid'] = nodeid(self)
         self.outputs.new('envi_screen_sock', 'Outer Layer')
+        self['nodeid'] = nodeid(self)
         self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_tl_sock', 'Layer')
         
@@ -2786,9 +2786,9 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
+        self.outputs.new('envi_sl_sock', 'Layer')
         self.inputs.new('envi_sc_sock', 'Control')
         self['nodeid'] = nodeid(self)
-        self.outputs.new('envi_sl_sock', 'Layer')
         self.inputs.new('envi_sl_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
