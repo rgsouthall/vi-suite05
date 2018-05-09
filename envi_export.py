@@ -69,8 +69,8 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 #            en_idf.write(epentry('Material', params[:-2], paramvs[:-2]))
 #            en_idf.write(epentry('Construction', params[-2:], paramvs[-2:]))
 
-        for mat in bpy.data.materials:
-            if mat.get("envi_nodes") and mat.envi_export == True:
+        for mat in bpy.data.materials:            
+            if mat.envi_nodes and mat.envi_nodes.nodes and mat.envi_export == True:                
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
                         if emnode.envi_con_type == 'Window':
@@ -230,7 +230,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             bm.transform(obj.matrix_world)
             bpy.data.meshes.remove(me)
 
-            for face in bm.faces:
+            for face in [f for f in bm.faces if obj.data.materials[f.material_index].envi_nodes]:
                 mat = obj.data.materials[face.material_index]
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
@@ -525,7 +525,7 @@ def pregeo(op):
             en_obj = scene.objects.active
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
             selmesh('desel')
-            enomats = [enom for enom in en_obj.data.materials if enom]
+            enomats = [enom for enom in en_obj.data.materials if enom and enom.envi_nodes and enom.envi_nodes.nodes and not [n.use_custom_color for n in enom.envi_nodes.nodes]]
             obj.select, en_obj.select, en_obj.name, en_obj.data.name, en_obj.layers[1], en_obj.layers[0], scene.layers[0], scene.layers[1] = False, True, 'en_'+obj.name, en_obj.data.name, True, False, False, True
             mis = [f.material_index for f in en_obj.data.polygons]
 
@@ -533,12 +533,14 @@ def pregeo(op):
                 sm.material = bpy.data.materials['en_'+omats[s].name]
                 mat = sm.material
                 emnode = get_con_node(mat)
-                mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
-                              
-                if s in mis:
-                    mat.envi_export = True    
-                if emnode.envi_con_type in dcdict:
-                    mat.diffuse_color = dcdict[mct]                            
+                
+                if emnode:
+                    mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
+                                  
+                    if s in mis:
+                        mat.envi_export = True    
+                    if emnode.envi_con_type in dcdict:
+                        mat.diffuse_color = dcdict[mct]                            
 #                if mct not in ('None', 'Shading', 'Aperture', 'Window'):
 #                    print('mct', mct)
 #                retuval(mat)
@@ -549,8 +551,17 @@ def pregeo(op):
 #                for emnode in mat.envi_nodes.nodes:
 #                    if emnode.bl_idname == 'EnViCon':
 #                        break
+                
                 try:
-                    if poly.area < 0.001 or emnode.envi_con_type == 'None' or emnode.use_custom_color:
+                    if poly.area < 0.001:
+                        poly.select = True 
+                    if not mat.envi_nodes:
+                        op.report({'ERROR'}, 'The {} material has no node tree. This material has not been exported.'.format(mat.name))
+                        poly.select = True
+                    elif emnode.envi_con_type == 'None':
+                        poly.select = True
+                    elif any([n.use_custom_color for n in mat.envi_nodes.nodes]):
+                        op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
                         poly.select = True 
                 except:
                     poly.select = True

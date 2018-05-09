@@ -2174,6 +2174,9 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             paramvs +=(te.split(':')[0], te.split(':')[1])
                             
                         ep_text += epentry("MaterialProperty:PhaseChange", params, paramvs)
+                        pcmparams = ('Name', 'Algorithm', 'Construction Name')
+                        pcmparamsv = ('{} CondFD override'.format(matname), 'ConductionFiniteDifference', matname)
+                        ep_text += epentry('SurfaceProperty:HeatTransferAlgorithm:Construction', pcmparams, pcmparamsv)
 
                 elif presetmat in envi_mats.gas_dat:
                     params = ('Name', 'Resistance')
@@ -2398,8 +2401,11 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
         for i, te in enumerate(mtempemps.split()):
             params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
             paramvs +=(te.split(':')[0], te.split(':')[1])
-            
-        return epentry("MaterialProperty:PhaseChange", params, paramvs)
+        
+        pcmparams = ('Name', 'Algorithm', 'Construction Name')
+        pcmparamsv = ('{} CondFD override'.format(self['layer_name']), 'ConductionFiniteDifference', self['layer_name'])
+    
+        return epentry("MaterialProperty:PhaseChange", params, paramvs) + epentry('SurfaceProperty:HeatTransferAlgorithm:Construction', pcmparams, pcmparamsv)
         
     def ep_write(self, ln):
         for material in bpy.data.materials:
