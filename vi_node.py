@@ -1949,8 +1949,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     bl_icon = 'FORCE_WIND'
     
     def con_update(self, context):
-        self.id_data['envi_con_type'] = self.envi_con_type
-        if self.envi_con_makeup != "1":
+#        self.id_data['envi_con_type'] = self.envi_con_type
+        if self.envi_con_makeup != "1" or self.envi_con_type == 'Shading':
             for link in self.inputs['Outer layer'].links:
                 self.id_data.links.remove(link)
             self.inputs['Outer layer'].hide = True
@@ -1969,6 +1969,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         else:
             self.inputs['Frame'].hide = False
         self.update()
+        
+    def active_update(self, context):
+        if self.active:
+            for node in [n for n in self.id_data.nodes if n.bl_idname == 'EnViCon' and n != self]:
+                node.active = False
 
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
@@ -1987,7 +1992,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                             name = "", 
                                             description = "Pre-set construction of custom layers", 
                                             default = "0", update = con_update)
-
+    
     envi_simple_glazing = BoolProperty(name = "", description = "Flag to siginify whether to use a EP simple glazing representation", default = False)
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
@@ -1998,6 +2003,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
     
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
+    active = BoolProperty(name = "", description = "Active construction", default = False, update = active_update)
     
     # Frame parameters
     fclass = EnumProperty(items = [("0", "Simple", "Simple frame designation"),
@@ -2048,8 +2054,10 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 #        self.inputs[0].hide = True
 #        self.inputs[1].hide = True
         self.inputs['Frame'].hide = True
+#        self.active = True
         
     def draw_buttons(self, context, layout):
+        newrow(layout, 'Active:', self, 'active')
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
@@ -2133,7 +2141,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         self.valid()
     
     def valid(self):
-        if (self.envi_con_makeup == '1' and not self.inputs['Outer layer'].links) or (not self.inputs['Frame'].links and not self.inputs['Frame'].hide):
+        if (self.envi_con_makeup == '1' and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or (not self.inputs['Frame'].links and not self.inputs['Frame'].hide):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
@@ -2659,8 +2667,8 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
             
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
-        if self.outputs['Layer'].links:
-            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
+#        if self.outputs['Layer'].links:
+#            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
         
     def ep_write(self, ln):
@@ -2702,7 +2710,7 @@ class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
     bom = FloatProperty(name = "", description = "Bottom opening multiplier", min = 0.0, max = 1, default = 0.5)
     lom = FloatProperty(name = "", description = "Left-side opening multiplier", min = 0.0, max = 1, default = 0.5)
     rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
-    envi_con_type = StringProperty(name = "", description = "Name")
+#    envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
         self.outputs.new('envi_screen_sock', 'Outer Layer')
@@ -2735,8 +2743,8 @@ class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
     def update(self):
         socklink2(self.outputs['Outer Layer'], self.id_data)
 
-        if self.outputs['Outer Layer'].links:
-            self.envi_con_type = self.outputs['Outer Layer'].links[0].to_node.envi_con_type
+#        if self.outputs['Outer Layer'].links:
+#            self.envi_con_type = self.outputs['Outer Layer'].links[0].to_node.envi_con_type
         self.valid()
         
     def ep_write(self, ln):
@@ -2789,7 +2797,7 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     rom = FloatProperty(name = "", description = "Blind right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
     minsa = FloatProperty(name = "deg", description = "Minimum slat angle", min = 0.0, max = 90, default = 0.0)
     maxsa = FloatProperty(name = "deg", description = "Maximum slat angle", min = 0.0, max = 90, default = 0.0)
-    envi_con_type = StringProperty(name = "", description = "Name")
+#    envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
         self.outputs.new('envi_sl_sock', 'Layer')
@@ -2836,8 +2844,8 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
             
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
-        if self.outputs['Layer'].links:
-            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
+#        if self.outputs['Layer'].links:
+#            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
         
     def ep_write(self, ln):
@@ -2879,7 +2887,7 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     fie = FloatProperty(name = "", description = "Front Side Infrared Hemispherical Emissivity'", min = 0, max = 1, default = 0.7)
     bie = FloatProperty(name = "", description = "Back Side Infrared Hemispherical Emissivity", min = 0, max = 1, default = 0.7)
     diff = BoolProperty(name = "", description = "Diffusing", default = 0)
-    envi_con_type = StringProperty(name = "", description = "Name")
+#    envi_con_type = StringProperty(name = "", description = "Name")
     
     def init(self, context):
         self.inputs.new('envi_sc_sock', 'Control')
@@ -2913,8 +2921,8 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
 
 #        socklink2(self.outputs['Layer'], self.id_data)
 
-        if self.outputs['Layer'].links:
-            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
+#        if self.outputs['Layer'].links:
+#            self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
 
         self.valid()
     

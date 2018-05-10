@@ -11,10 +11,15 @@ def get_mat(node, ee):
 
 def get_con_node(mat):
     if mat.get('envi_nodes'):
-        for node in mat.envi_nodes.nodes:
-            if node.bl_idname == 'EnViCon':
-                break
-        return node
+        ecnodes = [n for n in mat.envi_nodes.nodes if n.bl_idname == 'EnViCon']
+        ecanodes = [n for n in ecnodes if n.active]
+        
+        if not ecanodes:
+            if not ecnodes[0].active:
+                ecnodes[0].active = True
+            return ecnodes[0]
+        else:
+            return ecanodes[0]
     else:
         return None
 

@@ -1341,6 +1341,8 @@ class MAT_EnVi_Node(bpy.types.Operator):
             bpy.ops.node.new_node_tree(type='EnViMatN', name = context.material.name) 
             context.material.envi_nodes = bpy.data.node_groups[context.material.name]
             context.material.envi_nodes.nodes.new('EnViCon')
+            context.material.envi_nodes['envi_con_type'] = 'None'
+            context.material.envi_nodes.nodes[0].active = True
         return {'FINISHED'}
     
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):

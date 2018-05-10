@@ -171,7 +171,7 @@ def getEnViMaterialSpaces():
 bpy.app.handlers.scene_update_post.append(select_nodetree)
 bpy.app.handlers.scene_update_post.append(mesh_index)
             
-epversion = "8-8-0"
+epversion = "8-9-0"
 envi_mats, envi_cons, conlayers = envi_materials(), envi_constructions(), 5
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 #matpath, epwpath  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/'

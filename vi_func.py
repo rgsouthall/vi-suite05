@@ -1677,7 +1677,7 @@ def viparams(op, scene):
     if not scene.get('enparams'):
         scene['enparams'] = {}
     scene['enparams']['idf_file'] = idf
-    scene['enparams']['epversion'] = '8.8'
+    scene['enparams']['epversion'] = '8.9'
     if not scene.get('flparams'):
         scene['flparams'] = {}
     scene['flparams']['offilebase'] = offb

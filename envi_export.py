@@ -233,7 +233,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             for face in [f for f in bm.faces if obj.data.materials[f.material_index].envi_nodes]:
                 mat = obj.data.materials[face.material_index]
                 for emnode in mat.envi_nodes.nodes:
-                    if emnode.bl_idname == 'EnViCon':
+                    if emnode.bl_idname == 'EnViCon' and emnode.active:
                         vcos = [v.co for v in face.verts]
                         (obc, obco, se, we) = boundpoly(obj, mat, face, enng)
                         
@@ -533,10 +533,15 @@ def pregeo(op):
                 sm.material = bpy.data.materials['en_'+omats[s].name]
                 mat = sm.material
                 emnode = get_con_node(mat)
+                print(emnode.envi_con_type)
                 
-                if emnode:
+                if not emnode:
+                    op.report({'ERROR'}, 'The {} material has no node tree. This material has not been exported.'.format(mat.name))
+                elif any([n.use_custom_color for n in mat.envi_nodes.nodes]):
+                    op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
+                else:
                     mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
-                                  
+             
                     if s in mis:
                         mat.envi_export = True    
                     if emnode.envi_con_type in dcdict:
@@ -556,12 +561,11 @@ def pregeo(op):
                     if poly.area < 0.001:
                         poly.select = True 
                     if not mat.envi_nodes:
-                        op.report({'ERROR'}, 'The {} material has no node tree. This material has not been exported.'.format(mat.name))
+                        
                         poly.select = True
                     elif emnode.envi_con_type == 'None':
                         poly.select = True
                     elif any([n.use_custom_color for n in mat.envi_nodes.nodes]):
-                        op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
                         poly.select = True 
                 except:
                     poly.select = True
@@ -640,6 +644,7 @@ def pregeo(op):
             scene.objects.active = obj
         
         elif obj.envi_type == '1':
+            emnode = get_con_node(mat)
             selobj(scene, obj)
             bpy.ops.object.duplicate()
             en_obj = scene.objects.active  
@@ -650,6 +655,8 @@ def pregeo(op):
             
             if 'en_shading' not in [m.name for m in bpy.data.materials]:
                 bpy.data.materials.new('en_shading')
+                bpy.ops.material.envi_node()
+                bpy.data.materials['en_shading'].envi_nodes.nodes[0].envi_con_type = 'Shading' 
                         
             if not en_obj.material_slots:
                 bpy.ops.object.material_slot_add()                
@@ -658,7 +665,7 @@ def pregeo(op):
                     bpy.ops.object.material_slot_remove()
 
             shadmat = bpy.data.materials['en_shading']
-            get_con_node(shadmat).envi_con_type = 'Shading'
+            shadmat.envi_nodes['envi_con_type']= 'Shading'
             en_obj.material_slots[0].material = shadmat
             en_obj.material_slots[0].material.diffuse_color = (1, 0, 0)
             en_obj.layers[1], en_obj.layers[0] = True, False
@@ -666,11 +673,14 @@ def pregeo(op):
 def writeafn(exp_op, en_idf, enng):
     if [enode for enode in enng.nodes if enode.bl_idname == 'AFNCon'] and not [enode for enode in enng.nodes if enode.bl_idname == 'EnViZone']:
         [enng.nodes.remove(enode) for enode in enng.nodes if enode.bl_idname == 'AFNCon']
+
     for connode in [enode for enode in enng.nodes if enode.bl_idname == 'AFNCon']:
          en_idf.write(connode.epwrite(exp_op, enng))        
+
     for crnode in [enode for enode in enng.nodes if enode.bl_idname == 'EnViCrRef']:
         en_idf.write(crnode.epwrite())
         enng['enviparams']['crref'] = 1
+
     extnodes = [enode for enode in enng.nodes if enode.bl_idname == 'EnViExt']
     zonenodes = [enode for enode in enng.nodes if enode.bl_idname == 'EnViZone']
     ssafnodes = [enode for enode in enng.nodes if enode.bl_idname == 'EnViSSFlow']

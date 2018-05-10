@@ -253,206 +253,206 @@ class VIMatPanel(bpy.types.Panel):
             if not context.material.envi_nodes:# in bpy.data.node_groups:
                 row = layout.row()
                 row.operator("material.envi_node", text = "Create EnVi Nodes")
-            newrow(layout, "EnVi Construction Type:", cm, "envi_con_type")
-            row = layout.row()
-            row.label('U-value (W/m^2.K): {}'.format(cm.envi_material_uv))
-            row = layout.row()
-
-            if cm.envi_con_type not in ("Aperture", "Shading", "None"):
-                newrow(layout, 'Intrazone Boundary', cm, "envi_boundary")
-                newrow(layout, 'Airflow surface:', cm, "envi_afsurface")
-
-                if not cm.envi_boundary and not cm.envi_afsurface:
-                    newrow(layout, 'Thermal mass:', cm, "envi_thermalmass")
-                    
-                if cm.envi_con_type == 'Window':
-                    newrow(layout, 'Simple glazing:', cm, "envi_simple_glazing")
-                    
-                if cm.envi_con_type == 'Window' and cm.envi_simple_glazing:
-                    newrow(layout, "U-Value:", cm, "envi_sg_uv")
-                    newrow(layout, "SHGC:", cm, "envi_sg_shgc")
-                    newrow(layout, "Visible trans.:", cm, "envi_sg_vt")
-                else:
-
-                    newrow(layout, "Construction Make-up:", cm, "envi_con_makeup")
+                newrow(layout, "EnVi Construction Type:", cm, "envi_con_type")
+                row = layout.row()
+                row.label('U-value (W/m^2.K): {}'.format(cm.envi_material_uv))
+                row = layout.row()
     
-                    if cm.envi_con_makeup == '1':
-                        newrow(layout, "Outside layer:", cm, "envi_layero")
-                        row = layout.row()
+                if cm.envi_con_type not in ("Aperture", "Shading", "None"):
+                    newrow(layout, 'Intrazone Boundary', cm, "envi_boundary")
+                    newrow(layout, 'Airflow surface:', cm, "envi_afsurface")
     
-                        if cm.envi_layero == '1':
-                            newrow(layout, "Outer layer type:", cm, "envi_type_lo")
-                            newrow(layout, "Outer layer material:", cm, "envi_material_lo")
-                            newrow(layout, "Outer layer thickness:", cm, "envi_export_lo_thi")
-                                
-                        elif cm.envi_layero == '2' and cm.envi_con_type != 'Window':
-                            for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
-                                if end:
-                                    row.prop(cm, '{}{}'.format("envi_export_lo_", end))
-                                else:
-                                    row = layout.row()
-                            if cm.envi_type_lo == '8':
-                                newrow(layout, "TCTC:", cm, "envi_tctc_lo")
-                                newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_lo")
+                    if not cm.envi_boundary and not cm.envi_afsurface:
+                        newrow(layout, 'Thermal mass:', cm, "envi_thermalmass")
+                        
+                    if cm.envi_con_type == 'Window':
+                        newrow(layout, 'Simple glazing:', cm, "envi_simple_glazing")
+                        
+                    if cm.envi_con_type == 'Window' and cm.envi_simple_glazing:
+                        newrow(layout, "U-Value:", cm, "envi_sg_uv")
+                        newrow(layout, "SHGC:", cm, "envi_sg_shgc")
+                        newrow(layout, "Visible trans.:", cm, "envi_sg_vt")
+                    else:
+    
+                        newrow(layout, "Construction Make-up:", cm, "envi_con_makeup")
         
-                        elif cm.envi_layero == '2' and cm.envi_con_type == 'Window':
-                            newrow(layout, "Name:", cm, "envi_export_lo_name")
-                            newrow(layout, "Optical data type:", cm, "envi_export_lo_odt")
-                            newrow(layout, "Construction Make-up:", cm, "envi_export_lo_sds")
-                            newrow(layout, "Translucent:", cm, "envi_export_lo_sdiff")
-    
-                            for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
-                                if end:
-                                    row.prop(cm, '{}{}'.format("envi_export_lo_", end))
-                                else:
-                                    row = layout.row()
+                        if cm.envi_con_makeup == '1':
+                            newrow(layout, "Outside layer:", cm, "envi_layero")
+                            row = layout.row()
         
-                        if cm.envi_layero != '0':
-                            row = layout.row()
-                            row.label("----------------")
-                            newrow(layout, "2nd layer:", cm, "envi_layer1")
-                            row = layout.row()
-    
-                            if cm.envi_layer1 == '1':
-                                newrow(layout, "Second layer type:", cm, "envi_type_l1")
-                                newrow(layout, "Second layer material:", cm, "envi_material_l1")
-                                newrow(layout, "Second layer thickness:", cm, "envi_export_l1_thi")
-                            
-                            elif cm.envi_layer1 == '2' and cm.envi_con_type != 'Window':
+                            if cm.envi_layero == '1':
+                                newrow(layout, "Outer layer type:", cm, "envi_type_lo")
+                                newrow(layout, "Outer layer material:", cm, "envi_material_lo")
+                                newrow(layout, "Outer layer thickness:", cm, "envi_export_lo_thi")
+                                    
+                            elif cm.envi_layero == '2' and cm.envi_con_type != 'Window':
                                 for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
                                     if end:
-                                        row.prop(cm, '{}{}'.format("envi_export_l1_", end))
+                                        row.prop(cm, '{}{}'.format("envi_export_lo_", end))
                                     else:
                                         row = layout.row()
-                                
-                                if cm.envi_type_l1 == '8':
-                                    newrow(layout, "TCTC:", cm, "envi_tctc_l1")
-                                    newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l1")
+                                if cm.envi_type_lo == '8':
+                                    newrow(layout, "TCTC:", cm, "envi_tctc_lo")
+                                    newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_lo")
+            
+                            elif cm.envi_layero == '2' and cm.envi_con_type == 'Window':
+                                newrow(layout, "Name:", cm, "envi_export_lo_name")
+                                newrow(layout, "Optical data type:", cm, "envi_export_lo_odt")
+                                newrow(layout, "Construction Make-up:", cm, "envi_export_lo_sds")
+                                newrow(layout, "Translucent:", cm, "envi_export_lo_sdiff")
         
-                            elif cm.envi_layer1 == '2' and cm.envi_con_type == 'Window':
-                                newrow(layout, "Name:", cm, "envi_export_l1_name")
-                                newrow(layout, "Gas Type:", cm, "envi_export_wgaslist_l1")
-                                newrow(layout, "Gas thickness:", cm, "envi_export_l1_thi")
-        
-                            if cm.envi_layer1 != '0':
+                                for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
+                                    if end:
+                                        row.prop(cm, '{}{}'.format("envi_export_lo_", end))
+                                    else:
+                                        row = layout.row()
+            
+                            if cm.envi_layero != '0':
                                 row = layout.row()
                                 row.label("----------------")
+                                newrow(layout, "2nd layer:", cm, "envi_layer1")
                                 row = layout.row()
-                                row.label("3rd layer:")
-                                row.prop(cm, "envi_layer2")
-                                if cm.envi_layer2 == '1':
-                                    newrow(layout, "Third layer type:", cm, "envi_type_l2")
-                                    newrow(layout, "Third layer material:", cm, "envi_material_l2")
-                                    newrow(layout, "Third layer thickness:", cm, "envi_export_l2_thi")
         
-                                elif cm.envi_layer2 == '2'and cm.envi_con_type != 'Window':
+                                if cm.envi_layer1 == '1':
+                                    newrow(layout, "Second layer type:", cm, "envi_type_l1")
+                                    newrow(layout, "Second layer material:", cm, "envi_material_l1")
+                                    newrow(layout, "Second layer thickness:", cm, "envi_export_l1_thi")
+                                
+                                elif cm.envi_layer1 == '2' and cm.envi_con_type != 'Window':
                                     for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
                                         if end:
-                                            row.prop(cm, '{}{}'.format("envi_export_l2_", end))
+                                            row.prop(cm, '{}{}'.format("envi_export_l1_", end))
                                         else:
                                             row = layout.row()
-                                            
-                                    if cm.envi_type_l2 == '8':
-                                        newrow(layout, "TCTC:", cm, "envi_tctc_l2")
-                                        newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l2")
-        
-                                if cm.envi_layer2 == '2' and cm.envi_con_type == 'Window':
-                                    newrow(layout, "Name:", cm, "envi_export_l2_name")
-                                    newrow(layout, "Optical data type:", cm, "envi_export_l2_odt")
-                                    newrow(layout, "Construction Make-up:", cm, "envi_export_l2_sds")
-                                    newrow(layout, "Translucent:", cm, "envi_export_l2_sdiff")
-                                    for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
-                                        if end:
-                                            row.prop(cm, '{}{}'.format("envi_export_l2_", end))
-                                        else:
-                                            row = layout.row()
-        
-                                if cm.envi_layer2 != '0':
+                                    
+                                    if cm.envi_type_l1 == '8':
+                                        newrow(layout, "TCTC:", cm, "envi_tctc_l1")
+                                        newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l1")
+            
+                                elif cm.envi_layer1 == '2' and cm.envi_con_type == 'Window':
+                                    newrow(layout, "Name:", cm, "envi_export_l1_name")
+                                    newrow(layout, "Gas Type:", cm, "envi_export_wgaslist_l1")
+                                    newrow(layout, "Gas thickness:", cm, "envi_export_l1_thi")
+            
+                                if cm.envi_layer1 != '0':
                                     row = layout.row()
                                     row.label("----------------")
                                     row = layout.row()
-                                    row.label("4th layer:")
-                                    row.prop(cm, "envi_layer3")
-                                    row = layout.row()
-    
-                                    if cm.envi_layer3 == '1':
-                                        newrow(layout, "Fourth layer type:", cm, "envi_type_l3")
-                                        newrow(layout, "Fourth layer material:", cm, "envi_material_l3")
-                                        newrow(layout, "Fourth layer thickness:", cm, "envi_export_l3_thi")
-        
-                                    elif cm.envi_layer3 == '2'and cm.envi_con_type != 'Window':
+                                    row.label("3rd layer:")
+                                    row.prop(cm, "envi_layer2")
+                                    if cm.envi_layer2 == '1':
+                                        newrow(layout, "Third layer type:", cm, "envi_type_l2")
+                                        newrow(layout, "Third layer material:", cm, "envi_material_l2")
+                                        newrow(layout, "Third layer thickness:", cm, "envi_export_l2_thi")
+            
+                                    elif cm.envi_layer2 == '2'and cm.envi_con_type != 'Window':
                                         for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
                                             if end:
-                                                row.prop(cm, '{}{}'.format("envi_export_l3_", end))
+                                                row.prop(cm, '{}{}'.format("envi_export_l2_", end))
                                             else:
                                                 row = layout.row()
-                                        
-                                        if cm.envi_type_l3 == '8':
-                                            newrow(layout, "TCTC:", cm, "envi_tctc_l3")
-                                            newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l3")
-        
-                                    elif cm.envi_layer3 == '2' and cm.envi_con_type == 'Window':
-                                        newrow(layout, "Name:", cm, "envi_export_l3_name")
-                                        row = layout.row()
-                                        row.label("Gas Type:")
-                                        row.prop(cm, "envi_export_wgaslist_l3")
-                                        newrow(layout, "3rd layer thickness:", cm, "envi_export_l3_thi")
-        
-                                    if cm.envi_layer3 != '0':
+                                                
+                                        if cm.envi_type_l2 == '8':
+                                            newrow(layout, "TCTC:", cm, "envi_tctc_l2")
+                                            newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l2")
+            
+                                    if cm.envi_layer2 == '2' and cm.envi_con_type == 'Window':
+                                        newrow(layout, "Name:", cm, "envi_export_l2_name")
+                                        newrow(layout, "Optical data type:", cm, "envi_export_l2_odt")
+                                        newrow(layout, "Construction Make-up:", cm, "envi_export_l2_sds")
+                                        newrow(layout, "Translucent:", cm, "envi_export_l2_sdiff")
+                                        for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
+                                            if end:
+                                                row.prop(cm, '{}{}'.format("envi_export_l2_", end))
+                                            else:
+                                                row = layout.row()
+            
+                                    if cm.envi_layer2 != '0':
                                         row = layout.row()
                                         row.label("----------------")
                                         row = layout.row()
-                                        row.label("5th layer:")
-                                        row.prop(cm, "envi_layer4")
+                                        row.label("4th layer:")
+                                        row.prop(cm, "envi_layer3")
                                         row = layout.row()
-    
-                                        if cm.envi_layer4 == '1':
-                                            newrow(layout, "Fifth layer type:", cm, "envi_type_l4")
-                                            newrow(layout, "Fifth layer material:", cm, "envi_material_l4")
-                                            newrow(layout, "Fifth layer thickness:", cm, "envi_export_l4_thi")
         
-                                        elif cm.envi_layer4 == '2' and cm.envi_con_type != 'Window':
+                                        if cm.envi_layer3 == '1':
+                                            newrow(layout, "Fourth layer type:", cm, "envi_type_l3")
+                                            newrow(layout, "Fourth layer material:", cm, "envi_material_l3")
+                                            newrow(layout, "Fourth layer thickness:", cm, "envi_export_l3_thi")
+            
+                                        elif cm.envi_layer3 == '2'and cm.envi_con_type != 'Window':
                                             for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
                                                 if end:
-                                                    row.prop(cm, '{}{}'.format("envi_export_l4_", end))
+                                                    row.prop(cm, '{}{}'.format("envi_export_l3_", end))
                                                 else:
                                                     row = layout.row()
                                             
-                                            if cm.envi_type_l4 == '8':
-                                                newrow(layout, "TCTC:", cm, "envi_tctc_l4")
-                                                newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l4")
+                                            if cm.envi_type_l3 == '8':
+                                                newrow(layout, "TCTC:", cm, "envi_tctc_l3")
+                                                newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l3")
+            
+                                        elif cm.envi_layer3 == '2' and cm.envi_con_type == 'Window':
+                                            newrow(layout, "Name:", cm, "envi_export_l3_name")
+                                            row = layout.row()
+                                            row.label("Gas Type:")
+                                            row.prop(cm, "envi_export_wgaslist_l3")
+                                            newrow(layout, "3rd layer thickness:", cm, "envi_export_l3_thi")
+            
+                                        if cm.envi_layer3 != '0':
+                                            row = layout.row()
+                                            row.label("----------------")
+                                            row = layout.row()
+                                            row.label("5th layer:")
+                                            row.prop(cm, "envi_layer4")
+                                            row = layout.row()
         
-                                        elif cm.envi_layer4 == '2' and cm.envi_con_type == 'Window':
-                                            newrow(layout, "Name:", cm, "envi_export_l4_name")
-                                            newrow(layout, "Optical data type:", cm, "envi_export_l4_odt")
-                                            newrow(layout, "Construction Make-up:", cm, "envi_export_l4_sds")
-                                            newrow(layout, "Translucent:", cm, "envi_export_l4_sdiff")
-                                            for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
-                                                if end:
-                                                    row.prop(cm, '{}{}'.format("envi_export_l4_", end))
-                                                else:
-                                                    row = layout.row()
-    
-                    elif cm.envi_con_makeup == '0':
-                        thicklist = ("envi_export_lo_thi", "envi_export_l1_thi", "envi_export_l2_thi", "envi_export_l3_thi", "envi_export_l4_thi")
-                        row = layout.row()                
-                        row.prop(cm, 'envi_con_list')
-    
-                        for l, layername in enumerate(envi_cons.propdict[cm.envi_con_type][cm.envi_con_list]):    
-                            row = layout.row()
-                            row.label(text = layername)
-                            if layername in envi_mats.wgas_dat:
-                                row.prop(cm, thicklist[l])
-                                row.label(text = "default: 14mm")
-                            elif layername in envi_mats.gas_dat:
-                                row.prop(cm, thicklist[l])
-                                row.label(text = "default: 20-50mm")
-                            elif layername in envi_mats.glass_dat:
-                                row.prop(cm, thicklist[l])
-                                row.label(text = "default: {}mm".format(float(envi_mats.matdat[layername][3])*1000))
-                            else:
-                                row.prop(cm, thicklist[l])
-                                row.label(text = "default: {}mm".format(envi_mats.matdat[layername][7]))
+                                            if cm.envi_layer4 == '1':
+                                                newrow(layout, "Fifth layer type:", cm, "envi_type_l4")
+                                                newrow(layout, "Fifth layer material:", cm, "envi_material_l4")
+                                                newrow(layout, "Fifth layer thickness:", cm, "envi_export_l4_thi")
+            
+                                            elif cm.envi_layer4 == '2' and cm.envi_con_type != 'Window':
+                                                for end in ('name', 0, 'thi', 'tc', 0, 'rho', 'shc', 0, 'tab', 'sab', 0, 'vab', 'rough'):
+                                                    if end:
+                                                        row.prop(cm, '{}{}'.format("envi_export_l4_", end))
+                                                    else:
+                                                        row = layout.row()
+                                                
+                                                if cm.envi_type_l4 == '8':
+                                                    newrow(layout, "TCTC:", cm, "envi_tctc_l4")
+                                                    newrow(layout, "Temps:Enthalpies:", cm, "envi_tempsemps_l4")
+            
+                                            elif cm.envi_layer4 == '2' and cm.envi_con_type == 'Window':
+                                                newrow(layout, "Name:", cm, "envi_export_l4_name")
+                                                newrow(layout, "Optical data type:", cm, "envi_export_l4_odt")
+                                                newrow(layout, "Construction Make-up:", cm, "envi_export_l4_sds")
+                                                newrow(layout, "Translucent:", cm, "envi_export_l4_sdiff")
+                                                for end in (0, 'thi', 'tc', 0, 'stn', 'fsn', 'bsn', 0, 'vtn', 'fvrn', 'bvrn', 0, 'itn', 'fie', 'bie'):
+                                                    if end:
+                                                        row.prop(cm, '{}{}'.format("envi_export_l4_", end))
+                                                    else:
+                                                        row = layout.row()
+        
+                        elif cm.envi_con_makeup == '0':
+                            thicklist = ("envi_export_lo_thi", "envi_export_l1_thi", "envi_export_l2_thi", "envi_export_l3_thi", "envi_export_l4_thi")
+                            row = layout.row()                
+                            row.prop(cm, 'envi_con_list')
+        
+                            for l, layername in enumerate(envi_cons.propdict[cm.envi_con_type][cm.envi_con_list]):    
+                                row = layout.row()
+                                row.label(text = layername)
+                                if layername in envi_mats.wgas_dat:
+                                    row.prop(cm, thicklist[l])
+                                    row.label(text = "default: 14mm")
+                                elif layername in envi_mats.gas_dat:
+                                    row.prop(cm, thicklist[l])
+                                    row.label(text = "default: 20-50mm")
+                                elif layername in envi_mats.glass_dat:
+                                    row.prop(cm, thicklist[l])
+                                    row.label(text = "default: {}mm".format(float(envi_mats.matdat[layername][3])*1000))
+                                else:
+                                    row.prop(cm, thicklist[l])
+                                    row.label(text = "default: {}mm".format(envi_mats.matdat[layername][7]))
         
         elif cm.mattype == '1':  
             if scene.get('viparams') and scene['viparams'].get('viexpcontext') and scene['viparams']['viexpcontext'] == 'LiVi Compliance':
