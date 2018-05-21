@@ -396,82 +396,83 @@ def register():
 # EnVi material definitions
     Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_type = sprop("", "EnVi Material type", 64, "None")
-    Material.envi_shading = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
-    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
-                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
-    Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
-    Material.envi_sg_uv = fprop("", "Window U-Value", 0, 10, 2.4)
-    Material.envi_sg_shgc = fprop("", "Window Solar Heat Gain Coefficient", 0, 1, 0.7)
-    Material.envi_sg_vt = fprop("", "Window Visible Transmittance", 0, 1, 0.8)
+    
+#    Material.envi_shading = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
+#    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
+#                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
+#    Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
+#    Material.envi_sg_uv = fprop("", "Window U-Value", 0, 10, 2.4)
+#    Material.envi_sg_shgc = fprop("", "Window Solar Heat Gain Coefficient", 0, 1, 0.7)
+#    Material.envi_sg_vt = fprop("", "Window Visible Transmittance", 0, 1, 0.8)
     Material.envi_boundary = bprop("", "Flag to siginify whether the material represents a zone boundary", False)
-    Material.envi_afsurface = bprop("", "Flag to siginify whether the material represents an airflow surface", False)
-    Material.envi_thermalmass = bprop("", "Flag to siginify whether the material represents thermal mass", False)
-    Material.envi_aperture = eprop([("0", "External", "External facade airflow component", 0), ("1", "Internal", "Zone boundary airflow component", 1),], "", "Position of the airflow component", "0")
-    Material.envi_con_makeup = eprop([("0", "Pre-set", "Construction pre-set"),("1", "Layers", "Custom layers"),("2", "Dummy", "Adiabatic")], "", "Pre-set construction of custom layers", "0")
-    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")
-    Material.envi_type_lo = bpy.props.EnumProperty(items = envi_layerotype, name = "", description = "Outer layer material type")
-    Material.envi_type_l1 = bpy.props.EnumProperty(items = envi_layer1type, name = "", description = "Second layer material type")
-    Material.envi_type_l2 = bpy.props.EnumProperty(items = envi_layer2type, name = "", description = "Third layer material type")
-    Material.envi_type_l3 = bpy.props.EnumProperty(items = envi_layer3type, name = "", description = "Fourth layer material type")
-    Material.envi_type_l4 = bpy.props.EnumProperty(items = envi_layer4type, name = "", description = "Fifth layer material type")
-    (Material.envi_layer1, Material.envi_layer2, Material.envi_layer3, Material.envi_layer4) = \
-    [eprop([("0", "None", "Not present"),("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the next layer", "0")] * (conlayers - 1)
+#    Material.envi_afsurface = bprop("", "Flag to siginify whether the material represents an airflow surface", False)
+#    Material.envi_thermalmass = bprop("", "Flag to siginify whether the material represents thermal mass", False)
+#    Material.envi_aperture = eprop([("0", "External", "External facade airflow component", 0), ("1", "Internal", "Zone boundary airflow component", 1),], "", "Position of the airflow component", "0")
+#    Material.envi_con_makeup = eprop([("0", "Pre-set", "Construction pre-set"),("1", "Layers", "Custom layers"),("2", "Dummy", "Adiabatic")], "", "Pre-set construction of custom layers", "0")
+#    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")
+#    Material.envi_type_lo = bpy.props.EnumProperty(items = envi_layerotype, name = "", description = "Outer layer material type")
+#    Material.envi_type_l1 = bpy.props.EnumProperty(items = envi_layer1type, name = "", description = "Second layer material type")
+#    Material.envi_type_l2 = bpy.props.EnumProperty(items = envi_layer2type, name = "", description = "Third layer material type")
+#    Material.envi_type_l3 = bpy.props.EnumProperty(items = envi_layer3type, name = "", description = "Fourth layer material type")
+#    Material.envi_type_l4 = bpy.props.EnumProperty(items = envi_layer4type, name = "", description = "Fifth layer material type")
+#    (Material.envi_layer1, Material.envi_layer2, Material.envi_layer3, Material.envi_layer4) = \
+#    [eprop([("0", "None", "Not present"),("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the next layer", "0")] * (conlayers - 1)
     Material.envi_export = bprop("Material Export", "Flag to tell EnVi to export this material", False)
-    Material.envi_material_lo = bpy.props.EnumProperty(items = envi_layero, name = "", description = "Outer layer material")
-    Material.envi_material_l1 = bpy.props.EnumProperty(items = envi_layer1, name = "", description = "Second layer material")
-    Material.envi_material_l2 = bpy.props.EnumProperty(items = envi_layer2, name = "", description = "Third layer material")
-    Material.envi_material_l3 = bpy.props.EnumProperty(items = envi_layer3, name = "", description = "Fourth layer material")
-    Material.envi_material_l4 = bpy.props.EnumProperty(items = envi_layer4, name = "", description = "Fifth layer material")
-    Material.envi_con_list = bpy.props.EnumProperty(items = envi_con_list, name = "", description = "Database construction")
-    Material.envi_material_uv = sprop("", "Material U-value (non-film)", 64, "N/A")
-    (Material.envi_export_lo_name, Material.envi_export_l1_name, Material.envi_export_l2_name, Material.envi_export_l3_name, Material.envi_export_l4_name) = \
-    [sprop("", "Layer name", 0, "")] * conlayers    
-    (Material.envi_export_lo_tc, Material.envi_export_l1_tc, Material.envi_export_l2_tc, Material.envi_export_l3_tc, Material.envi_export_l4_tc) = \
-    [fprop("Conductivity", "Thermal Conductivity", 0, 10, 0.5)] * conlayers
-    (Material.envi_export_lo_rough, Material.envi_export_l1_rough, Material.envi_export_l2_rough, Material.envi_export_l3_rough, Material.envi_export_l4_rough) = \
-    [eprop([("VeryRough", "VeryRough", "Roughness"), ("Rough", "Rough", "Roughness"), ("MediumRough", "MediumRough", "Roughness"),
-                                                        ("MediumSmooth", "MediumSmooth", "Roughness"), ("Smooth", "Smooth", "Roughness"), ("VerySmooth", "VerySmooth", "Roughness")],
-                                                        "Material surface roughness", "specify the material rughness for convection calculations", "Rough")] * conlayers
-
-    (Material.envi_export_lo_rho, Material.envi_export_l1_rho, Material.envi_export_l2_rho, Material.envi_export_l3_rho, Material.envi_export_l4_rho) = \
-    [fprop("Density", "Density (kg/m3)", 0, 10000, 1000)] * conlayers
-    (Material.envi_export_lo_shc, Material.envi_export_l1_shc, Material.envi_export_l2_shc, Material.envi_export_l3_shc, Material.envi_export_l4_shc) = \
-    [fprop("SHC", "Specific Heat Capacity (J/kgK)", 0, 10000, 1000)] * conlayers
-    (Material.envi_export_lo_thi, Material.envi_export_l1_thi, Material.envi_export_l2_thi, Material.envi_export_l3_thi, Material.envi_export_l4_thi) = \
-    [fprop("mm", "Thickness (mm)", 1, 10000, 100)] * conlayers
-    (Material.envi_export_lo_tab, Material.envi_export_l1_tab, Material.envi_export_l2_tab, Material.envi_export_l3_tab, Material.envi_export_l4_tab) = \
-    [fprop("TA", "Thermal Absorptance", 0.001, 1, 0.8)] * conlayers
-    (Material.envi_export_lo_sab, Material.envi_export_l1_sab, Material.envi_export_l2_sab, Material.envi_export_l3_sab, Material.envi_export_l4_sab) = \
-    [fprop("SA", "Solar Absorptance", 0.001, 1, 0.6)] * conlayers
-    (Material.envi_export_lo_vab, Material.envi_export_l1_vab, Material.envi_export_l2_vab, Material.envi_export_l3_vab, Material.envi_export_l4_vab) = \
-    [fprop("VA", "Visible Absorptance", 0.001, 1, 0.6)] * conlayers
-    (Material.envi_export_lo_odt, Material.envi_export_l1_odt, Material.envi_export_l2_odt, Material.envi_export_l3_odt, Material.envi_export_l4_odt) = \
-    [eprop([("SpectralAverage", "SpectralAverage", "Optical Data Type")], "", "Optical Data Type", "SpectralAverage")] * conlayers
-    (Material.envi_export_lo_sds, Material.envi_export_l1_sds, Material.envi_export_l2_sds, Material.envi_export_l3_sds, Material.envi_export_l4_sds) = \
-    [eprop([("0", "", "Window Glass Spectral Data Set Name")], "", "Window Glass Spectral Data Set Name", "0")] * conlayers
-    (Material.envi_export_lo_stn, Material.envi_export_l1_stn, Material.envi_export_l2_stn, Material.envi_export_l3_stn, Material.envi_export_l4_stn) = \
-    [fprop("STN", "Solar Transmittance at Normal Incidence", 0, 1, 0.9)] * conlayers
-    (Material.envi_export_lo_fsn, Material.envi_export_l1_fsn, Material.envi_export_l2_fsn, Material.envi_export_l3_fsn, Material.envi_export_l4_fsn) = \
-    [fprop("FSN", "Front Side Solar Reflectance at Normal Incidence", 0, 1, 0.075)] * conlayers
-    (Material.envi_export_lo_bsn, Material.envi_export_l1_bsn, Material.envi_export_l2_bsn, Material.envi_export_l3_bsn, Material.envi_export_l4_bsn) = \
-    [fprop("BSN", "Back Side Solar Reflectance at Normal Incidence", 0, 1, 0.075)] * conlayers
-    (Material.envi_export_lo_vtn, Material.envi_export_l1_vtn, Material.envi_export_l2_vtn, Material.envi_export_l3_vtn, Material.envi_export_l4_vtn) = \
-    [fprop("VTN", "Visible Transmittance at Normal Incidence", 0, 1, 0.9)] * conlayers
-    (Material.envi_export_lo_fvrn, Material.envi_export_l1_fvrn, Material.envi_export_l2_fvrn, Material.envi_export_l3_fvrn, Material.envi_export_l4_fvrn) = \
-    [fprop("FVRN", "Front Side Visible Reflectance at Normal Incidence", 0, 1, 0.08)] * conlayers
-    (Material.envi_export_lo_bvrn, Material.envi_export_l1_bvrn, Material.envi_export_l2_bvrn, Material.envi_export_l3_bvrn, Material.envi_export_l4_bvrn) = \
-    [fprop("BVRN", "Back Side Visible Reflectance at Normal Incidence", 0, 1, 0.08)] * conlayers
-    (Material.envi_export_lo_itn, Material.envi_export_l1_itn, Material.envi_export_l2_itn, Material.envi_export_l3_itn, Material.envi_export_l4_itn) = \
-    [fprop("ITN", "Infrared Transmittance at Normal Incidence", 0, 1, 0.0)] * conlayers
-    (Material.envi_export_lo_fie, Material.envi_export_l1_fie, Material.envi_export_l2_fie, Material.envi_export_l3_fie, Material.envi_export_l4_fie) = \
-    [fprop("FIE", "Front Side Infrared Hemispherical Emissivity", 0, 1, 0.84)] * conlayers
-    (Material.envi_export_lo_bie, Material.envi_export_l1_bie, Material.envi_export_l2_bie, Material.envi_export_l3_bie, Material.envi_export_l4_bie) = \
-    [fprop("BIE", "Back Side Infrared Hemispherical Emissivity", 0, 1, 0.84)] * conlayers
-    (Material.envi_export_lo_sdiff, Material.envi_export_l1_sdiff, Material.envi_export_l2_sdiff, Material.envi_export_l3_sdiff, Material.envi_export_l4_sdiff) = \
-    [bprop("", "", 0)] * conlayers
-    Material.envi_shad_att = bprop("Attached", "Flag to specify shading attached to the building",False)
-    (Material.envi_tctc_lo, Material.envi_tctc_l1, Material.envi_tctc_l2, Material.envi_tctc_l3, Material.envi_tctc_l4) = [fprop("", "Temperature coefficient for thermal conductivity", 0, 50, 0.0)] * conlayers
-    (Material.envi_tempsemps_lo, Material.envi_tempsemps_l1, Material.envi_tempsemps_l2, Material.envi_tempsemps_l3, Material.envi_tempsemps_l4) = [sprop("", "Temperatures/Enthalpy pairs", 1024, "")] * conlayers
+#    Material.envi_material_lo = bpy.props.EnumProperty(items = envi_layero, name = "", description = "Outer layer material")
+#    Material.envi_material_l1 = bpy.props.EnumProperty(items = envi_layer1, name = "", description = "Second layer material")
+#    Material.envi_material_l2 = bpy.props.EnumProperty(items = envi_layer2, name = "", description = "Third layer material")
+#    Material.envi_material_l3 = bpy.props.EnumProperty(items = envi_layer3, name = "", description = "Fourth layer material")
+#    Material.envi_material_l4 = bpy.props.EnumProperty(items = envi_layer4, name = "", description = "Fifth layer material")
+#    Material.envi_con_list = bpy.props.EnumProperty(items = envi_con_list, name = "", description = "Database construction")
+#    Material.envi_material_uv = sprop("", "Material U-value (non-film)", 64, "N/A")
+#    (Material.envi_export_lo_name, Material.envi_export_l1_name, Material.envi_export_l2_name, Material.envi_export_l3_name, Material.envi_export_l4_name) = \
+#    [sprop("", "Layer name", 0, "")] * conlayers    
+#    (Material.envi_export_lo_tc, Material.envi_export_l1_tc, Material.envi_export_l2_tc, Material.envi_export_l3_tc, Material.envi_export_l4_tc) = \
+#    [fprop("Conductivity", "Thermal Conductivity", 0, 10, 0.5)] * conlayers
+#    (Material.envi_export_lo_rough, Material.envi_export_l1_rough, Material.envi_export_l2_rough, Material.envi_export_l3_rough, Material.envi_export_l4_rough) = \
+#    [eprop([("VeryRough", "VeryRough", "Roughness"), ("Rough", "Rough", "Roughness"), ("MediumRough", "MediumRough", "Roughness"),
+#                                                        ("MediumSmooth", "MediumSmooth", "Roughness"), ("Smooth", "Smooth", "Roughness"), ("VerySmooth", "VerySmooth", "Roughness")],
+#                                                        "Material surface roughness", "specify the material rughness for convection calculations", "Rough")] * conlayers
+#
+#    (Material.envi_export_lo_rho, Material.envi_export_l1_rho, Material.envi_export_l2_rho, Material.envi_export_l3_rho, Material.envi_export_l4_rho) = \
+#    [fprop("Density", "Density (kg/m3)", 0, 10000, 1000)] * conlayers
+#    (Material.envi_export_lo_shc, Material.envi_export_l1_shc, Material.envi_export_l2_shc, Material.envi_export_l3_shc, Material.envi_export_l4_shc) = \
+#    [fprop("SHC", "Specific Heat Capacity (J/kgK)", 0, 10000, 1000)] * conlayers
+#    (Material.envi_export_lo_thi, Material.envi_export_l1_thi, Material.envi_export_l2_thi, Material.envi_export_l3_thi, Material.envi_export_l4_thi) = \
+#    [fprop("mm", "Thickness (mm)", 1, 10000, 100)] * conlayers
+#    (Material.envi_export_lo_tab, Material.envi_export_l1_tab, Material.envi_export_l2_tab, Material.envi_export_l3_tab, Material.envi_export_l4_tab) = \
+#    [fprop("TA", "Thermal Absorptance", 0.001, 1, 0.8)] * conlayers
+#    (Material.envi_export_lo_sab, Material.envi_export_l1_sab, Material.envi_export_l2_sab, Material.envi_export_l3_sab, Material.envi_export_l4_sab) = \
+#    [fprop("SA", "Solar Absorptance", 0.001, 1, 0.6)] * conlayers
+#    (Material.envi_export_lo_vab, Material.envi_export_l1_vab, Material.envi_export_l2_vab, Material.envi_export_l3_vab, Material.envi_export_l4_vab) = \
+#    [fprop("VA", "Visible Absorptance", 0.001, 1, 0.6)] * conlayers
+#    (Material.envi_export_lo_odt, Material.envi_export_l1_odt, Material.envi_export_l2_odt, Material.envi_export_l3_odt, Material.envi_export_l4_odt) = \
+#    [eprop([("SpectralAverage", "SpectralAverage", "Optical Data Type")], "", "Optical Data Type", "SpectralAverage")] * conlayers
+#    (Material.envi_export_lo_sds, Material.envi_export_l1_sds, Material.envi_export_l2_sds, Material.envi_export_l3_sds, Material.envi_export_l4_sds) = \
+#    [eprop([("0", "", "Window Glass Spectral Data Set Name")], "", "Window Glass Spectral Data Set Name", "0")] * conlayers
+#    (Material.envi_export_lo_stn, Material.envi_export_l1_stn, Material.envi_export_l2_stn, Material.envi_export_l3_stn, Material.envi_export_l4_stn) = \
+#    [fprop("STN", "Solar Transmittance at Normal Incidence", 0, 1, 0.9)] * conlayers
+#    (Material.envi_export_lo_fsn, Material.envi_export_l1_fsn, Material.envi_export_l2_fsn, Material.envi_export_l3_fsn, Material.envi_export_l4_fsn) = \
+#    [fprop("FSN", "Front Side Solar Reflectance at Normal Incidence", 0, 1, 0.075)] * conlayers
+#    (Material.envi_export_lo_bsn, Material.envi_export_l1_bsn, Material.envi_export_l2_bsn, Material.envi_export_l3_bsn, Material.envi_export_l4_bsn) = \
+#    [fprop("BSN", "Back Side Solar Reflectance at Normal Incidence", 0, 1, 0.075)] * conlayers
+#    (Material.envi_export_lo_vtn, Material.envi_export_l1_vtn, Material.envi_export_l2_vtn, Material.envi_export_l3_vtn, Material.envi_export_l4_vtn) = \
+#    [fprop("VTN", "Visible Transmittance at Normal Incidence", 0, 1, 0.9)] * conlayers
+#    (Material.envi_export_lo_fvrn, Material.envi_export_l1_fvrn, Material.envi_export_l2_fvrn, Material.envi_export_l3_fvrn, Material.envi_export_l4_fvrn) = \
+#    [fprop("FVRN", "Front Side Visible Reflectance at Normal Incidence", 0, 1, 0.08)] * conlayers
+#    (Material.envi_export_lo_bvrn, Material.envi_export_l1_bvrn, Material.envi_export_l2_bvrn, Material.envi_export_l3_bvrn, Material.envi_export_l4_bvrn) = \
+#    [fprop("BVRN", "Back Side Visible Reflectance at Normal Incidence", 0, 1, 0.08)] * conlayers
+#    (Material.envi_export_lo_itn, Material.envi_export_l1_itn, Material.envi_export_l2_itn, Material.envi_export_l3_itn, Material.envi_export_l4_itn) = \
+#    [fprop("ITN", "Infrared Transmittance at Normal Incidence", 0, 1, 0.0)] * conlayers
+#    (Material.envi_export_lo_fie, Material.envi_export_l1_fie, Material.envi_export_l2_fie, Material.envi_export_l3_fie, Material.envi_export_l4_fie) = \
+#    [fprop("FIE", "Front Side Infrared Hemispherical Emissivity", 0, 1, 0.84)] * conlayers
+#    (Material.envi_export_lo_bie, Material.envi_export_l1_bie, Material.envi_export_l2_bie, Material.envi_export_l3_bie, Material.envi_export_l4_bie) = \
+#    [fprop("BIE", "Back Side Infrared Hemispherical Emissivity", 0, 1, 0.84)] * conlayers
+#    (Material.envi_export_lo_sdiff, Material.envi_export_l1_sdiff, Material.envi_export_l2_sdiff, Material.envi_export_l3_sdiff, Material.envi_export_l4_sdiff) = \
+#    [bprop("", "", 0)] * conlayers
+#    Material.envi_shad_att = bprop("Attached", "Flag to specify shading attached to the building",False)
+#    (Material.envi_tctc_lo, Material.envi_tctc_l1, Material.envi_tctc_l2, Material.envi_tctc_l3, Material.envi_tctc_l4) = [fprop("", "Temperature coefficient for thermal conductivity", 0, 50, 0.0)] * conlayers
+#    (Material.envi_tempsemps_lo, Material.envi_tempsemps_l1, Material.envi_tempsemps_l2, Material.envi_tempsemps_l3, Material.envi_tempsemps_l4) = [sprop("", "Temperatures/Enthalpy pairs", 1024, "")] * conlayers
     
 # FloVi material definitions
     Material.fvmat = fvmat
@@ -581,8 +582,8 @@ def register():
 #    Material.flovi_bmionut_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0)   
     
 # Scene parameters
-    Scene.latitude = bpy.props.FloatProperty(name = "Latitude", description = "Site Latitude", min = -89.99, max = 89.99, default = 52.0)
-    Scene.longitude = bpy.props.FloatProperty(name = "Longitude", description = "Site Longitude", min = -180, max = 180, default = 0.0)
+    Scene.latitude = bpy.props.FloatProperty(name = "Latitude", description = "Site decimal latitude (N is positive)", min = -89.99, max = 89.99, default = 52.0)
+    Scene.longitude = bpy.props.FloatProperty(name = "Longitude", description = "Site decimal longitude (E is positive)", min = -180, max = 180, default = 0.0)
     Scene.wind_type = eprop([("0", "Speed", "Wind Speed (m/s)"), ("1", "Direction", "Wind Direction (deg. from North)")], "", "Wind metric", "0")
     Scene.vipath = sprop("VI Path", "Path to files included with the VI-Suite ", 1024, addonpath)        
     Scene.suns = EnumProperty(items = [('0', 'Single', 'Single sun'), ('1', 'Monthly', 'Monthly sun for chosen time'), ('2', 'Hourly', 'Hourly sun for chosen date')], name = '', description = 'Sunpath sun type', default = '0', update=sunpath1)

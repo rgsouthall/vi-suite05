@@ -1343,6 +1343,7 @@ class MAT_EnVi_Node(bpy.types.Operator):
             context.material.envi_nodes.nodes.new('EnViCon')
             context.material.envi_nodes['envi_con_type'] = 'None'
             context.material.envi_nodes.nodes[0].active = True
+            context.material.envi_nodes['enmatparams'] = {'airflow': 0, 'boundary': 0, 'tm': 0}
         return {'FINISHED'}
     
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
@@ -1503,8 +1504,13 @@ class NODE_OT_EnSim2(bpy.types.Operator):
             self.e += 1
     
         if event.type == 'TIMER':
-            self.percent = 100 * sum([esim.poll() is not None for esim in self.esimruns])/self.lenframes 
-            
+            if len(self.esimruns) > 1:
+                self.percent = 100 * sum([esim.poll() is not None for esim in self.esimruns])/self.lenframes 
+            else:
+                with open(os.path.join(self.nd, '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
+                    for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
+                        self.percent = 100 * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy)
+                        break
             if all([esim.poll() is not None for esim in self.esimruns]) and self.e == self.lenframes:
                 for fname in [fname for fname in os.listdir('.') if fname.split(".")[0] == self.simnode.resname]:
                     os.remove(os.path.join(self.nd, fname))

@@ -2762,11 +2762,13 @@ def sunposenvi(scene, sun, dirsol, difsol, mdata, ddata, hdata):
        
 def sunposlivi(scene, skynode, frames, sun, stime):
     sun.data.shadow_method, sun.data.shadow_ray_samples, sun.data.sky.use_sky = 'RAY_SHADOW', 8, 1
+    
     if skynode['skynum'] < 3: 
         times = [stime + frame*datetime.timedelta(seconds = 3600*skynode.interval) for frame in range(len(frames))]  
         solposs = [solarPosition(t.timetuple()[7], t.hour + (t.minute)*0.016666, scene.latitude, scene.longitude) for t in times]
-        beamvals = [solposs[t][0]/15 for t in range(len(times))] if skynode['skynum'] < 2 else [0 for t in range(len(times))]
-        skyvals = beamvals
+        beamvals = [(0, 3)[solposs[t][0] > 0] for t in range(len(times))] if skynode['skynum'] < 2 else [0 for t in range(len(times))]
+        skyvals = [5 for t in range(len(times))]
+        
     elif skynode['skynum'] == 3: 
         times = [datetime.datetime(2015, 3, 20, 12, 0)]
         solposs = [solarPosition(t.timetuple()[7], t.hour + (t.minute)*0.016666, 0, 0) for t in times]

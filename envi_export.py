@@ -74,11 +74,11 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
                         if emnode.envi_con_type == 'Window':
-#                            if emnode.fclass == '0':
-                            params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
-                            paramvs = ('{}-frame-layer{}'.format(mat.name, 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(mat.name), '{}-frame-layer{}'.format(mat.name, 0))
-                            en_idf.write(epentry('Material', params[:-2], paramvs[:-2]))
-                            en_idf.write(epentry('Construction', params[-2:], paramvs[-2:]))
+                            
+#                            elif emnode.fclass == '2':
+                                
+                                
+                            
                                 
                             if emnode.envi_simple_glazing:
                                 em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
@@ -254,7 +254,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 obound = ('win-', 'door-')[emnode.envi_con_type == 'Door']+obco if obco else obco
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
-                                if emnode.fclass == '0':
+                                if emnode.fclass in ('0', '2'):
                                     paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
                                 else:
@@ -467,10 +467,10 @@ def pregeo(op):
     for mesh in bpy.data.meshes:
         if mesh.users == 0:
             bpy.data.meshes.remove(mesh)
-    for materials in bpy.data.materials:
-        materials.envi_export = 0
-        if materials.users == 0:
-            bpy.data.materials.remove(materials)
+    for material in bpy.data.materials:
+        material.envi_export = 0
+        if material.users == 0:
+            bpy.data.materials.remove(material)
             
     enviobjs = [obj for obj in scene.objects if obj.vi_type == '1' and obj.layers[0] == True and obj.hide == False and not obj.lires]
 
@@ -515,8 +515,8 @@ def pregeo(op):
             for mats in omats:
                 if 'en_'+mats.name not in [mat.name for mat in bpy.data.materials]:
                     mats.copy().name = 'en_'+mats.name
-                if '8' in (mats.envi_type_lo, mats.envi_type_l1, mats.envi_type_l2, mats.envi_type_l3, mats.envi_type_l4):
-                    enng['enviparams']['pcm'] = 1
+#                if '8' in (mats.envi_type_lo, mats.envi_type_l1, mats.envi_type_l2, mats.envi_type_l3, mats.envi_type_l4):
+#                    enng['enviparams']['pcm'] = 1
     
             selobj(scene, obj)
             
@@ -533,7 +533,6 @@ def pregeo(op):
                 sm.material = bpy.data.materials['en_'+omats[s].name]
                 mat = sm.material
                 emnode = get_con_node(mat)
-                print(emnode.envi_con_type)
                 
                 if not emnode:
                     op.report({'ERROR'}, 'The {} material has no node tree. This material has not been exported.'.format(mat.name))
@@ -541,11 +540,15 @@ def pregeo(op):
                     op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
                 else:
                     mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
-             
+#                    mat.envi_nodes['enmatparams']['boundary'] = emnode.envi_boundary
+#                    mat.envi_nodes['enmatparams']['airflow'] = emnode.af_surface
+#                    mat.envi_nodes['enmatparams']['tm'] = emnode.envi_thermalmass
+                    
                     if s in mis:
                         mat.envi_export = True    
                     if emnode.envi_con_type in dcdict:
-                        mat.diffuse_color = dcdict[mct]                            
+                        mat.diffuse_color = dcdict[mct] 
+                           
 #                if mct not in ('None', 'Shading', 'Aperture', 'Window'):
 #                    print('mct', mct)
 #                retuval(mat)
@@ -560,8 +563,7 @@ def pregeo(op):
                 try:
                     if poly.area < 0.001:
                         poly.select = True 
-                    if not mat.envi_nodes:
-                        
+                    if not mat.envi_nodes:                        
                         poly.select = True
                     elif emnode.envi_con_type == 'None':
                         poly.select = True

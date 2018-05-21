@@ -211,7 +211,7 @@ class envi_constructions(object):
 #        return matdict
     
 def retmatdict(envi_con_type, t, l):  
-    if envi_con_type in ('Wall', 'Roof', 'Floor', 'Door', 'Ceiling'):
+    if envi_con_type in ('Wall', 'Roof', 'Floor', 'Door', 'Ceiling', 'Frame'):
         typelist = [("0", "Brick", "Choose a material from the brick database"),("1", "Cladding", "Choose a material from the cladding database"), ("2", "Concrete", "Choose a material from the concrete database"),("3", "Metal", "Choose a material from the metal database"),
                    ("4", "Stone", "Choose a material from the stone database"),("5", "Wood", "Choose a material from the wood database"),
                    ("6", "Gas", "Choose a material from the gas database"),("7", "Insulation", "Choose a material from the insulation database"),
