@@ -209,7 +209,7 @@ class LiViNode(Node, ViNodes):
 
     def nodeupdate(self, context):
         scene = context.scene
-        nodecolour(self, self['exportstate'] != [str(x) for x in (self.contextmenu, self.banalysismenu, self.canalysismenu, self.cbanalysismenu, 
+        nodecolour(self, self['exportstate'] != [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu, 
                    self.animated, self.skymenu, self.shour, self.sdoy, self.startmonth, self.endmonth, self.damin, self.dasupp, self.dalux, self.daauto,
                    self.ehour, self.edoy, self.interval, self.hdr, self.hdrname, self.skyname, self.resname, self.turb, self.mtxname, self.cbdm_start_hour,
                    self.cbdm_end_hour, self.bambuildmenu)])
@@ -243,8 +243,8 @@ class LiViNode(Node, ViNodes):
                 selobj(scene, so)
                 bpy.ops.object.delete()
                 
-                                
-    banalysistype = [('0', "Illu/Irrad/DF", "Illumninance/Irradiance/Daylight Factor Calculation"), ('1', "Glare", "Glare Calculation")]
+    spectrumtype =  [('0', "Visible", "Visible radiation spectrum calculation"), ('1', "Full", "Full radiation spectrum calculation")]                           
+#    banalysistype = [('0', "Illu/Irrad/DF", "Illumninance/Irradiance/Daylight Factor Calculation"), ('1', "Glare", "Glare Calculation")]
     skylist = [("0", "Sunny", "CIE Sunny Sky description"), ("1", "Partly Coudy", "CIE Sunny Sky description"),
                ("2", "Coudy", "CIE Partly Cloudy Sky description"), ("3", "DF Sky", "Daylight Factor Sky description")]
 
@@ -252,7 +252,7 @@ class LiViNode(Node, ViNodes):
     contextmenu = EnumProperty(name="", description="Contexttype type", items=contexttype, default = 'Basic', update = nodeupdate)
     animated = BoolProperty(name="", description="Animated sky", default=False, update = nodeupdate)
     offset = FloatProperty(name="", description="Calc point offset", min=0.001, max=1, default=0.01, update = nodeupdate)
-    banalysismenu = EnumProperty(name="", description="Type of lighting analysis", items = banalysistype, default = '0', update = nodeupdate)
+    spectrummenu = EnumProperty(name="", description = "Visible/full radiation spectrum selection", items = spectrumtype, default = '0', update = nodeupdate)
     skyprog = EnumProperty(name="", items=[('0', "Gensky", "Basic sky creation"), ('1', "Gendaylit", "Perez sky creation"),
                                                      ("2", "HDR Sky", "HDR file sky"), ("3", "Radiance Sky", "Radiance file sky"), ("4", "None", "No Sky")], description="Specify sky creation", default="0", update = nodeupdate)
     epsilon = FloatProperty(name="", description="Hour of simulation", min=1, max=8, default=6.3, update = nodeupdate)
@@ -277,7 +277,7 @@ class LiViNode(Node, ViNodes):
     lebuildmenu = EnumProperty(name="", description="Type of building", items=lebuildtype, default = '0', update = nodeupdate)
     cusacc = StringProperty(name="", description="Custom Radiance simulation parameters", default="", update = nodeupdate)
     buildstorey = EnumProperty(items=[("0", "Single", "Single storey building"),("1", "Multi", "Multi-storey building")], name="", description="Building storeys", default="0", update = nodeupdate)
-    cbanalysistype = [('0', "Exposure", "LuxHours/Irradiance Exposure Calculation"), ('1', "Hourly irradiance", "Irradiance for each simulation time step"), ('2', "DA/UDI/SDA/ASE", "Useful Daylight Illuminance")]
+    cbanalysistype = [('0', "Exposure", "LuxHours/Irradiance Exposure Calculation"), ('1', "Hourly irradiance", "Irradiance for each simulation time step"), ('2', "DA/UDI/SDA/ASE", "Climate based daylighting metrics")]
     cbanalysismenu = EnumProperty(name="", description="Type of lighting analysis", items = cbanalysistype, default = '0', update = nodeupdate)
 #    leanalysistype = [('0', "Light Exposure", "LuxHours Calculation"), ('1', "Radiation Exposure", "kWh/m"+ u'\u00b2' + " Calculation"), ('2', "Daylight Autonomy", "DA (%) Calculation")]
     sourcetype = [('0', "EPW", "EnergyPlus weather file"), ('1', "HDR", "HDR sky file")]
@@ -317,7 +317,7 @@ class LiViNode(Node, ViNodes):
         newrow(layout, 'Context:', self, 'contextmenu')
         (sdate, edate) = retdates(self.sdoy, self.edoy, 2015)
         if self.contextmenu == 'Basic':            
-            newrow(layout, "Standard:", self, 'banalysismenu')
+            newrow(layout, "Spectrum:", self, 'spectrummenu')
             newrow(layout, "Program:", self, 'skyprog')
             if self.skyprog == '0':
                 newrow(layout, "Sky type:", self, 'skymenu')
@@ -397,6 +397,8 @@ class LiViNode(Node, ViNodes):
                 
         elif self.contextmenu == 'CBDM':
             newrow(layout, 'Type:', self, 'cbanalysismenu')
+            if self.cbanalysismenu == '0':
+                newrow(layout, "Spectrum:", self, 'spectrummenu')
             newrow(layout, 'Start day {}/{}:'.format(sdate.day, sdate.month), self, "sdoy")
             newrow(layout, 'End day {}/{}:'.format(edate.day, edate.month), self, "edoy")
             newrow(layout, 'Weekdays only:', self, 'weekdays')
@@ -483,13 +485,13 @@ class LiViNode(Node, ViNodes):
         self['watts'] = 0#1 if self.contextmenu == "CBDM" and self.cbanalysismenu in ('1', '2') else 0
         
     def export(self, scene, export_op):         
-        self.startframe = self.startframe if self.animated and self.contextmenu == 'Basic' and self.banalysismenu in ('0', '1', '2') else scene.frame_current 
-        self['endframe'] = self.startframe + int(((24 * (self.edoy - self.sdoy) + self.ehour - self.shour)/self.interval)) if self.contextmenu == 'Basic' and self.banalysismenu in ('0', '1', '2') and self.animated else scene.frame_current
+        self.startframe = self.startframe if self.animated and self.contextmenu == 'Basic' else scene.frame_current 
+        self['endframe'] = self.startframe + int(((24 * (self.edoy - self.sdoy) + self.ehour - self.shour)/self.interval)) if self.contextmenu == 'Basic' and self.animated else scene.frame_current
         self['mtxfile'] = ''
         self['preview'] = 0
         
         if self.contextmenu == "Basic":  
-            self['preview'] =1
+            self['preview'] = 1
             
             if self.skyprog in ('0', '1'):
                 self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[self['skynum']] if self.skyprog == '0' else "-P {} {}".format(self.epsilon, self.delta)
@@ -586,8 +588,8 @@ class LiViNode(Node, ViNodes):
                     self['Text'][str(scene.frame_current)] = cbdmhdr(self, scene)
                 
     def postexport(self):  
-        typedict = {'Basic': self.banalysismenu, 'Compliance': self.canalysismenu, 'CBDM': self.cbanalysismenu}
-        unitdict = {'Basic': ("Lux", '')[int(self.banalysismenu)], 'Compliance': ('DF (%)', 'DF (%)', 'DF (%)', 'sDA (%)')[int(self.canalysismenu)], 'CBDM': ('Mlxh', 'kWh', 'DA (%)')[int(self.cbanalysismenu)]}
+        typedict = {'Basic': '0', 'Compliance': self.canalysismenu, 'CBDM': self.cbanalysismenu}
+        unitdict = {'Basic': ("Lux", 'W/m2')[int(self.spectrummenu)], 'Compliance': ('DF (%)', 'DF (%)', 'DF (%)', 'sDA (%)')[int(self.canalysismenu)], 'CBDM': (('Mlxh', 'kWh')[int(self.spectrummenu)], 'kWh', 'DA (%)')[int(self.cbanalysismenu)]}
         btypedict = {'0': self.bambuildmenu, '1': '', '2': self.bambuildmenu, '3': self.lebuildmenu}
         self['Options'] = {'Context': self.contextmenu, 'Preview': self['preview'], 'Type': typedict[self.contextmenu], 'fs': self.startframe, 'fe': self['endframe'],
                     'anim': self.animated, 'shour': self.shour, 'sdoy': self.sdoy, 'ehour': self.ehour, 'edoy': self.edoy, 'interval': self.interval, 'buildtype': btypedict[self.canalysismenu], 'canalysis': self.canalysismenu, 'storey': self.buildstorey,
@@ -595,7 +597,7 @@ class LiViNode(Node, ViNodes):
                     'cbdm_eh': self.cbdm_end_hour, 'weekdays': (7, 5)[self.weekdays], 'sourcemenu': (self.sourcemenu, self.sourcemenu2)[self.cbanalysismenu not in ('2', '3', '4', '5')],
                     'mtxfile': self['mtxfile'], 'times': [t.strftime("%d/%m/%y %H:%M:%S") for t in self.times]}
         nodecolour(self, 0)
-        self['exportstate'] = [str(x) for x in (self.contextmenu, self.banalysismenu, self.canalysismenu, self.cbanalysismenu, 
+        self['exportstate'] = [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu, 
                    self.animated, self.skymenu, self.shour, self.sdoy, self.startmonth, self.endmonth, self.damin, self.dasupp, self.dalux, self.daauto,
                    self.ehour, self.edoy, self.interval, self.hdr, self.hdrname, self.skyname, self.resname, self.turb, self.mtxname, self.cbdm_start_hour,
                    self.cbdm_end_hour, self.bambuildmenu)]
@@ -853,7 +855,7 @@ class ViLiGLNode(Node, ViNodes):
             if not self.rand:
                 newrow(layout, 'Colour:', self, 'gc')
             row = layout.row()
-            row.operator("node.liviglare2", text = 'Glare').nodeid = self['nodeid']
+            row.operator("node.liviglare", text = 'Glare').nodeid = self['nodeid']
     
     def presim(self):
         self['hdrname'] = self.hdrname if self.hdrname else 'glare'
@@ -925,8 +927,8 @@ class ViLiSNode(Node, ViNodes):
                 if cinnode['Options']['Preview']:
                     row = layout.row()
                     row.operator("node.radpreview", text = 'Preview').nodeid = self['nodeid']
-                if cinnode['Options']['Context'] == 'Basic' and cinnode['Options']['Type'] == '1' and not self.run:
-                    row.operator("node.liviglare", text = 'Calculate').nodeid = self['nodeid']
+#                if cinnode['Options']['Context'] == 'Basic' and cinnode['Options']['Type'] == '1' and not self.run:
+#                    row.operator("node.liviglare", text = 'Calculate').nodeid = self['nodeid']
                 elif [o.name for o in scene.objects if o.name in scene['liparams']['livic']]:
                     row.operator("node.livicalc", text = 'Calculate').nodeid = self['nodeid']
         except Exception as e:

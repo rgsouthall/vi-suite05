@@ -478,10 +478,12 @@ class NODE_OT_LiExport(bpy.types.Operator, io_utils.ExportHelper):
     nodeid = bpy.props.StringProperty()
 
     def invoke(self, context, event):
+#        print(dir(context.node))
         scene = context.scene
         if viparams(self, scene):
             return {'CANCELLED'}
-        node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+#        node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+        node = context.node
         scene['viparams']['vidisp'] = ''
         scene['viparams']['viexpcontext'] = 'LiVi {}'.format(node.contextmenu)
         scene['viparams']['connode'] = self.nodeid
@@ -842,7 +844,7 @@ class NODE_OT_LiFC(bpy.types.Operator):
         return {'FINISHED'}
     
 class NODE_OT_LiGl(bpy.types.Operator):            
-    bl_idname = "node.liviglare2"
+    bl_idname = "node.liviglare"
     bl_label = "LiVi Glare Node"
     bl_description = "Glare analysis node"
     bl_register = True
@@ -943,152 +945,152 @@ class NODE_OT_LiViCalc(bpy.types.Operator):
         self.report({'INFO'},"Simulation is finished")
         return {'FINISHED'}
         
-class NODE_OT_LiVIGlare(bpy.types.Operator):
-    bl_idname = "node.liviglare"
-    bl_label = "LiVi glare"
-    bl_description = "Create a glare fisheye image from the Blender camera perspective"
-    bl_register = True
-    bl_undo = False
-    nodeid = bpy.props.StringProperty()
-
-    def modal(self, context, event):
-        if event.type == 'TIMER':
-            if self.egrun.poll() is not None: # If finished
-                if self.frame > self.scene['liparams']['fe']:
-                    self.reslists += [['All', 'Frames', '', 'Frames', ' '.join([str(f) for f in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1)])]] + [['All', 'Camera', self.cam.name, ('DGP', 'DGI', 'UGR', 'VCP', 'CGI', 'LV')[ri], ' '.join([str(res) for res in r])] for ri, r in enumerate(zip(*self.res))]
-                    self.simnode['reslists'] = self.reslists
-                    self.simnode['frames'] = [f for f in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1)]
-                    return {self.terminate()}
-
-                elif self.frame > self.frameold:
-                    self.percent = (self.frame - self.scene['liparams']['fs']) * 100
-                    self.frameold = self.frame
-                    os.remove(self.rpictfile)
-                    if self.simnode.pmap:
-                        amentry, pportentry, cpentry, cpfileentry = retpmap(self.simnode, self.frame, self.scene)
-                        pmcmd = ('mkpmap -bv+ +fo -apD 0.001 {0} -apg {1}-{2}.gpm {3} {4} {5} {1}-{2}.oct'.format(pportentry, self.scene['viparams']['filebase'], self.frame, self.simnode.pmapgno, cpentry, amentry))                   
-                        pmrun = Popen(pmcmd.split(), stderr = PIPE)
-                        for line in pmrun.stderr: 
-                            logentry('Photon map error: ', line)#        draw_image(self, self.ydiff * 0.1)
-                            if line.decode() in pmerrdict:
-                                self.report({'ERROR'}, pmerrdict[line.decode()])
-                                return {'CANCELLED'}
-                        rpictcmd = "rpict -w -e {7} -t 10 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} -ap {5} 50 {6} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, '{}-{}.gpm'.format(self.scene['viparams']['filebase'], self.frame), cpfileentry, self.rpictfile)
-                    else:
-                        rpictcmd = "rpict -w -e {5} -t 10 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
-                    self.rprun = Popen(rpictcmd.split(), stdout = PIPE)                    
-                    self.egcmd = 'evalglare {} -c {}'.format(('-u 1 0 0', '')[sys.platform == 'win32'], os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))                    
-                    self.egrun = Popen(self.egcmd.split(), stdin = self.rprun.stdout, stdout = PIPE)
-                    return {'RUNNING_MODAL'}
-
-                time = datetime.datetime(2014, 1, 1, self.simnode['coptions']['shour'], 0) + datetime.timedelta(self.simnode['coptions']['sdoy'] - 1) if self.simnode['coptions']['anim'] == '0' else \
-                    datetime.datetime(2014, 1, 1, int(self.simnode['coptions']['shour']), int(60*(self.simnode['coptions']['shour'] - int(self.simnode['coptions']['shour'])))) + datetime.timedelta(self.simnode['coptions']['sdoy'] - 1) + datetime.timedelta(hours = int(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs'])), seconds = int(60*(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs']) - int(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs'])))))
-                with open(self.scene['viparams']['filebase']+".glare", "w") as glaretf:
-                    for line in self.egrun.stdout:
-                        if line.decode().split(",")[0] == 'dgp':                            
-                            glaretext = line.decode().replace(',', ' ').replace("#INF", "").split(' ')
-                            res = [float(x) for x in glaretext[6:12]]
-                            glaretf.write("{0:0>2d}/{1:0>2d} {2:0>2d}:{3:0>2d}\ndgp: {4:.2f}\ndgi: {5:.2f}\nugr: {6:.2f}\nvcp: {7:.2f}\ncgi: {8:.2f}\nLv: {9:.0f}\n".format(time.day, time.month, time.hour, time.minute, *res))
-                            self.res.append(res)
-                            self.reslists += [[str(self.frame), 'Camera', self.cam.name, 'DGP', '{0[0]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'DGI', '{0[1]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'UGR', '{0[2]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'VCP', '{0[3]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'CGI', '{[4]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'LV', '{[5]}'.format(res)]]
-                
-                pcondcmd = "pcond -u 300 {0}.hdr".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))
-                with open('{}.temphdr'.format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame))), 'w') as temphdr:
-                    Popen(pcondcmd.split(), stdout = temphdr).communicate()
-                catcmd = "{0} {1}.glare".format(self.scene['viparams']['cat'], self.scene['viparams']['filebase'])
-                catrun = Popen(catcmd, stdout = PIPE, shell = True)
-                psigncmd = "psign -h 32 -cb 0 0 0 -cf 40 40 40"
-                psignrun = Popen(psigncmd.split(), stdin = catrun.stdout, stdout = PIPE)
-                pcompcmd = "pcompos {0}.temphdr 0 0 - 800 550".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))
-                with open("{}.hdr".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame))), 'w') as ghdr:
-                    Popen(pcompcmd.split(), stdin = psignrun.stdout, stdout = ghdr).communicate()
-                os.remove(os.path.join(self.scene['viparams']['newdir'], 'glare{}.temphdr'.format(self.frame)))
-
-                if 'glare{}.hdr'.format(self.frame) in bpy.data.images:
-                    bpy.data.images['glare{}.hdr'.format(self.frame)].filepath = os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame))
-                    bpy.data.images['glare{}.hdr'.format(self.frame)].reload()
-                else:
-                    bpy.data.images.load(os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))
-                self.frame += 1
-                return {'RUNNING_MODAL'}
-            else:
-                with open(self.rpictfile) as rpictfile:
-                    for line in rpictfile.readlines()[::-1]:
-                        if '%' in line:
-                            for lineentry in line.split():
-                                if '%' in lineentry:
-                                    self.percent = (float(lineentry.strip('%')) + (self.frame - self.scene['liparams']['fs']) * 100)/self.frames
-                            break
-     
-                if self.percent:
-                    if self.pfile.check(self.percent) == 'CANCELLED':                                    
-                        return {self.terminate()}
-                
-                return {'PASS_THROUGH'}
-        else:
-            return {'PASS_THROUGH'}
-            
-    def terminate(self):
-        nodecolour(self.simnode, 0)
-        self.kivyrun.kill() 
-        self.simnode.run = 0
-
-        if self.egrun.poll() == None:                          
-            self.egrun.kill()
-            
-        self.rprun.kill()        
-        self.simnode.postsim()
-        return 'FINISHED'
-
-    def execute(self, context):        
-        self.scene = bpy.context.scene
-        self.cam = self.scene.camera
-        
-        if self.cam:
-            self.percent = 0
-            self.reslists = []
-            self.res = []
-            self.rpictfile = os.path.join(self.scene['viparams']['newdir'], 'rpictprogress')
-            self.simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
-            self.simnode.presim()
-            self.simnode.run = 1
-            nodecolour(self.simnode, 1)
-            self.scene['liparams']['fs'] = min([c['fs'] for c in (self.simnode['goptions'], self.simnode['coptions'])])
-            self.scene['liparams']['fe'] = max([c['fe'] for c in (self.simnode['goptions'], self.simnode['coptions'])])
-            self.frames = self.scene['liparams']['fe'] - self.scene['liparams']['fs'] + 1
-            self.frame = self.scene['liparams']['fs']
-            self.frameold = self.frame
-            
-            for frame in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1):
-                createradfile(self.scene, frame, self, self.simnode)
-                createoconv(self.scene, frame, self, self.simnode)
-                
-            if self.simnode.pmap:
-                amentry, pportentry, cpentry, cpfileentry = retpmap(self.simnode, self.frame, self.scene)
-                pmcmd = ('mkpmap -bv+ +fo -apD 0.001 {0} -apg {1}-{2}.gpm {3} {4} {5} {1}-{2}.oct'.format(pportentry, self.scene['viparams']['filebase'], self.frame, self.simnode.pmapgno, cpentry, amentry))                   
-                pmrun = Popen(pmcmd.split(), stderr = PIPE)
-                for line in pmrun.stderr: 
-                    logentry(line)
-                    if line.decode() in pmerrdict:
-                        self.report({'ERROR'}, pmerrdict[line.decode()])
-                        return {'FINISHED'}
-                rpictcmd = "rpict -w -e {7} -t 1 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} -ap {5} 50 {6} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, '{}-{}.gpm'.format(self.scene['viparams']['filebase'], self.frame), cpfileentry, self.rpictfile)
-            else:
-                rpictcmd = "rpict -w -vth -vh 180 -e {5} -t 1 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
-                rpiececmd = "rpiece -X 1 -Y {6} -o {} -vth -vh 180 -e {5} -t 1 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
-            self.starttime = datetime.datetime.now()
-            self.pfile = progressfile(self.scene['viparams']['newdir'], datetime.datetime.now(), 100)
-            self.kivyrun = progressbar(os.path.join(self.scene['viparams']['newdir'], 'viprogress'), 'Glare')
-            self.rprun = Popen(rpictcmd.split(), stdout=PIPE, stderr = PIPE)
-            egcmd = "evalglare {} -c {}".format(('-u 1 0 0', '')[sys.platform == 'win32'], os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))
-            self.egrun = Popen(egcmd.split(), stdin = self.rprun.stdout, stdout=PIPE, stderr = PIPE)
-            wm = context.window_manager
-            self._timer = wm.event_timer_add(10, context.window)
-            wm.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'ERROR'}, "There is no camera in the scene. Create one for glare analysis")
-            return {'FINISHED'}
+#class NODE_OT_LiVIGlare(bpy.types.Operator):
+#    bl_idname = "node.liviglare"
+#    bl_label = "LiVi glare"
+#    bl_description = "Create a glare fisheye image from the Blender camera perspective"
+#    bl_register = True
+#    bl_undo = False
+#    nodeid = bpy.props.StringProperty()
+#
+#    def modal(self, context, event):
+#        if event.type == 'TIMER':
+#            if self.egrun.poll() is not None: # If finished
+#                if self.frame > self.scene['liparams']['fe']:
+#                    self.reslists += [['All', 'Frames', '', 'Frames', ' '.join([str(f) for f in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1)])]] + [['All', 'Camera', self.cam.name, ('DGP', 'DGI', 'UGR', 'VCP', 'CGI', 'LV')[ri], ' '.join([str(res) for res in r])] for ri, r in enumerate(zip(*self.res))]
+#                    self.simnode['reslists'] = self.reslists
+#                    self.simnode['frames'] = [f for f in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1)]
+#                    return {self.terminate()}
+#
+#                elif self.frame > self.frameold:
+#                    self.percent = (self.frame - self.scene['liparams']['fs']) * 100
+#                    self.frameold = self.frame
+#                    os.remove(self.rpictfile)
+#                    if self.simnode.pmap:
+#                        amentry, pportentry, cpentry, cpfileentry = retpmap(self.simnode, self.frame, self.scene)
+#                        pmcmd = ('mkpmap -bv+ +fo -apD 0.001 {0} -apg {1}-{2}.gpm {3} {4} {5} {1}-{2}.oct'.format(pportentry, self.scene['viparams']['filebase'], self.frame, self.simnode.pmapgno, cpentry, amentry))                   
+#                        pmrun = Popen(pmcmd.split(), stderr = PIPE)
+#                        for line in pmrun.stderr: 
+#                            logentry('Photon map error: ', line)#        draw_image(self, self.ydiff * 0.1)
+#                            if line.decode() in pmerrdict:
+#                                self.report({'ERROR'}, pmerrdict[line.decode()])
+#                                return {'CANCELLED'}
+#                        rpictcmd = "rpict -w -e {7} -t 10 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} -ap {5} 50 {6} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, '{}-{}.gpm'.format(self.scene['viparams']['filebase'], self.frame), cpfileentry, self.rpictfile)
+#                    else:
+#                        rpictcmd = "rpict -w -e {5} -t 10 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
+#                    self.rprun = Popen(rpictcmd.split(), stdout = PIPE)                    
+#                    self.egcmd = 'evalglare {} -c {}'.format(('-u 1 0 0', '')[sys.platform == 'win32'], os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))                    
+#                    self.egrun = Popen(self.egcmd.split(), stdin = self.rprun.stdout, stdout = PIPE)
+#                    return {'RUNNING_MODAL'}
+#
+#                time = datetime.datetime(2014, 1, 1, self.simnode['coptions']['shour'], 0) + datetime.timedelta(self.simnode['coptions']['sdoy'] - 1) if self.simnode['coptions']['anim'] == '0' else \
+#                    datetime.datetime(2014, 1, 1, int(self.simnode['coptions']['shour']), int(60*(self.simnode['coptions']['shour'] - int(self.simnode['coptions']['shour'])))) + datetime.timedelta(self.simnode['coptions']['sdoy'] - 1) + datetime.timedelta(hours = int(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs'])), seconds = int(60*(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs']) - int(self.simnode['coptions']['interval']*(self.frame-self.scene['liparams']['fs'])))))
+#                with open(self.scene['viparams']['filebase']+".glare", "w") as glaretf:
+#                    for line in self.egrun.stdout:
+#                        if line.decode().split(",")[0] == 'dgp':                            
+#                            glaretext = line.decode().replace(',', ' ').replace("#INF", "").split(' ')
+#                            res = [float(x) for x in glaretext[6:12]]
+#                            glaretf.write("{0:0>2d}/{1:0>2d} {2:0>2d}:{3:0>2d}\ndgp: {4:.2f}\ndgi: {5:.2f}\nugr: {6:.2f}\nvcp: {7:.2f}\ncgi: {8:.2f}\nLv: {9:.0f}\n".format(time.day, time.month, time.hour, time.minute, *res))
+#                            self.res.append(res)
+#                            self.reslists += [[str(self.frame), 'Camera', self.cam.name, 'DGP', '{0[0]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'DGI', '{0[1]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'UGR', '{0[2]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'VCP', '{0[3]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'CGI', '{[4]}'.format(res)], [str(self.frame), 'Camera', self.cam.name, 'LV', '{[5]}'.format(res)]]
+#                
+#                pcondcmd = "pcond -u 300 {0}.hdr".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))
+#                with open('{}.temphdr'.format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame))), 'w') as temphdr:
+#                    Popen(pcondcmd.split(), stdout = temphdr).communicate()
+#                catcmd = "{0} {1}.glare".format(self.scene['viparams']['cat'], self.scene['viparams']['filebase'])
+#                catrun = Popen(catcmd, stdout = PIPE, shell = True)
+#                psigncmd = "psign -h 32 -cb 0 0 0 -cf 40 40 40"
+#                psignrun = Popen(psigncmd.split(), stdin = catrun.stdout, stdout = PIPE)
+#                pcompcmd = "pcompos {0}.temphdr 0 0 - 800 550".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))
+#                with open("{}.hdr".format(os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame))), 'w') as ghdr:
+#                    Popen(pcompcmd.split(), stdin = psignrun.stdout, stdout = ghdr).communicate()
+#                os.remove(os.path.join(self.scene['viparams']['newdir'], 'glare{}.temphdr'.format(self.frame)))
+#
+#                if 'glare{}.hdr'.format(self.frame) in bpy.data.images:
+#                    bpy.data.images['glare{}.hdr'.format(self.frame)].filepath = os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame))
+#                    bpy.data.images['glare{}.hdr'.format(self.frame)].reload()
+#                else:
+#                    bpy.data.images.load(os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))
+#                self.frame += 1
+#                return {'RUNNING_MODAL'}
+#            else:
+#                with open(self.rpictfile) as rpictfile:
+#                    for line in rpictfile.readlines()[::-1]:
+#                        if '%' in line:
+#                            for lineentry in line.split():
+#                                if '%' in lineentry:
+#                                    self.percent = (float(lineentry.strip('%')) + (self.frame - self.scene['liparams']['fs']) * 100)/self.frames
+#                            break
+#     
+#                if self.percent:
+#                    if self.pfile.check(self.percent) == 'CANCELLED':                                    
+#                        return {self.terminate()}
+#                
+#                return {'PASS_THROUGH'}
+#        else:
+#            return {'PASS_THROUGH'}
+#            
+#    def terminate(self):
+#        nodecolour(self.simnode, 0)
+#        self.kivyrun.kill() 
+#        self.simnode.run = 0
+#
+#        if self.egrun.poll() == None:                          
+#            self.egrun.kill()
+#            
+#        self.rprun.kill()        
+#        self.simnode.postsim()
+#        return 'FINISHED'
+#
+#    def execute(self, context):        
+#        self.scene = bpy.context.scene
+#        self.cam = self.scene.camera
+#        
+#        if self.cam:
+#            self.percent = 0
+#            self.reslists = []
+#            self.res = []
+#            self.rpictfile = os.path.join(self.scene['viparams']['newdir'], 'rpictprogress')
+#            self.simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+#            self.simnode.presim()
+#            self.simnode.run = 1
+#            nodecolour(self.simnode, 1)
+#            self.scene['liparams']['fs'] = min([c['fs'] for c in (self.simnode['goptions'], self.simnode['coptions'])])
+#            self.scene['liparams']['fe'] = max([c['fe'] for c in (self.simnode['goptions'], self.simnode['coptions'])])
+#            self.frames = self.scene['liparams']['fe'] - self.scene['liparams']['fs'] + 1
+#            self.frame = self.scene['liparams']['fs']
+#            self.frameold = self.frame
+#            
+#            for frame in range(self.scene['liparams']['fs'], self.scene['liparams']['fe'] + 1):
+#                createradfile(self.scene, frame, self, self.simnode)
+#                createoconv(self.scene, frame, self, self.simnode)
+#                
+#            if self.simnode.pmap:
+#                amentry, pportentry, cpentry, cpfileentry = retpmap(self.simnode, self.frame, self.scene)
+#                pmcmd = ('mkpmap -bv+ +fo -apD 0.001 {0} -apg {1}-{2}.gpm {3} {4} {5} {1}-{2}.oct'.format(pportentry, self.scene['viparams']['filebase'], self.frame, self.simnode.pmapgno, cpentry, amentry))                   
+#                pmrun = Popen(pmcmd.split(), stderr = PIPE)
+#                for line in pmrun.stderr: 
+#                    logentry(line)
+#                    if line.decode() in pmerrdict:
+#                        self.report({'ERROR'}, pmerrdict[line.decode()])
+#                        return {'FINISHED'}
+#                rpictcmd = "rpict -w -e {7} -t 1 -vth -vh 180 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} -ap {5} 50 {6} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, '{}-{}.gpm'.format(self.scene['viparams']['filebase'], self.frame), cpfileentry, self.rpictfile)
+#            else:
+#                rpictcmd = "rpict -w -vth -vh 180 -e {5} -t 1 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
+#                rpiececmd = "rpiece -X 1 -Y {6} -o {} -vth -vh 180 -e {5} -t 1 -vv 180 -x 800 -y 800 -vd {0[0][2]:.3f} {0[1][2]} {0[2][2]} -vp {1[0]} {1[1]} {1[2]} {2} {3}-{4}.oct".format(-1*self.cam.matrix_world, self.cam.location, self.simnode['radparams'], self.scene['viparams']['filebase'], self.frame, self.rpictfile)
+#            self.starttime = datetime.datetime.now()
+#            self.pfile = progressfile(self.scene['viparams']['newdir'], datetime.datetime.now(), 100)
+#            self.kivyrun = progressbar(os.path.join(self.scene['viparams']['newdir'], 'viprogress'), 'Glare')
+#            self.rprun = Popen(rpictcmd.split(), stdout=PIPE, stderr = PIPE)
+#            egcmd = "evalglare {} -c {}".format(('-u 1 0 0', '')[sys.platform == 'win32'], os.path.join(self.scene['viparams']['newdir'], 'glare{}.hdr'.format(self.frame)))
+#            self.egrun = Popen(egcmd.split(), stdin = self.rprun.stdout, stdout=PIPE, stderr = PIPE)
+#            wm = context.window_manager
+#            self._timer = wm.event_timer_add(10, context.window)
+#            wm.modal_handler_add(self)
+#            return {'RUNNING_MODAL'}
+#        else:
+#            self.report({'ERROR'}, "There is no camera in the scene. Create one for glare analysis")
+#            return {'FINISHED'}
 
 class IES_Select(bpy.types.Operator, io_utils.ImportHelper):
     bl_idname = "livi.ies_select"
