@@ -3023,6 +3023,9 @@ class EnViMatNodeCategory(NodeCategory):
         return context.space_data.tree_type == 'EnViMatN'
 
 envimatnode_categories = [
+        EnViMatNodeCategory("Type", "Type Node", items=[NodeItem("EnViCon", label="Construction Node"),
+                                                     NodeItem("envi_frame_node", label="Frame Node"),
+                                                     NodeItem("envi_pv_node", label="PV Node")]),
         EnViMatNodeCategory("Layer", "Layer Node", items=[NodeItem("envi_ol_node", label="Opaque layer"),
                                                        NodeItem("envi_tl_node", label="Transparency layer"),
                                                        NodeItem("envi_gl_node", label="Gas layer")]), 
@@ -3031,10 +3034,83 @@ envimatnode_categories = [
                                                        NodeItem("envi_screen_node", label="Screen layer"),
                                                        NodeItem("envi_sgl_node", label="Switchable layer"),
                                                        NodeItem("envi_sc_node", label="Shading Control Node"),
-                                                       NodeItem("EnViSched", label="Schedule")]),
-        EnViMatNodeCategory("Type", "Type Node", items=[NodeItem("EnViCon", label="Construction Node"),
-                                                     NodeItem("envi_frame_node", label="Frame Node")])]
+                                                       NodeItem("EnViSched", label="Schedule")])]
 
+class ENVI_PV_Node(Node, ENVI_Material_Nodes):
+    '''Node defining a solar collector'''
+    bl_idname = 'envi_pv_node'
+    bl_label = 'EnVi PV'
+    
+    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
+                               ("1", "One-Diode", "Model reflectred beam as beam"),
+                               ("2", "Sandia", "Model reflected beam as diffuse")], 
+                                name = "", description = "Composition of the layer", default = "0")
+    ta = EnumProperty(items = [("0", "0", "Angle of Resolution for Screen Transmittance Output Map"), 
+                               ("1", "1", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("2", "2", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("3", "3", "Angle of Resolution for Screen Transmittance Output Map"),
+                               ("5", "5", "Angle of Resolution for Screen Transmittance Output Map")], 
+                                name = "", description = "Angle of Resolution for Screen Transmittance Output Map", default = "0")
+
+    dsr = FloatProperty(name = "", description = "Diffuse solar reflectance", min = 0.0, max = 0.99, default = 0.5)
+    vr = FloatProperty(name = "", description = "Visible reflectance", min = 0.0, max = 1, default = 0.6)
+    the = FloatProperty(name = "", description = "Thermal Hemispherical Emissivity", min = 0.0, max = 1, default = 0.9)
+    tc = FloatProperty(name = "W/m.K", description = "Conductivity", min = 0.0001, max = 10, default = 0.1)
+    sme = FloatProperty(name = "mm", description = "Screen Material Spacing", min = 1, max = 1000, default = 50)
+    smd = FloatProperty(name = "mm", description = "Screen Material Diameter", min = 1, max = 1000, default = 25)
+    sgd = FloatProperty(name = "mm", description = "Screen to glass distance", min = 1, max = 1000, default = 25)
+    tom = FloatProperty(name = "", description = "Top opening multiplier", min = 0.0, max = 1, default = 0.5)
+    bom = FloatProperty(name = "", description = "Bottom opening multiplier", min = 0.0, max = 1, default = 0.5)
+    lom = FloatProperty(name = "", description = "Left-side opening multiplier", min = 0.0, max = 1, default = 0.5)
+    rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
+    
+    def init(self, context):
+#        self.outputs.new('envi_screen_sock', 'Outer Layer')
+        self['nodeid'] = nodeid(self)
+#        self.inputs.new('envi_sc_sock', 'Control')
+#        self.inputs.new('envi_tl_sock', 'Layer')
+        
+    def draw_buttons(self, context, layout):
+#        if self.outputs['Outer Layer'].links:
+        newrow(layout, "Reflected beam:", self, "pp")
+#            newrow(layout, "Diffuse reflectance:", self, "dsr")
+#            newrow(layout, "Visible reflectance:", self, "vr") 
+#            newrow(layout, "Thermal emmisivity:", self, "the")
+#            newrow(layout, "Conductivity:", self, "tc")
+#            newrow(layout, "Material spacing:", self, "sme")
+#            newrow(layout, "Material diameter:", self, "smd")
+#            newrow(layout, "Distance:", self, "sgd")
+#            newrow(layout, "Top mult.:", self, "tom")
+#            newrow(layout, "Bottom mult.:", self, "bom")
+#            newrow(layout, "Left milt.:", self, "lom")
+#            newrow(layout, "Right mult.:", self, "rom")
+#            newrow(layout, "Resolution angle:", self, "ta")
+    
+    def valid(self):
+        if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
+            nodecolour(self, 1)
+        else:
+            nodecolour(self, 0)
+            
+    def update(self):
+        socklink2(self.outputs['Outer Layer'], self.id_data)
+        self.valid()
+        
+    def ep_write(self, ln):
+        for material in bpy.data.materials:
+            if self.id_data == material.envi_nodes:
+                break
+            
+        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 'Module Performance Name',
+                  'Heat Transfer Integration Mode', ' Heat Transfer Integration Mode', ' Number of Series Strings in Parallel', 'Screen Material Diameter (m)',
+                  'Screen-to-Glass Distance (m)', 'Top Opening Multiplier', 'Bottom Opening Multiplier', 'Left-Side Opening Multiplier', 
+                  'Right-Side Opening Multiplier', 'Angle of Resolution for Output Map (deg)')
+        
+        paramvs = ['{}-layer-{}'.format(material.name, ln), self.rb] + ['{:.3f}'.format(p) for p in (self.dsr, self.vr, self.the, self.tc, 0.001 * self.sme, 0.001 * self.smd,
+                   0.001 * self.sgd, self.tom, self.bom, self.lom, self.rom)] + [self.ta]
+  
+        return epentry('WindowMaterial:Screen', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
+    
 # Generative nodes
 class ViGenNode(Node, ViNodes):
     '''Generative geometry manipulation node'''
