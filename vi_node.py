@@ -2938,7 +2938,7 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
             else:
                 return [(t, t, t) for t in self.ttuple]
         except Exception as e:
-            print(e)
+#            print('Shade control error {}'.format(e))
             return [('None', 'None', 'None')]
 
     ctype = EnumProperty(items = type_menu, name = "", description = "Shading device")
@@ -3033,8 +3033,8 @@ envimatnode_categories = [
                                                        NodeItem("envi_bl_node", label="Blind layer"),
                                                        NodeItem("envi_screen_node", label="Screen layer"),
                                                        NodeItem("envi_sgl_node", label="Switchable layer"),
-                                                       NodeItem("envi_sc_node", label="Shading Control Node"),
-                                                       NodeItem("EnViSched", label="Schedule")])]
+                                                       NodeItem("envi_sc_node", label="Shading Control Node")]),
+        EnViMatNodeCategory("Schedule", "Schedule Node", items=[NodeItem("EnViSched", label="Schedule")])]
 
 class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     '''Node defining a solar collector'''
@@ -3044,53 +3044,120 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
                                ("1", "One-Diode", "Model reflectred beam as beam"),
                                ("2", "Sandia", "Model reflected beam as diffuse")], 
-                                name = "", description = "Composition of the layer", default = "0")
-    ta = EnumProperty(items = [("0", "0", "Angle of Resolution for Screen Transmittance Output Map"), 
-                               ("1", "1", "Angle of Resolution for Screen Transmittance Output Map"),
-                               ("2", "2", "Angle of Resolution for Screen Transmittance Output Map"),
-                               ("3", "3", "Angle of Resolution for Screen Transmittance Output Map"),
-                               ("5", "5", "Angle of Resolution for Screen Transmittance Output Map")], 
-                                name = "", description = "Angle of Resolution for Screen Transmittance Output Map", default = "0")
+                                name = "", description = "Photovoltaic Performance Object Type", default = "0")
+    ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
+                               ("1", "Amorphous", "Model reflectred beam as beam")], 
+                                name = "", description = "Photovoltaic Type", default = "0")
+    hti = EnumProperty(items = [("0", "Decoupled", "Decoupled"), 
+                               ("1", "Ulleberg", "DecoupledUllebergDynamic"),
+                               ("2", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
+                               ("3", "Transpired", "IntegratedTranspiredCollector"),
+                               ("5", "ExteriorVented", "IntegratedExteriorVentedCavity"),
+                               ("6", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
+                                name = "", description = "Conversion Efficiency Input Mode'", default = "0")
 
-    dsr = FloatProperty(name = "", description = "Diffuse solar reflectance", min = 0.0, max = 0.99, default = 0.5)
-    vr = FloatProperty(name = "", description = "Visible reflectance", min = 0.0, max = 1, default = 0.6)
-    the = FloatProperty(name = "", description = "Thermal Hemispherical Emissivity", min = 0.0, max = 1, default = 0.9)
-    tc = FloatProperty(name = "W/m.K", description = "Conductivity", min = 0.0001, max = 10, default = 0.1)
-    sme = FloatProperty(name = "mm", description = "Screen Material Spacing", min = 1, max = 1000, default = 50)
-    smd = FloatProperty(name = "mm", description = "Screen Material Diameter", min = 1, max = 1000, default = 25)
+    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
+               'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
+               'BPsolar 3160': (4.8, 44.2, 35.1, 4.55, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 380': (4.8, 22.1, 17.6, 4.55, 0.00065, -0.08, 36, 320, 0.65),
+               'BPsolar 4160': (4.9, 44.2, 35.4, 4.52, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 5170': (5, 44.2, 36, 4.72, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 585': (5, 22.1, 18, 4.72, 0.00065, -0.08, 36, 320, 0.65),
+               'Shell SM110-12': (6.9, 21.7, 17.5, 6.3, 0.0028, -0.076, 36, 318, 0.86856),
+               'Shell SM110-24': (3.45, 43.5, 35, 3.15, 0.0014, -0.152, 72, 318, 0.86856),
+               'Shell SP70': (4.7, 21.4, 16.5, 4.25, 0.002, -0.076, 36, 318, 0.6324),
+               'Shell SP75': (4.8, 21.7, 17, 4.4, 0.002, -0.076, 36, 318, 0.6324),
+               'Shell SP140': (4.7, 42.8, 33, 4.25, 0.002, -0.152, 72, 318, 1.320308),
+               'Shell SP150': (4.8, 43.4, 34, 4.4, 0.002, -0.152, 72, 318, 1.320308),
+               'Shell S70': (4.5, 21.2, 17, 4, 0.002, -0.076, 36, 317, 0.7076),
+               'Shell S75': (4.7, 21.6, 17.6, 4.2, 0.002, -0.076, 36, 317, 0.7076),
+               'Shell S105': (4.5, 31.8, 25.5, 3.9, 0.002, -0.115, 54, 317, 1.037),
+               'Shell S115': (4.7, 32.8, 26.8, 4.2, 0.002, -0.115, 54, 317, 1.037),
+               'Shell ST40': (2.68, 23.3, 16.6, 2.41, 0.00035, -0.1, 16, 320, 0.424104),
+               'UniSolar PVL-64': (4.8, 23.8, 16.5, 3.88, 0.00065, -0.1, 40, 323, 0.65),
+               'UniSolar PVL-128': (4.8, 47.6, 33, 3.88, 0.00065, -0.2, 80, 323, 1.25),
+               'Custom': None}
+    
+    e1items = [(p, p, '{} module'.format(p)) for p in e1ddict]
+    e1menu = EnumProperty(items = e1items, name = "", description = "Module type", default = 'ASE 300-DFG/50')
+    
+
+    fsa = FloatProperty(name = "%", description = "Fraction of Surface Area with Active Solar Cells", min = 10, max = 100, default = 90)
+    eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
+    ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
+    mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
+    tap = FloatProperty(name = "", description = "Transmittance absorptance product", min = -1, max = 1, default = 0.9)
+    sbg = FloatProperty(name = "eV", description = "Semiconductor band-gap", min = 0.1, max = 5, default = 1.12)
+    sr = FloatProperty(name = "W", description = "Shunt resistance", min = 1, default = 1000000)
+    scc = FloatProperty(name = "Amps", description = "Short circuit current", min = 1, max = 1000, default = 25)
     sgd = FloatProperty(name = "mm", description = "Screen to glass distance", min = 1, max = 1000, default = 25)
-    tom = FloatProperty(name = "", description = "Top opening multiplier", min = 0.0, max = 1, default = 0.5)
-    bom = FloatProperty(name = "", description = "Bottom opening multiplier", min = 0.0, max = 1, default = 0.5)
-    lom = FloatProperty(name = "", description = "Left-side opening multiplier", min = 0.0, max = 1, default = 0.5)
-    rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
+    ocv = FloatProperty(name = "V", description = "Open circuit voltage", min = 0.0, max = 100, default = 60)
+    rt = FloatProperty(name = "K", description = "Reference temperature", min = 278, max = 328, default = 298)
+    ri = FloatProperty(name = "W/m2", description = "Reference insolation", min = 100, max = 2000, default = 1000)
+    mc = FloatProperty(name = "", description = "Module current at maximum power", min = 1, max = 10, default = 5.6)
+    mv = FloatProperty(name = "", description = "Module voltage at maximum power", min = 0.0, max = 1, default = 50.5)
+    tcscc = FloatProperty(name = "", description = "Temperature Coefficient of Short Circuit Current", min = 1, max = 10, default = 5.6)
+    tcocv = FloatProperty(name = "", description = "Temperature Coefficient of Open Circuit Voltage", min = 0.0, max = 1, default = 50.5)
+    atnoct = FloatProperty(name = "C", description = "Reference temperature", min = 0, max = 50, default = 20)
+    ctnoct = FloatProperty(name = "C", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 0, max = 100, default = 45)
+    inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
+    hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
+    thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
     
     def init(self, context):
 #        self.outputs.new('envi_screen_sock', 'Outer Layer')
         self['nodeid'] = nodeid(self)
+        self.inputs.new('EnViSchedSocket', 'Schedule')
 #        self.inputs.new('envi_sc_sock', 'Control')
 #        self.inputs.new('envi_tl_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
-#        if self.outputs['Outer Layer'].links:
-        newrow(layout, "Reflected beam:", self, "pp")
-#            newrow(layout, "Diffuse reflectance:", self, "dsr")
-#            newrow(layout, "Visible reflectance:", self, "vr") 
-#            newrow(layout, "Thermal emmisivity:", self, "the")
-#            newrow(layout, "Conductivity:", self, "tc")
-#            newrow(layout, "Material spacing:", self, "sme")
-#            newrow(layout, "Material diameter:", self, "smd")
-#            newrow(layout, "Distance:", self, "sgd")
-#            newrow(layout, "Top mult.:", self, "tom")
-#            newrow(layout, "Bottom mult.:", self, "bom")
-#            newrow(layout, "Left milt.:", self, "lom")
-#            newrow(layout, "Right mult.:", self, "rom")
-#            newrow(layout, "Resolution angle:", self, "ta")
-    
+        newrow(layout, "Heat transfer:", self, "hti")
+        newrow(layout, "PV type:", self, "pp")
+        
+        if self.pp == '0':
+            newrow(layout, "Series in parallel:", self, "ssp")
+            newrow(layout, "Modules in series:", self, "mis")
+            newrow(layout, "Area:", self, "fsa")
+            
+            if not self.inputs['Schedule'].links:
+                newrow(layout, "Efficiency:", self, "eff")
+                
+        elif self.pp == '1':
+            newrow(layout, "Model:", self, "e1menu")
+            if self.e1menu == 'Custom':
+                newrow(layout, "Cell type:", self, "ct")
+                newrow(layout, "Silicon:", self, "mis")
+                newrow(layout, "Area:", self, "fsa")
+                newrow(layout, "Trans*absorp:", self, "tap")
+                newrow(layout, "Band gap:", self, "sbg")
+                newrow(layout, "Shunt:", self, "sr")    
+                newrow(layout, "Short:", self, "scc") 
+                newrow(layout, "Open:", self, "ocv")
+                newrow(layout, "Ref. temp.:", self, "rt")
+                newrow(layout, "Ref. insol.:", self, "ri")
+                newrow(layout, "Max current:", self, "mc")
+                newrow(layout, "Max voltage:", self, "mv")
+                newrow(layout, "Max current:", self, "tcscc")
+                newrow(layout, "Max voltage:", self, "tcocv")
+                newrow(layout, "Ambient temp.:", self, "atnoct")
+                newrow(layout, "Cell temp.:", self, "ctnoct")
+                newrow(layout, "Insolation:", self, "inoct")
+            else:
+                newrow(layout, "Trans*absorp:", self, "tap")
+                newrow(layout, "Band gap:", self, "sbg")
+                newrow(layout, "Shunt:", self, "sr")    
+                newrow(layout, "Ref. temp.:", self, "rt")
+                newrow(layout, "Ref. insol.:", self, "ri")
+                newrow(layout, "Ambient temp.:", self, "atnoct")
+                newrow(layout, "Insolation:", self, "inoct")
+                
     def valid(self):
-        if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
-            nodecolour(self, 1)
-        else:
-            nodecolour(self, 0)
+        pass
+#        if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
+#            nodecolour(self, 1)
+#        else:
+#            nodecolour(self, 0)
             
     def update(self):
         socklink2(self.outputs['Outer Layer'], self.id_data)
@@ -3100,16 +3167,59 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
-            
-        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 'Module Performance Name',
-                  'Heat Transfer Integration Mode', ' Heat Transfer Integration Mode', ' Number of Series Strings in Parallel', 'Screen Material Diameter (m)',
-                  'Screen-to-Glass Distance (m)', 'Top Opening Multiplier', 'Bottom Opening Multiplier', 'Left-Side Opening Multiplier', 
-                  'Right-Side Opening Multiplier', 'Angle of Resolution for Output Map (deg)')
         
-        paramvs = ['{}-layer-{}'.format(material.name, ln), self.rb] + ['{:.3f}'.format(p) for p in (self.dsr, self.vr, self.the, self.tc, 0.001 * self.sme, 0.001 * self.smd,
-                   0.001 * self.sgd, self.tom, self.bom, self.lom, self.rom)] + [self.ta]
-  
-        return epentry('WindowMaterial:Screen', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
+        
+        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 
+                  'Module Performance Name', 'Heat Transfer Integration Mode', 
+                  'Number of Series Strings in Parallel', 'Number of Modules in Series')
+        
+        paramvs = ['{}-pv'.format(material.name), ('Simple', 'EquivalentOne-Diode', 'Sandia')[int(self.pp)]]
+        
+        if self.pp == '0':
+            paramssimple = ('Name', 'Fraction of Surface Area with Active Solar Cells', 'Conversion Efficiency Input Mode',
+                      'Value for Cell Efficiency if Fixed', 'Efficiency Schedule Name')
+            paramvssimple = ('{}-pv'.format(material.name), self.fsa, ('FIXED', 'SCHEDULED')[self.inputs['Schedule'].links], 
+                             (self.eff, '')[self.inputs['Schedule'].links], ('', '{}-pv-sched'.format(material.name))[self.inputs['Schedule'].links])
+            print(epentry('PhotovoltaicPerformance :Simple' , paramssimple, paramvssimple))
+        
+        elif self.pp == '1':
+            paramse1d = ('Name', 'Cell type', 'Number of Cells in Series',
+                      'Active Area', 'Transmittance Absorptance Product',
+                      'Semiconductor Bandgap', 'Shunt Resistance', 
+                      'Short Circuit Current', 'Open Circuit Voltage', 
+                      'Reference Temperature', 'Reference Insolation',
+                      'Module Current at Maximum Power', 'Module Voltage at Maximum Power',
+                      'Temperature Coefficient of Short Circuit Current', 'Temperature Coefficient of Open Circuit Voltage',
+                      'Nominal Operating Cell Temperature Test Ambient Temperature', 'Nominal Operating Cell Temperature Test Cell Temperature',
+                      'Nominal Operating Cell Temperature Test Insolation', 'Module Heat Loss Coefficient',
+                      'Total Heat Capacity')
+            if self.e1menu == 'Custom':
+                paramvse1d = 1
+            else:
+                paramvse1d =1
+        
+        paramssandia = ('Name', 'Active Area', 'Number of Cells in Series',
+                  'Number of Cells in Parallel', 'Short-Circuit Current', 
+                  'Open-Circuit Voltage', 'Current at Maximum Power Point', 
+                  'Voltage at Maximum PowerPoint', 'Sandia Database Parameter aIsc',
+                  'Sandia Database Parameter aImp', 'Sandia Database Parameter c0',
+                  'Sandia Database Parameter c1', 'Sandia Database Parameter Bvoc0',
+                  'Sandia Database Parameter mBVoc', 'Sandia Database Parameter BVmp0',
+                  'Sandia Database Parameter mBVmp', 'Diode Factor',
+                  'Sandia Database Parameter c2', 'Sandia Database Parameter c3',
+                  'Sandia Database Parameter a0', 'Sandia Database Parameter a1',
+                  'Sandia Database Parameter a2', 'Sandia Database Parameter a3',
+                  'Sandia Database Parameter a4', 'Sandia Database Parameter b0',
+                  'Sandia Database Parameter b1', 'Sandia Database Parameter b2',
+                  'Sandia Database Parameter b3', 'Sandia Database Parameter b4',
+                  'Sandia Database Parameter b5', 'Sandia Database Parameter Delta(TC)',
+                  'Sandia Database Parameter fd', 'Sandia Database Parameter a', 
+                  'Sandia Database Parameter b', 'Sandia Database Parameter c4',
+                  'Sandia Database Parameter c5', 'Sandia Database Parameter Ix0',
+                  'Sandia Database Parameter Ixx0', 'Sandia Database Parameter c6',
+                  'Sandia Database Parameter c7')
+        
+        return epentry('Generator:Photovoltaic', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
     
 # Generative nodes
 class ViGenNode(Node, ViNodes):
@@ -4282,8 +4392,8 @@ class EnViHvac(Node, EnViNodes):
         params = ('Zone Name', 'Zone Conditioning Equipment List Name', 'Zone Air Inlet Node or NodeList Name', 'Zone Air Exhaust Node or NodeList Name',
                   'Zone Air Node Name', 'Zone Return Air Node Name')
         paramvs = (zn, zn + '_Equipment', zn + '_supairnode', '', zn + '_airnode', zn + '_retairnode')
-        params2 = ('Name', 'Zone Equipment 1 Object Type', 'Zone Equipment 1 Name', 'Zone Equipment 1 Cooling Sequence', 'Zone Equipment 1 Heating or No-Load Sequence')
-        paramvs2 = (zn + '_Equipment', 'ZoneHVAC:IdealLoadsAirSystem', zn + '_Air', 1, 1)
+        params2 = ('Name', 'Load Distribution Scheme', 'Zone Equipment 1 Object Type', 'Zone Equipment 1 Name', 'Zone Equipment 1 Cooling Sequence', 'Zone Equipment 1 Heating or No-Load Sequence')
+        paramvs2 = (zn + '_Equipment', 'SequentialLoad', 'ZoneHVAC:IdealLoadsAirSystem', zn + '_Air', 1, 1)
         return epentry('ZoneHVAC:EquipmentConnections', params, paramvs) + epentry('ZoneHVAC:EquipmentList', params2, paramvs2)
 
     def schedwrite(self, zn):
