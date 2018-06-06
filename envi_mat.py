@@ -104,13 +104,16 @@ class envi_materials(object):
                         'DuPont Energain': ('0.0', '-9.0:0.001 15.0:93760 26.0:191185 80.0:332460')}
         self.pcmd_dat = OrderedDict(sorted(self.pcmd_datd.items()))
         
+        self.pv_datd = {'Default PV': ('Rough', '0.035', '29', '1213', '0.90', '0.5', '0.5', '50')}
+        self.pv_dat = OrderedDict(sorted(self.pv_datd.items()))
+        
         self.namedict = OrderedDict()
         self.thickdict = OrderedDict()
         self.i = 0
         self.matdat = OrderedDict()
         
         for dat in (self.brick_dat, self.cladding_dat, self.concrete_dat, self.gas_dat, self.insulation_dat, self.metal_dat, 
-                    self.stone_dat, self.wood_dat, self.glass_dat, self.wgas_dat, self.pcm_dat):
+                    self.stone_dat, self.wood_dat, self.glass_dat, self.wgas_dat, self.pcm_dat, self.pv_dat):
             self.matdat.update(dat)
 
     def omat_write(self, idf_file, name, stringmat, thickness):
@@ -173,6 +176,9 @@ class envi_constructions(object):
         self.door_cond = {'Internal Door 1': ('Chipboard', 'Hardwood', 'Chipboard')}
         self.door_con = OrderedDict(sorted(self.door_cond.items()))
         
+        self.pv_cond = {'Simple PV': ['Default PV']}
+        self.pv_con = OrderedDict(sorted(self.pv_cond.items()))
+        
         self.glaze_cond = {'Standard Double Glazing': ('Clear 3mm', 'Air', 'Clear 3mm'), 'Low-E Double Glazing': ('Clear 3mm', 'Air', 'Clear 3mm Hard LoE'), 
                            'PassivHaus': ('Clear 3mm', 'Argon', 'Clear 3mm Soft LoE', 'Argon', 'Clear 3mm Soft LoE'), 'Velfac 200 Double': ('Clear 4mm', 'Argon', 'Clear 4mm Soft LoE'),
                            'Velfac 200 Triple': ('Clear 4mm', 'Argon', 'Clear 4mm Soft LoE', 'Argon', 'Clear 4mm Soft LoE')}
@@ -180,7 +186,7 @@ class envi_constructions(object):
         
         self.p = 0
         self.propdict = {'Wall': self.wall_con, 'Floor': self.floor_con, 'Roof': self.roof_con, 'Ceiling': self.floor_con, 'Door': self.door_con, 
-                                'Window': self.glaze_con} 
+                                'Window': self.glaze_con, 'PV': self.pv_con} 
 
     def con_write(self, idf_file, contype, name, nl, mn, cln):
         params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(cln) - 1)]        
@@ -266,7 +272,7 @@ def envi_layer4(self, context):
     
 def envi_con_list(self, context):
     ec = envi_constructions()
-    return [(mat, mat, 'Construction') for mat in (ec.wall_con, ec.roof_con, ec.floor_con, ec.ceil_con, ec.door_con, ec.glaze_con)[("Wall", "Roof", "Floor", "Ceiling", "Door", "Window").index(self.envi_con_type)]]
+    return [(mat, mat, 'Construction') for mat in (ec.wall_con, ec.roof_con, ec.floor_con, ec.ceil_con, ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Ceiling", "Door", "Window", "PV").index(self.envi_con_type)]]
     
 def retuval(mat):
     if mat.envi_con_type not in ('None', 'Shading', 'Aperture', 'Window'):

@@ -2026,6 +2026,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                     name = "", 
                                     description = "Frame material", 
                                     default = "0", update = con_update)
+    
     fthi = FloatProperty(name = "m", description = "Frame thickness", min = 0.001, max = 10, default = 0.05)
     farea = FloatProperty(name = "%", description = "Frame area percentage", min = 0.001, max = 100, default = 10)
     fw = FloatProperty(name = "m", description = "Frame Width", min = 0.0, max = 10, default = 0.2)
@@ -2054,10 +2055,14 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     ird = FloatProperty(name = "m", description = "Inside Reveal Depth (m)", min = 0.0, max = 10, default = 0.1)
     irsa = FloatProperty(name = "", description = "Inside Reveal Solar Absorptance", min = 0.01, max = 1, default = 0.7)
     resist = FloatProperty(name = "", description = "U-value", min = 0.01, max = 10, default = 0.7)
+    eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
+    ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
+    mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
+    pv = BoolProperty(name = "", description = "Photovoltaic shader", default = False)
     
     def init(self, context):
         self['nodeid'] = nodeid(self)
-        self.inputs.new('envi_outl_sock', 'Outer layer')
+        self.inputs.new('envi_ol_sock', 'Outer layer')
         self.inputs['Outer layer'].hide = True
         self.inputs.new('envi_f_sock', 'Outer frame layer')
 #        self.inputs[0].hide = True
@@ -2070,46 +2075,64 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
-            newrow(layout, 'Specification:', self, "envi_con_makeup")
-
-            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
-                newrow(layout, 'Intrazone:', self, "envi_boundary")
-                newrow(layout, 'Air-flow:', self, "envi_afsurface")
-
-            if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
-            
-            if self.envi_con_makeup == '0':
-                if self.envi_con_type == 'Window':
-                    newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")
-
-                    if self.envi_simple_glazing:
-                        newrow(layout, 'U-Value:', self, "envi_sg_uv")
-                        newrow(layout, 'SHGC:', self, "envi_sg_shgc")
-                        newrow(layout, 'Vis trans.:', self, "envi_sg_vt")
-                
-                if self.envi_con_type != 'Window' or not self.envi_simple_glazing:
-                    row = layout.row()                
-                    row.prop(self, 'envi_con_list')
+            if self.envi_con_type != "Shading":
+                newrow(layout, 'Specification:', self, "envi_con_makeup")
     
-                    for l, layername in enumerate(envi_cons.propdict[self.envi_con_type][self.envi_con_list]):    
-                        row = layout.row()
-                        if layername in envi_mats.wgas_dat:
-                            row.label(text = '{} ({})'.format(layername, "14mm"))
-                            row.prop(self, "lt{}".format(l))
-
-                        elif layername in envi_mats.gas_dat:
-                            row.label(text = '{} ({})'.format(layername, "20-50mm"))
-                            row.prop(self, "lt{}".format(l))
-
-                        elif layername in envi_mats.glass_dat:
-                            row.label(text = '{} ({})'.format(layername, "{}mm".format(float(envi_mats.matdat[layername][3])*1000)))
-                            row.prop(self, "lt{}".format(l))
-
+                if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
+                    if self.envi_con_type in ("Wall", "Floor", "Roof"):
+                        newrow(layout, 'PV:', self, "pv")
+                        
+                        if not self.pv:
+                            newrow(layout, 'Intrazone:', self, "envi_boundary")
+                            newrow(layout, 'Air-flow:', self, "envi_afsurface")
+    
+                            if self.envi_con_type in ("Wall", "Floor", "Roof"):
+                                newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
                         else:
-                            row.label(text = '{} ({})'.format(layername, "{}mm".format(envi_mats.matdat[layername][7])))
-                            row.prop(self, "lt{}".format(l))
-
+                            newrow(layout, "Series in parallel:", self, "ssp")
+                            newrow(layout, "Modules in series:", self, "mis")
+                            newrow(layout, "PV area ratio:", self, "fsa")
+                            newrow(layout, "Efficiency:", self, "eff")
+                if self.envi_con_makeup == '0':
+                    
+                    if self.envi_con_type == 'Window':
+                        newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")
+    
+                        if self.envi_simple_glazing:
+                            newrow(layout, 'U-Value:', self, "envi_sg_uv")
+                            newrow(layout, 'SHGC:', self, "envi_sg_shgc")
+                            newrow(layout, 'Vis trans.:', self, "envi_sg_vt")
+                    
+                    if self.envi_con_type != 'Window' or not self.envi_simple_glazing:
+                        row = layout.row()                
+                        row.prop(self, 'envi_con_list')
+        
+                        for l, layername in enumerate(envi_cons.propdict[self.envi_con_type][self.envi_con_list]):    
+                            row = layout.row()
+                            if layername in envi_mats.wgas_dat:
+                                row.label(text = '{} ({})'.format(layername, "14mm"))
+                                row.prop(self, "lt{}".format(l))
+    
+                            elif layername in envi_mats.gas_dat:
+                                row.label(text = '{} ({})'.format(layername, "20-50mm"))
+                                row.prop(self, "lt{}".format(l))
+    
+                            elif layername in envi_mats.glass_dat:
+                                row.label(text = '{} ({})'.format(layername, "{}mm".format(float(envi_mats.matdat[layername][3])*1000)))
+                                row.prop(self, "lt{}".format(l))
+    
+                            else:
+                                row.label(text = '{} ({})'.format(layername, "{}mm".format(envi_mats.matdat[layername][7])))
+                                row.prop(self, "lt{}".format(l))
+            else:
+                newrow(layout, 'PV:', self, "pv")
+                
+                if self.pv:
+                    newrow(layout, "Series in parallel:", self, "ssp")
+                    newrow(layout, "Modules in series:", self, "mis")
+                    newrow(layout, "PV area ratio:", self, "fsa")
+                    newrow(layout, "Efficiency:", self, "eff")
+                    
             if self.envi_con_type == 'Window':
                 newrow(layout, 'Frame:', self, "fclass")
                 if self.fclass == '0':
@@ -2147,8 +2170,19 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     newrow(layout, "Inner reveal sol. abs:", self, "irsa")
                 else:
                     newrow(layout, '% area:', self, "farea")
-        row = layout.row()
-        row.label(text = 'U-value ({})'.format(1/self.resist)) 
+            
+            elif self.envi_con_type in ('Wall', 'Floor', 'Roof'):
+                row = layout.row()
+                try:
+                    row.label(text = 'U-value  = {:.3f} W/m2.K'.format(1/self.resist)) 
+                except: 
+                    row.label(text = 'U-value  = N/A') 
+            
+            elif self.envi_con_type == 'PV' and self.envi_con_makeup == '0':
+                newrow(layout, "Series in parallel:", self, "ssp")
+                newrow(layout, "Modules in series:", self, "mis")
+                newrow(layout, "Area:", self, "fsa")
+                newrow(layout, "Efficiency:", self, "eff")
         
     def update(self):
 #        socklink2(self.inputs['Outer layer'], self.id_data)
@@ -2182,6 +2216,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     envi_mats.thickdict[presetmat].append(self.thicklist[pm]/1000)
                 
                 if self.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door') and presetmat not in envi_mats.gas_dat:
+                    self.resist += self.thicklist[pm]/1000/matlist[1]
                     params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')                    
                     paramvs = ['{}-layer-{}'.format(matname, pm), matlist[0], str(self.thicklist[pm]/1000)] + matlist[1:8]                    
                     ep_text += epentry("Material", params, paramvs)
@@ -3105,11 +3140,11 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
     
     def init(self, context):
-#        self.outputs.new('envi_screen_sock', 'Outer Layer')
+        self.outputs.new('envi_ol_sock', 'Outer Layer')
         self['nodeid'] = nodeid(self)
         self.inputs.new('EnViSchedSocket', 'Schedule')
 #        self.inputs.new('envi_sc_sock', 'Control')
-#        self.inputs.new('envi_tl_sock', 'Layer')
+        self.inputs.new('envi_ol_sock', 'Layer')
         
     def draw_buttons(self, context, layout):
         newrow(layout, "Heat transfer:", self, "hti")
