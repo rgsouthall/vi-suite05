@@ -1955,13 +1955,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     
     def con_update(self, context):
 #        self.id_data['envi_con_type'] = self.envi_con_type
-        if self.envi_con_makeup != "1" or self.envi_con_type == 'Shading':
-            for link in self.inputs['Outer layer'].links:
-                self.id_data.links.remove(link)
-            self.inputs['Outer layer'].hide = True
+        if not self.pv:
+            if self.envi_con_makeup != "1" or self.envi_con_type == 'Shading':
+                for link in self.inputs['Outer layer'].links:
+                    self.id_data.links.remove(link)
+                self.inputs['Outer layer'].hide = True
+            else:
+                self.inputs['Outer layer'].hide = False
         else:
             self.inputs['Outer layer'].hide = False
-           
+            
         [link.from_node.update() for link in self.inputs['Outer layer'].links]
         get_mat(self, 0).envi_type = self.envi_con_type        
         self.update()
@@ -2058,7 +2061,69 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
     ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
     mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
-    pv = BoolProperty(name = "", description = "Photovoltaic shader", default = False)
+    pv = BoolProperty(name = "", description = "Photovoltaic shader", default = False, update = con_update)
+    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
+                               ("1", "One-Diode", "Model reflectred beam as beam"),
+                               ("2", "Sandia", "Model reflected beam as diffuse")], 
+                                name = "", description = "Photovoltaic Performance Object Type", default = "0")
+    ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
+                               ("1", "Amorphous", "Model reflectred beam as beam")], 
+                                name = "", description = "Photovoltaic Type", default = "0")
+    hti = EnumProperty(items = [("0", "Decoupled", "Decoupled"), 
+                               ("1", "Ulleberg", "DecoupledUllebergDynamic"),
+                               ("2", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
+                               ("3", "Transpired", "IntegratedTranspiredCollector"),
+                               ("5", "ExteriorVented", "IntegratedExteriorVentedCavity"),
+                               ("6", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
+                                name = "", description = "Conversion Efficiency Input Mode'", default = "0")
+
+    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
+               'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
+               'BPsolar 3160': (4.8, 44.2, 35.1, 4.55, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 380': (4.8, 22.1, 17.6, 4.55, 0.00065, -0.08, 36, 320, 0.65),
+               'BPsolar 4160': (4.9, 44.2, 35.4, 4.52, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 5170': (5, 44.2, 36, 4.72, 0.00065, -0.16, 72, 320, 1.26),
+               'BPsolar 585': (5, 22.1, 18, 4.72, 0.00065, -0.08, 36, 320, 0.65),
+               'Shell SM110-12': (6.9, 21.7, 17.5, 6.3, 0.0028, -0.076, 36, 318, 0.86856),
+               'Shell SM110-24': (3.45, 43.5, 35, 3.15, 0.0014, -0.152, 72, 318, 0.86856),
+               'Shell SP70': (4.7, 21.4, 16.5, 4.25, 0.002, -0.076, 36, 318, 0.6324),
+               'Shell SP75': (4.8, 21.7, 17, 4.4, 0.002, -0.076, 36, 318, 0.6324),
+               'Shell SP140': (4.7, 42.8, 33, 4.25, 0.002, -0.152, 72, 318, 1.320308),
+               'Shell SP150': (4.8, 43.4, 34, 4.4, 0.002, -0.152, 72, 318, 1.320308),
+               'Shell S70': (4.5, 21.2, 17, 4, 0.002, -0.076, 36, 317, 0.7076),
+               'Shell S75': (4.7, 21.6, 17.6, 4.2, 0.002, -0.076, 36, 317, 0.7076),
+               'Shell S105': (4.5, 31.8, 25.5, 3.9, 0.002, -0.115, 54, 317, 1.037),
+               'Shell S115': (4.7, 32.8, 26.8, 4.2, 0.002, -0.115, 54, 317, 1.037),
+               'Shell ST40': (2.68, 23.3, 16.6, 2.41, 0.00035, -0.1, 16, 320, 0.424104),
+               'UniSolar PVL-64': (4.8, 23.8, 16.5, 3.88, 0.00065, -0.1, 40, 323, 0.65),
+               'UniSolar PVL-128': (4.8, 47.6, 33, 3.88, 0.00065, -0.2, 80, 323, 1.25),
+               'Custom': None}
+    
+    e1items = [(p, p, '{} module'.format(p)) for p in e1ddict]
+    e1menu = EnumProperty(items = e1items, name = "", description = "Module type", default = 'ASE 300-DFG/50')
+    
+
+    pvsa = FloatProperty(name = "%", description = "Fraction of Surface Area with Active Solar Cells", min = 10, max = 100, default = 90)
+    eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
+    ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
+    mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
+    tap = FloatProperty(name = "", description = "Transmittance absorptance product", min = -1, max = 1, default = 0.9)
+    sbg = FloatProperty(name = "eV", description = "Semiconductor band-gap", min = 0.1, max = 5, default = 1.12)
+    sr = FloatProperty(name = "W", description = "Shunt resistance", min = 1, default = 1000000)
+    scc = FloatProperty(name = "Amps", description = "Short circuit current", min = 1, max = 1000, default = 25)
+    sgd = FloatProperty(name = "mm", description = "Screen to glass distance", min = 1, max = 1000, default = 25)
+    ocv = FloatProperty(name = "V", description = "Open circuit voltage", min = 0.0, max = 100, default = 60)
+    rt = FloatProperty(name = "K", description = "Reference temperature", min = 278, max = 328, default = 298)
+    ri = FloatProperty(name = "W/m2", description = "Reference insolation", min = 100, max = 2000, default = 1000)
+    mc = FloatProperty(name = "", description = "Module current at maximum power", min = 1, max = 10, default = 5.6)
+    mv = FloatProperty(name = "", description = "Module voltage at maximum power", min = 0.0, max = 1, default = 50.5)
+    tcscc = FloatProperty(name = "", description = "Temperature Coefficient of Short Circuit Current", min = 1, max = 10, default = 5.6)
+    tcocv = FloatProperty(name = "", description = "Temperature Coefficient of Open Circuit Voltage", min = 0.0, max = 1, default = 50.5)
+    atnoct = FloatProperty(name = "C", description = "Reference temperature", min = 0, max = 50, default = 20)
+    ctnoct = FloatProperty(name = "C", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 0, max = 100, default = 45)
+    inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
+    hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
+    thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
     
     def init(self, context):
         self['nodeid'] = nodeid(self)
@@ -2075,24 +2140,59 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
-            if self.envi_con_type != "Shading":
+            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
+                    if self.envi_con_type in ("Wall", "Floor", "Roof"):
+                        newrow(layout, 'PV:', self, "pv")
+                        
+                        if self.pv:
+                            newrow(layout, "Heat transfer:", self, "hti")
+                            newrow(layout, "Photovoltaic:", self, "pp")
+                            
+                            if self.pp == '0':
+                                newrow(layout, "Series in parallel:", self, "ssp")
+                                newrow(layout, "Modules in series:", self, "mis")
+                                newrow(layout, "PV area ratio:", self, "pvsa")
+                                newrow(layout, "Efficiency:", self, "eff")
+                            elif self.pp == '1':
+                                newrow(layout, "Model:", self, "e1menu")
+                                if self.e1menu == 'Custom':
+                                    newrow(layout, "Cell type:", self, "ct")
+                                    newrow(layout, "Silicon:", self, "mis")
+                                    newrow(layout, "Area:", self, "pvsa")
+                                    newrow(layout, "Trans*absorp:", self, "tap")
+                                    newrow(layout, "Band gap:", self, "sbg")
+                                    newrow(layout, "Shunt:", self, "sr")    
+                                    newrow(layout, "Short:", self, "scc") 
+                                    newrow(layout, "Open:", self, "ocv")
+                                    newrow(layout, "Ref. temp.:", self, "rt")
+                                    newrow(layout, "Ref. insol.:", self, "ri")
+                                    newrow(layout, "Max current:", self, "mc")
+                                    newrow(layout, "Max voltage:", self, "mv")
+                                    newrow(layout, "Max current:", self, "tcscc")
+                                    newrow(layout, "Max voltage:", self, "tcocv")
+                                    newrow(layout, "Ambient temp.:", self, "atnoct")
+                                    newrow(layout, "Cell temp.:", self, "ctnoct")
+                                    newrow(layout, "Insolation:", self, "inoct")
+                                else:
+                                    newrow(layout, "Trans*absorp:", self, "tap")
+                                    newrow(layout, "Band gap:", self, "sbg")
+                                    newrow(layout, "Shunt:", self, "sr")    
+                                    newrow(layout, "Ref. temp.:", self, "rt")
+                                    newrow(layout, "Ref. insol.:", self, "ri")
+                                    newrow(layout, "Ambient temp.:", self, "atnoct")
+                                    newrow(layout, "Insolation:", self, "inoct")
+            
+            if self.envi_con_type != "Shading" and not self.pv:
                 newrow(layout, 'Specification:', self, "envi_con_makeup")
     
                 if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
                     if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                        newrow(layout, 'PV:', self, "pv")
-                        
-                        if not self.pv:
-                            newrow(layout, 'Intrazone:', self, "envi_boundary")
-                            newrow(layout, 'Air-flow:', self, "envi_afsurface")
-    
-                            if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                                newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
-                        else:
-                            newrow(layout, "Series in parallel:", self, "ssp")
-                            newrow(layout, "Modules in series:", self, "mis")
-                            newrow(layout, "PV area ratio:", self, "fsa")
-                            newrow(layout, "Efficiency:", self, "eff")
+                        newrow(layout, 'Intrazone:', self, "envi_boundary")
+                        newrow(layout, 'Air-flow:', self, "envi_afsurface")
+
+                        if self.envi_con_type in ("Wall", "Floor", "Roof"):
+                            newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
+
                 if self.envi_con_makeup == '0':
                     
                     if self.envi_con_type == 'Window':
@@ -2124,14 +2224,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             else:
                                 row.label(text = '{} ({})'.format(layername, "{}mm".format(envi_mats.matdat[layername][7])))
                                 row.prop(self, "lt{}".format(l))
-            else:
-                newrow(layout, 'PV:', self, "pv")
-                
-                if self.pv:
-                    newrow(layout, "Series in parallel:", self, "ssp")
-                    newrow(layout, "Modules in series:", self, "mis")
-                    newrow(layout, "PV area ratio:", self, "fsa")
-                    newrow(layout, "Efficiency:", self, "eff")
+
                     
             if self.envi_con_type == 'Window':
                 newrow(layout, 'Frame:', self, "fclass")
@@ -2189,14 +2282,23 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         self.valid()
     
     def valid(self):
-        if (self.envi_con_makeup == '1' and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+        if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
             
-    def ep_write(self):
+    def pv_ep_write(self):
         matname = get_mat(self, 1).name
         
+        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 
+                  'Module Performance Name', 'Heat Transfer Integration Mode', 
+                  'Number of Series Strings in Parallel', 'Number of Modules in Series')
+        
+        paramvs = ['{}-pv'.format(matname), ('Simple', 'EquivalentOne-Diode', 'Sandia')[int(self.pp)]]
+            
+    def ep_write(self):
+        matname = get_mat(self, 1).name
+            
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
             mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
