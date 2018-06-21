@@ -29,6 +29,8 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
     scene = bpy.context.scene   
     
     for frame in range(scene['enparams']['fs'], scene['enparams']['fe'] + 1):
+        pvs = []
+        gen = 0
         scene.update()
         scene.frame_set(frame)
         en_idf = open(os.path.join(scene['viparams']['newdir'], 'in{}.idf'.format(frame)), 'w')
@@ -68,29 +70,27 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 #            paramvs = ('Wood frame', 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', 'Frame', 'Wood frame')
 #            en_idf.write(epentry('Material', params[:-2], paramvs[:-2]))
 #            en_idf.write(epentry('Construction', params[-2:], paramvs[-2:]))
-
+        gen = 0
         for mat in bpy.data.materials:            
             if mat.envi_nodes and mat.envi_nodes.nodes and mat.envi_export == True:                
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon':
-                        if emnode.envi_con_type == 'Window':
-                            
-#                            elif emnode.fclass == '2':
-                                
-                                
-                            
-                                
+                        if emnode.envi_con_type == 'Window':    
                             if emnode.envi_simple_glazing:
                                 em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
                                 ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
                             else:                            
                                 en_idf.write(emnode.ep_write())
 #                        elif not (emnode.envi_con_makeup == '1' and not emnode.inputs['Outer layer']):
+                        elif emnode.pv:
+                            gen = 1
+                            pvs.append(emnode)
                         else:
 #                            conlist, mat['pcm'] = [], 0
                             
                             if emnode.envi_con_type not in ('None', 'Shading', 'Aperture'):
                                 en_idf.write(emnode.ep_write())
+                        
                                 
 
                                 
@@ -338,7 +338,29 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 elif schedtype == 'TSPSchedule' and zn.inputs[schedtype].links:
                     en_idf.write(zn.inputs[schedtype].links[0].from_node.epwrite('{}_tspsched'.format(zn.name), 'Temperature'))
                 
-    
+        en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: GENERATORS ===========\n\n")
+        if gen:
+            params = ('Name', 'Generator List Name', 'Generator Operation Scheme Type', 
+                      'Generator Demand Limit Scheme Purchased Electric Demand Limit {W}',
+                      'Generator Track Schedule Name Scheme Schedule Name',
+                      'Generator Track Meter Scheme Meter Name', 'Electrical Buss Type',
+                      'Inverter Name')
+            paramvs = 'Electric Load Center', 'PVs', 'Baseload', '0', '', '', 'DirectCurrentWithInverter', 'Simple Ideal Inverter'
+            en_idf.write(epentry("ElectricLoadCenter:Distribution", params, paramvs))
+            
+            params = ('Name', 'Availability Schedule Name', 'Zone Name', 'Radiative Fraction', 'Inverter Efficiency')
+            paramvs = ('Simple Ideal Inverter', 'always On', '', 0.0, 1.0)
+            en_idf.write(epentry("ElectricLoadCenter:Inverter:Simple", params, paramvs))
+            
+            
+            params = ["Name"] + [['Generator {} Name'.format(i), 'Generator {} Object Type'.format(i), 
+                     'Generator {} Rated Electric Power Output (W)'.format(i), 'Generator {} Availability Schedule Name'.format(i),
+                     'Generator {} Rated Thermal to Electrical Power Ratio'.format(i)] for i, pv in enumerate(pvs)][:] 
+
+
+            en_idf.write(epentry("ElectricLoadCenter:Generators", params, paramvs))
+
+
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: THERMOSTSTATS ===========\n\n")
         for zn in zonenodes:
             for hvaclink in zn.inputs['HVAC'].links:
@@ -364,7 +386,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         for zn in zonenodes:
             for occlink in zn.inputs['Occupancy'].links:
                 en_idf.write(occlink.from_node.epwrite(zn.zone))
-    
+
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: OTHER EQUIPMENT ===========\n\n")
         for zn in zonenodes:
             for eqlink in zn.inputs['Equipment'].links:
@@ -556,9 +578,6 @@ def pregeo(op):
             for poly in en_obj.data.polygons:
                 mat = en_obj.data.materials[poly.material_index]
                 emnode = get_con_node(mat)
-#                for emnode in mat.envi_nodes.nodes:
-#                    if emnode.bl_idname == 'EnViCon':
-#                        break
                 
                 try:
                     if poly.area < 0.001:

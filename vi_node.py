@@ -1253,6 +1253,36 @@ class ViExEnNode(Node, ViNodes):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.loc, self.terrain, self.timesteps, self.animated, self.fs, self.fe, self.sdoy, self.edoy)]
 
+class ViEnELCDNode(Node, ViNodes):
+    '''Node describing an EnergyPlus electric disribution centre'''
+    bl_idname = 'ViEnELCDNode'
+    bl_label = 'EnVi Distribution'
+    bl_icon = 'LAMP'
+    
+    
+    def init(self, context):
+        self.outputs.new('ViR', 'Results out')
+        
+    def ep_write(self):
+        params = ('Name', 'Generator List Name', 'Generator Operation Scheme Type', 
+                  'Generator Demand Limit Scheme Purchased Electric Demand Limit {W}',
+                  'Generator Track Schedule Name Scheme Schedule Name',
+                  'Generator Track Meter Scheme Meter Name', 'Electrical Buss Type',
+                  'Inverter Name')
+        paramvs = 'Electric Load Center', 'PVs', 'Baseload', '0', '', '', 'DirectCurrentWithInverter', 'Simple Ideal Inverter'
+        return epentry("ElectricLoadCenter:Distribution", params, paramvs)
+
+    
+class ViEnELCGNode(Node, ViNodes):
+    '''Node describing EnergyPlus generators'''
+    bl_idname = 'ViEnELCGNode'
+    bl_label = 'EnVi Generators'
+    bl_icon = 'LAMP'    
+    
+    def init(self, context):
+        self.inputs.new('ViR', 'Results out')
+        
+        
 class ViEnSimNode(Node, ViNodes):
     '''Node describing an EnergyPlus simulation'''
     bl_idname = 'ViEnSimNode'
@@ -3867,8 +3897,10 @@ class ViFVParaNode(Node, ViNodes):
 ####################### Vi Nodes Catagories ##############################
 
 viexnodecat = [NodeItem("ViGExLiNode", label="LiVi Geometry"), NodeItem("LiViNode", label="LiVi Context"),
-                NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"), NodeItem("ViFloCdNode", label="FloVi Control"),
-                 NodeItem("ViBMExNode", label="FloVi BlockMesh"), NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
+                NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"),
+                NodeItem("ViEnELCDNode", label="EnVi Distrubution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
+                NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"), 
+                NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
                 
 vifilenodecat = [NodeItem("ViTextEdit", label="Text Edit")]
 vinodecat = [NodeItem("ViSPNode", label="VI-Suite Sun Path"), NodeItem("ViSSNode", label="VI-Suite Shadow Map"), NodeItem("ViWRNode", label="VI-Suite Wind Rose"), NodeItem("ViSVFNode", label="VI-Suite Sky View Factor"),
