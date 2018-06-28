@@ -63,142 +63,26 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 
 
         en_idf.write("!-   ===========  ALL OBJECTS IN CLASS: MATERIAL & CONSTRUCTIONS ===========\n\n")
-#        matcount, matname, namelist = [], [], []
 
-#        if 'Window' in [mat.envi_type for mat in bpy.data.materials] or 'Door' in [mat.envi_type for mat in bpy.data.materials]:
-#            params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
-#            paramvs = ('Wood frame', 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', 'Frame', 'Wood frame')
-#            en_idf.write(epentry('Material', params[:-2], paramvs[:-2]))
-#            en_idf.write(epentry('Construction', params[-2:], paramvs[-2:]))
         gen = 0
         for mat in bpy.data.materials:            
             if mat.envi_nodes and mat.envi_nodes.nodes and mat.envi_export == True:                
                 for emnode in mat.envi_nodes.nodes:
-                    if emnode.bl_idname == 'EnViCon':
+                    if emnode.bl_idname == 'EnViCon' and emnode.active:
                         if emnode.envi_con_type == 'Window':    
                             if emnode.envi_simple_glazing:
                                 em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
                                 ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
                             else:                            
                                 en_idf.write(emnode.ep_write())
-#                        elif not (emnode.envi_con_makeup == '1' and not emnode.inputs['Outer layer']):
-                        elif emnode.pv:
-                            gen = 1
-                            pvs.append(emnode)
-                        else:
-#                            conlist, mat['pcm'] = [], 0
-                            
+
+                        
+                        else:                            
                             if emnode.envi_con_type not in ('None', 'Shading', 'Aperture'):
                                 en_idf.write(emnode.ep_write())
-                        
-                                
-
-                                
-#        for mat in [mat for mat in bpy.data.materials if mat.envi_export == True and mat.envi_con_type != "None"]:
-#            if mat.envi_con_type =='Window' and mat.envi_simple_glazing:
-#                em.sg_write(en_idf, mat.name+'_sg', mat.envi_sg_uv, mat.envi_sg_shgc, mat.envi_sg_vt)
-#                ec.con_write(en_idf, mat.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
-#
-#            elif not (mat.envi_con_makeup == '1' and mat.envi_layero == '0'):
-#                conlist, mat['pcm'] = [], 0
-#                
-#                if mat.envi_con_makeup == '0' and mat.envi_con_type not in ('None', 'Shading', 'Aperture'):
-#                    thicklist = (mat.envi_export_lo_thi, mat.envi_export_l1_thi, mat.envi_export_l2_thi, mat.envi_export_l3_thi, mat.envi_export_l4_thi)
-#                    conname = mat.envi_con_list  
-#                    mats = ec.propdict[mat.envi_con_type][mat.envi_con_list]
-#                    
-#                    for pm, presetmat in enumerate(mats):
-#                        matname.append('{}-{}'.format(presetmat, matcount.count(presetmat.upper())))
-#                        matcount.append(presetmat.upper())
-#                        
-#                        if em.namedict.get(presetmat) == None:
-#                            em.namedict[presetmat] = 0
-#                            em.thickdict[presetmat] = [thicklist[pm]/1000]
-#                        else:
-#                            em.namedict[presetmat] = em.namedict[presetmat] + 1
-#                            em.thickdict[presetmat].append(thicklist[pm]/1000)
-#                        
-#                        if mat.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door') and presetmat not in em.gas_dat:
-#                            em.omat_write(en_idf, matname[-1], list(em.matdat[presetmat]), str(thicklist[pm]/1000))
-#                        elif presetmat in em.gas_dat:
-#                            em.amat_write(en_idf, matname[-1], [em.matdat[presetmat][2]])
-#                        
-#                        elif mat.envi_con_type =='Window' and em.matdat[presetmat][0] == 'Glazing':
-#                            em.tmat_write(en_idf, matname[-1], list(em.matdat[presetmat]) + [0], str(thicklist[pm]/1000))
-#                        elif mat.envi_con_type =='Window' and em.matdat[presetmat][0] == 'Gas':
-#                            em.gmat_write(en_idf, matname[-1], list(em.matdat[presetmat]), str(thicklist[pm]/1000))
-#                    curlaynames = matname[-(pm + 1):]
-#                    namelist.append(conname)
-#                    ec.con_write(en_idf, mat.envi_con_type, conname, str(namelist.count(conname)-1), mat.name, curlaynames)
-#        
-#                elif mat.envi_con_makeup == '1' and mat.envi_con_type not in ('None', 'Shading', 'Aperture'):
-#                    thicklist = (mat.envi_export_lo_thi, mat.envi_export_l1_thi, mat.envi_export_l2_thi, mat.envi_export_l3_thi, mat.envi_export_l4_thi)
-#                    conname = mat.name
-#                    layers = [i for i in itertools.takewhile(lambda x: x != "0", (mat.envi_layero, mat.envi_layer1, mat.envi_layer2, mat.envi_layer3, mat.envi_layer4))]
-#                    if len(layers) in (2, 4) and mat.envi_con_type == 'Window':
-#                        exp_op.report({'ERROR'}, 'Wrong number of layers specified for the {} window construction'.format(mat.name))
-#                        return
-#                                    
-#                    for l, layer in enumerate(layers):
-#                        lmat = (mat.envi_material_lo, mat.envi_material_l1, mat.envi_material_l2, mat.envi_material_l3, mat.envi_material_l4)[l]
-#    
-#                        if layer == "1":
-#                            if mat.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door'):
-#                                if lmat not in em.gas_dat:
-#                                    em.omat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), list(em.matdat[lmat]), str(thicklist[l]/1000))
-#                                    if lmat in em.pcm_dat:
-#                                        mtctc = em.pcmd_dat[lmat][0]
-#                                        mtempemps = em.pcmd_dat[lmat][1]
-#                                        em.pcmmat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), [mtctc, mtempemps])
-#                                        mat['pcm'] = 1                                
-#                                else:
-#                                    em.amat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), [em.matdat[lmat][2]])
-#        
-#                            elif mat.envi_con_type == "Window":                        
-#                                if not l % 2:
-#                                    em.tmat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), list(em.matdat[lmat]) + [(0, mat.envi_export_lo_sdiff)[len(layers) == l + 1]], list(em.matdat[lmat])[3])
-#                                else:
-#                                    em.gmat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), list(em.matdat[lmat]), str(thicklist[l]/1000))
-#        
-#                        elif layer == "2":
-#                            lmat = (mat.envi_export_lo_name, mat.envi_export_l1_name, mat.envi_export_l2_name, mat.envi_export_l3_name, mat.envi_export_l4_name)[l]
-#                            if mat.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door'):
-#                                params = ([mat.envi_export_lo_rough, mat.envi_export_lo_tc, mat.envi_export_lo_rho, mat.envi_export_lo_shc, mat.envi_export_lo_tab, mat.envi_export_lo_sab, mat.envi_export_lo_vab],\
-#                                [mat.envi_export_l1_rough, mat.envi_export_l1_tc, mat.envi_export_l1_rho, mat.envi_export_l1_shc, mat.envi_export_l1_tab, mat.envi_export_l1_sab, mat.envi_export_l1_vab],\
-#                                [mat.envi_export_l2_rough, mat.envi_export_l2_tc, mat.envi_export_l2_rho, mat.envi_export_l2_shc, mat.envi_export_l2_tab, mat.envi_export_l2_sab, mat.envi_export_l2_vab],\
-#                                [mat.envi_export_l3_rough, mat.envi_export_l3_tc, mat.envi_export_l3_rho, mat.envi_export_l3_shc, mat.envi_export_l3_tab, mat.envi_export_l3_sab, mat.envi_export_l3_vab],\
-#                                [mat.envi_export_l4_rough, mat.envi_export_l4_tc, mat.envi_export_l4_rho, mat.envi_export_l4_shc, mat.envi_export_l4_tab, mat.envi_export_l4_sab, mat.envi_export_l4_vab])[l]
-#                                em.omat_write(en_idf, lmat+"-"+str(matcount.count(lmat.upper())), params, str(thicklist[l]/1000))
-#                                if lmat in em.pcm_dat:
-#                                    mtctc = (mat.envi_tctc_lo, mat.envi_tctc_l1, mat.envi_tctc_l2, mat.envi_tctc_l3, mat.envi_tctc_l4)[l]
-#                                    mtempemps = (mat.envi_tempsemps_lo, mat.envi_tempsemps_l1, mat.envi_tempsemps_l2, mat.envi_tempsemps_l3, mat.envi_tempsemps_l4)[l]
-#                                    em.pcmmat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), [mtctc, mtempemps])
-#                                    mat['pcm'] = 1
-#                                    
-#                            elif mat.envi_con_type == "Window":
-#                                if l in (0, 2, 4):
-#                                    params = (["Glazing", mat.envi_export_lo_odt, mat.envi_export_lo_sds, mat.envi_export_lo_thi, mat.envi_export_lo_stn, mat.envi_export_lo_fsn, mat.envi_export_lo_bsn, mat.envi_export_lo_vtn, mat.envi_export_lo_fvrn, mat.envi_export_lo_bvrn, mat.envi_export_lo_itn, mat.envi_export_lo_fie, mat.envi_export_lo_bie, mat.envi_export_lo_tc, (0, mat.envi_export_lo_sdiff)[len(layers) == l + 1]],"",\
-#                                ["Glazing",  mat.envi_export_l2_odt, mat.envi_export_l2_sds, mat.envi_export_l2_thi, mat.envi_export_l2_stn, mat.envi_export_l2_fsn, mat.envi_export_l2_bsn, mat.envi_export_l2_vtn, mat.envi_export_l2_fvrn, mat.envi_export_l2_bvrn, mat.envi_export_l2_itn, mat.envi_export_l2_fie, mat.envi_export_l2_bie, mat.envi_export_l2_tc, (0, mat.envi_export_l2_sdiff)[len(layers) == l + 1]], "",\
-#                                ["Glazing",  mat.envi_export_l4_odt, mat.envi_export_l4_sds, mat.envi_export_l4_thi, mat.envi_export_l4_stn, mat.envi_export_l4_fsn, mat.envi_export_l4_bsn, mat.envi_export_l4_vtn, mat.envi_export_l4_fvrn, mat.envi_export_l4_bvrn, mat.envi_export_l4_itn, mat.envi_export_l4_fie, mat.envi_export_l4_bie, mat.envi_export_l4_tc, (0, mat.envi_export_l4_sdiff)[len(layers) == l + 1]])[l]
-#                                    em.tmat_write(en_idf, '{}-{}'.format(lmat, matcount.count(lmat.upper())), params, str(thicklist[l]/1000))
-#                                else:
-#                                    params = ("", ("Gas", mat.envi_export_wgaslist_l1), "", ("Gas", mat.envi_export_wgaslist_l3))[l]
-#                                    em.gmat_write(en_idf, lmat+"-"+str(matcount.count(lmat.upper())), params, str(thicklist[l]/1000))
-#                       
-#                        conlist.append('{}-{}'.format(lmat, matcount.count(lmat.upper())))                   
-#                        matname.append('{}-{}'.format(lmat, matcount.count(lmat.upper())))
-#                        matcount.append(lmat.upper())
-#                        
-#                    params, paramvs = ['Name'],  [mat.name]
-#                    for i, mn in enumerate(conlist):
-#                        params.append('Layer {}'.format(i))
-#                        paramvs.append(mn)
-#                    en_idf.write(epentry('Construction', params, paramvs))
-#                    if mat.get('pcm'):
-#                        pcmparams = ('Name', 'Algorithm', 'Construction Name')
-#                        pcmparamsv = ('{} CondFD override'.format(mat.name), 'ConductionFiniteDifference', mat.name)
-#                        en_idf.write(epentry('SurfaceProperty:HeatTransferAlgorithm:Construction', pcmparams, pcmparamsv))
-    
+                        if emnode.pv:
+                            gen = 1
+                            pvs.append(emnode)    
         em.namedict = {}
         em.thickdict = {}
     
@@ -222,7 +106,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         bpy.context.scene['viparams']['hvactemplate'] = 0
         zonenodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in zonenames]
         tcnodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in tcnames]
-        
+        gens = []
         for obj in [obj for obj in bpy.data.objects if obj.layers[1] and obj.type == 'MESH' and obj.vi_type == '1']:
             me = obj.to_mesh(scene, True, 'PREVIEW')
             bm = bmesh.new()
@@ -235,14 +119,19 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon' and emnode.active:
                         vcos = [v.co for v in face.verts]
-                        (obc, obco, se, we) = boundpoly(obj, mat, face, enng)
+                        (obc, obco, se, we) = boundpoly(obj, emnode, face, enng)
                         
                         if obc:
-                            if emnode.envi_con_type in ('Wall', "Floor", "Roof", "Ceiling") and mat.envi_con_makeup != "2":
-                                params = list(wfrparams) + ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]                     
-                                paramvs = ['{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)]+ ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]
-                                en_idf.write(epentry('BuildingSurface:Detailed', params, paramvs))
-                            
+                            if emnode.envi_con_type in ('Wall', "Floor", "Roof", "Ceiling"):
+                                if emnode.envi_con_makeup != "2":
+                                    params = list(wfrparams) + ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]                     
+                                    paramvs = ['{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)]+ ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]
+                                    en_idf.write(epentry('BuildingSurface:Detailed', params, paramvs))
+                                
+                                if emnode.pv:
+                                    en_idf.write(emnode.pv_ep_write('{}_{}'.format(obj.name, face.index)))
+                                    gens.append('{}_{}-pv'.format(obj.name, face.index))
+                                    
                             elif emnode.envi_con_type in ('Door', 'Window')  and emnode.envi_con_makeup != "2":
                                 if len(face.verts) > 4:
                                     exp_op.report({'ERROR'}, 'Window/door in {} has more than 4 vertices'.format(obj.name))
@@ -266,6 +155,8 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 params = ['Name', 'Transmittance Schedule Name', 'Number of Vertices'] + ['X,Y,Z ==> Vertex {} (m)'.format(v.index) for v in face.verts]
                                 paramvs = ['{}_{}'.format(obj.name, face.index), '', len(face.verts)] + ['{0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}'.format(vco) for vco in vcos]
                                 en_idf.write(epentry('Shading:Building:Detailed', params, paramvs))
+                        
+                        
             bm.free()
     
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: SCHEDULES ===========\n\n")
@@ -339,6 +230,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                     en_idf.write(zn.inputs[schedtype].links[0].from_node.epwrite('{}_tspsched'.format(zn.name), 'Temperature'))
                 
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: GENERATORS ===========\n\n")
+        
         if gen:
             params = ('Name', 'Generator List Name', 'Generator Operation Scheme Type', 
                       'Generator Demand Limit Scheme Purchased Electric Demand Limit {W}',
@@ -349,16 +241,19 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             en_idf.write(epentry("ElectricLoadCenter:Distribution", params, paramvs))
             
             params = ('Name', 'Availability Schedule Name', 'Zone Name', 'Radiative Fraction', 'Inverter Efficiency')
-            paramvs = ('Simple Ideal Inverter', 'always On', '', 0.0, 1.0)
+            paramvs = ('Simple Ideal Inverter', '', '', 0.0, 1.0)
             en_idf.write(epentry("ElectricLoadCenter:Inverter:Simple", params, paramvs))
             
             
-            params = ["Name"] + [['Generator {} Name'.format(i), 'Generator {} Object Type'.format(i), 
+            params = ["Name"] + [item for i, pv in enumerate(pvs) for item in ['Generator {} Name'.format(i), 'Generator {} Object Type'.format(i), 
                      'Generator {} Rated Electric Power Output (W)'.format(i), 'Generator {} Availability Schedule Name'.format(i),
-                     'Generator {} Rated Thermal to Electrical Power Ratio'.format(i)] for i, pv in enumerate(pvs)][:] 
+                     'Generator {} Rated Thermal to Electrical Power Ratio'.format(i)] for i, pv in enumerate(pvs)] 
 
-
+            paramvs = ['PVs'] + [item for pv in gens for item in [pv, 'Generator:Photovoltaic', '20000', '', '']] 
             en_idf.write(epentry("ElectricLoadCenter:Generators", params, paramvs))
+                        
+#            for pv in pvs:
+#                en_idf.write(pv.pv_ep_write())
 
 
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: THERMOSTSTATS ===========\n\n")

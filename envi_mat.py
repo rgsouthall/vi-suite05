@@ -221,9 +221,9 @@ def retmatdict(envi_con_type, t, l):
         typelist = [("0", "Brick", "Choose a material from the brick database"),("1", "Cladding", "Choose a material from the cladding database"), ("2", "Concrete", "Choose a material from the concrete database"),("3", "Metal", "Choose a material from the metal database"),
                    ("4", "Stone", "Choose a material from the stone database"),("5", "Wood", "Choose a material from the wood database"),
                    ("6", "Gas", "Choose a material from the gas database"),("7", "Insulation", "Choose a material from the insulation database"),
-                    ("8", "PCM", "Choose a material from the phase change database")]
+                    ("8", "PCM", "Choose a material from the phase change database"), ("9", "PV", "Choose a material from the photovoltaic database")]
         matdict = {'0': envi_materials().brick_dat.keys(), '1': envi_materials().cladding_dat.keys(), '2': envi_materials().concrete_dat.keys(), '3': envi_materials().metal_dat.keys(), '4': envi_materials().stone_dat.keys(),
-                   '5': envi_materials().wood_dat.keys(), '6': envi_materials().gas_dat.keys(), '7': envi_materials().insulation_dat.keys(), '8': envi_materials().pcm_dat.keys()}
+                   '5': envi_materials().wood_dat.keys(), '6': envi_materials().gas_dat.keys(), '7': envi_materials().insulation_dat.keys(), '8': envi_materials().pcm_dat.keys(), '9': envi_materials().pv_dat.keys()}
 
     elif envi_con_type == 'Window':
         if not l % 2:

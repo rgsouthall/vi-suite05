@@ -2014,6 +2014,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             for node in [n for n in self.id_data.nodes if n.bl_idname == 'EnViCon' and n != self]:
                 node.active = False
 
+    
+    matname = StringProperty(name = "", description = "", default = '')
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
                                             ("Roof", "Roof", "Roof construction"),
@@ -2088,7 +2090,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     ird = FloatProperty(name = "m", description = "Inside Reveal Depth (m)", min = 0.0, max = 10, default = 0.1)
     irsa = FloatProperty(name = "", description = "Inside Reveal Solar Absorptance", min = 0.01, max = 1, default = 0.7)
     resist = FloatProperty(name = "", description = "U-value", min = 0.01, max = 10, default = 0.7)
-    eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
+
+    eff = FloatProperty(name = "%", description = "Efficiency (%)", min = 0.0, max = 100, default = 20)
     ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
     mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
     pv = BoolProperty(name = "", description = "Photovoltaic shader", default = False, update = con_update)
@@ -2099,13 +2102,13 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
                                ("1", "Amorphous", "Model reflectred beam as beam")], 
                                 name = "", description = "Photovoltaic Type", default = "0")
-    hti = EnumProperty(items = [("0", "Decoupled", "Decoupled"), 
-                               ("1", "Ulleberg", "DecoupledUllebergDynamic"),
-                               ("2", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
-                               ("3", "Transpired", "IntegratedTranspiredCollector"),
-                               ("5", "ExteriorVented", "IntegratedExteriorVentedCavity"),
-                               ("6", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
-                                name = "", description = "Conversion Efficiency Input Mode'", default = "0")
+    hti = EnumProperty(items = [("Decoupled", "Decoupled", "Decoupled"), 
+                               ("Ulleberg", "Ulleberg", "DecoupledUllebergDynamic"),
+                               ("SurfaceOutside", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
+                               ("Transpired", "Transpired", "IntegratedTranspiredCollector"),
+                               ("ExteriorVented", "ExteriorVented", "IntegratedExteriorVentedCavity"),
+                               ("PVThermal", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
+                                name = "", description = "Conversion Efficiency Input Mode'", default = "Decoupled")
 
     e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
                'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
@@ -2127,16 +2130,18 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                'Shell ST40': (2.68, 23.3, 16.6, 2.41, 0.00035, -0.1, 16, 320, 0.424104),
                'UniSolar PVL-64': (4.8, 23.8, 16.5, 3.88, 0.00065, -0.1, 40, 323, 0.65),
                'UniSolar PVL-128': (4.8, 47.6, 33, 3.88, 0.00065, -0.2, 80, 323, 1.25),
-               'Custom': None}
+               'Custom': (None, None, None, None, None, None, None, None, None)}
     
     e1items = [(p, p, '{} module'.format(p)) for p in e1ddict]
     e1menu = EnumProperty(items = e1items, name = "", description = "Module type", default = 'ASE 300-DFG/50')
     
 
     pvsa = FloatProperty(name = "%", description = "Fraction of Surface Area with Active Solar Cells", min = 10, max = 100, default = 90)
+    aa = FloatProperty(name = "m2", description = "Active area", min = 0.1, max = 10000, default = 5)
     eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
     ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
     mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
+    cis = IntProperty(name = "", description = "Number of cells in series", min = 1, max = 100, default = 36) 
     tap = FloatProperty(name = "", description = "Transmittance absorptance product", min = -1, max = 1, default = 0.9)
     sbg = FloatProperty(name = "eV", description = "Semiconductor band-gap", min = 0.1, max = 5, default = 1.12)
     sr = FloatProperty(name = "W", description = "Shunt resistance", min = 1, default = 1000000)
@@ -2146,11 +2151,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     rt = FloatProperty(name = "K", description = "Reference temperature", min = 278, max = 328, default = 298)
     ri = FloatProperty(name = "W/m2", description = "Reference insolation", min = 100, max = 2000, default = 1000)
     mc = FloatProperty(name = "", description = "Module current at maximum power", min = 1, max = 10, default = 5.6)
-    mv = FloatProperty(name = "", description = "Module voltage at maximum power", min = 0.0, max = 1, default = 50.5)
-    tcscc = FloatProperty(name = "", description = "Temperature Coefficient of Short Circuit Current", min = 1, max = 10, default = 5.6)
-    tcocv = FloatProperty(name = "", description = "Temperature Coefficient of Open Circuit Voltage", min = 0.0, max = 1, default = 50.5)
-    atnoct = FloatProperty(name = "C", description = "Reference temperature", min = 0, max = 50, default = 20)
-    ctnoct = FloatProperty(name = "C", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 0, max = 100, default = 45)
+    mv = FloatProperty(name = "", description = "Module voltage at maximum power", min = 0.0, max = 75, default = 17)
+    tcscc = FloatProperty(name = "", description = "Temperature Coefficient of Short Circuit Current", min = 0.00001, max = 0.01, default = 0.002)
+    tcocv = FloatProperty(name = "", description = "Temperature Coefficient of Open Circuit Voltage", min = -0.5, max = 0, default = -0.1)
+    atnoct = FloatProperty(name = "K", description = "Reference ambient temperature", min = 273, max = 313, default = 293)
+    ctnoct = FloatProperty(name = "K", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 273, max = 350, default = 318)
     inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
     hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
@@ -2209,9 +2214,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                     newrow(layout, "Shunt:", self, "sr")    
                                     newrow(layout, "Ref. temp.:", self, "rt")
                                     newrow(layout, "Ref. insol.:", self, "ri")
-                                    newrow(layout, "Ambient temp.:", self, "atnoct")
-                                    newrow(layout, "Insolation:", self, "inoct")
-            
+                                    newrow(layout, "Test ambient:", self, "atnoct")
+                                    newrow(layout, "Test Insolation:", self, "inoct")
+                                    newrow(layout, "Heat loss coeff.:", self, "hlc")
+                                    newrow(layout, "Heat capacity:", self, "thc")
+                                    
             if self.envi_con_type != "Shading" and not self.pv:
                 newrow(layout, 'Specification:', self, "envi_con_makeup")
     
@@ -2317,28 +2324,57 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         else:
             nodecolour(self, 0)
             
-    def pv_ep_write(self):
-        matname = get_mat(self, 1).name
+    def pv_ep_write(self, sn):
+        self['matname'] = get_mat(self, 1).name
         
         params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 
                   'Module Performance Name', 'Heat Transfer Integration Mode', 
                   'Number of Series Strings in Parallel', 'Number of Modules in Series')
+                
+        paramvs = ['{}-pv'.format(sn), sn, 
+                   ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
+                   self.hti, self.ssp, self.mis]
         
-        paramvs = ['{}-pv'.format(matname), ('Simple', 'EquivalentOne-Diode', 'Sandia')[int(self.pp)]]
+        
+        
+        ep_text = epentry('Generator:Photovoltaic', params, paramvs)
+        
+        if self.pp == '0':
+            params = ('Name', 'Fraction of Surface Area with Active Solar Cell', 'Conversion Efficiency Input Mode', 'Value for Cell Efficiency if Fixed')
+            paramvs = ('{}-pv-performance'.format(sn), self.pvsa * 0.01, 'Fixed', self.eff * 0.01)
+            ep_text += epentry('PhotovoltaicPerformance:Simple', params, paramvs)
             
+        elif self.pp == '1':
+            params = ('Name', 'Cell type', 'Number of Cells in Series', 'Active Area (m2)', 'Transmittance Absorptance Product',
+                      'Semiconductor Bandgap (eV)', 'Shunt Resistance (ohms)', 'Short Circuit Current (A)', 'Open Circuit Voltage (V)',
+                      'Reference Temperature (C)', 'Reference Insolation (W/m2)', 'Module Current at Maximum Power (A)', 
+                      'Module Voltage at Maximum Power (V)', 'Temperature Coefficient of Short Circuit Current (A/K)',
+                      'Temperature Coefficient of Open Circuit Voltage (V/K)', 'Nominal Operating Cell Temperature Test Ambient Temperature (C)',
+                      'Nominal Operating Cell Temperature Test Cell Temperature (C)', 'Nominal Operating Cell Temperature Test Insolation (W/m2)',
+                      'Module Heat Loss Coefficient (W/m2-K)', 'Total Heat Capacity (J/m2-K)')
+            paramvs = ('{}-pv-performance'.format(sn), ('CrystallineSilicon', 'AmorphousSilicon')[int(self.ct)], (self.cis, self.e1ddict[self.e1menu][6])[self.e1menu != 'Custom'], (self.aa, self.e1ddict[self.e1menu][8])[self.e1menu != 'Custom'],
+                       self.tap, self.sbg, self.sr, (self.scc, self.e1ddict[self.e1menu][0])[self.e1menu != 'Custom'], (self.ocv, self.e1ddict[self.e1menu][1])[self.e1menu != 'Custom'],
+                       self.rt, self.ri, (self.mc, self.e1ddict[self.e1menu][3])[self.e1menu != 'Custom'], (self.mv, self.e1ddict[self.e1menu][2])[self.e1menu != 'Custom'],
+                       (self.tcscc, self.e1ddict[self.e1menu][4])[self.e1menu != 'Custom'], (self.tcocv, self.e1ddict[self.e1menu][5])[self.e1menu != 'Custom'],
+                       self.atnoct, (self.ctnoct, self.e1ddict[self.e1menu][7])[self.e1menu != 'Custom'], self.inoct, self.hlc, self.thc)
+            ep_text += epentry('PhotovoltaicPerformance:EquivalentOne-Diode', params, paramvs)
+        
+        return ep_text
+     
     def ep_write(self):
-        matname = get_mat(self, 1).name
+        self['matname'] = get_mat(self, 1).name
+        print(self['matname'])
             
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
             mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
-            paramvs = [matname] + ['{}-layer-{}'.format(matname, mi) for mi, m in enumerate(mats)]
+            paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
             
             for pm, presetmat in enumerate(mats):  
                 matlist = list(envi_mats.matdat[presetmat])
-                layer_name = '{}-layer-{}'.format(matname, pm)
+                layer_name = '{}-layer-{}'.format(self['matname'], pm)
                 
                 if envi_mats.namedict.get(presetmat) == None:
                     envi_mats.namedict[presetmat] = 0
@@ -2348,15 +2384,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     envi_mats.thickdict[presetmat].append(self.thicklist[pm]/1000)
                 
                 if self.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door') and presetmat not in envi_mats.gas_dat:
-                    self.resist += self.thicklist[pm]/1000/matlist[1]
+                    self.resist += self.thicklist[pm]/1000/float(matlist[1])
                     params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')                    
-                    paramvs = ['{}-layer-{}'.format(matname, pm), matlist[0], str(self.thicklist[pm]/1000)] + matlist[1:8]                    
+                    paramvs = ['{}-layer-{}'.format(self['matname'], pm), matlist[0], str(self.thicklist[pm]/1000)] + matlist[1:8]                    
                     ep_text += epentry("Material", params, paramvs)
 
                     if presetmat in envi_mats.pcmd_datd:
                         stringmat = envi_mats.pcmd_datd[presetmat]
                         params = ('Name', 'Temperature Coefficient for Thermal Conductivity (W/m-K2)')
-                        paramvs = ('{}-layer-{}'.format(matname, pm), stringmat[0])
+                        paramvs = ('{}-layer-{}'.format(self['matname'], pm), stringmat[0])
                         
                         for i, te in enumerate(stringmat[1].split()):
                             params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
@@ -2364,12 +2400,12 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             
                         ep_text += epentry("MaterialProperty:PhaseChange", params, paramvs)
                         pcmparams = ('Name', 'Algorithm', 'Construction Name')
-                        pcmparamsv = ('{} CondFD override'.format(matname), 'ConductionFiniteDifference', matname)
+                        pcmparamsv = ('{} CondFD override'.format(self['matname']), 'ConductionFiniteDifference', self['matname'])
                         ep_text += epentry('SurfaceProperty:HeatTransferAlgorithm:Construction', pcmparams, pcmparamsv)
 
                 elif presetmat in envi_mats.gas_dat:
                     params = ('Name', 'Resistance')
-                    paramvs = ('{}-layer-{}'.format(matname, pm), matlist[0])
+                    paramvs = ('{}-layer-{}'.format(self['matname'], pm), matlist[0])
                     ep_text += epentry("Material", params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Glazing':
@@ -2377,7 +2413,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                   'Back Side Solar Reflectance at Normal Incidence', 'Visible Transmittance at Normal Incidence', 'Front Side Visible Reflectance at Normal Incidence', 'Back Side Visible Reflectance at Normal Incidence',
                   'Infrared Transmittance at Normal Incidence', 'Front Side Infrared Hemispherical Emissivity', 'Back Side Infrared Hemispherical Emissivity', 'Conductivity (W/m-K)',
                   'Dirt Correction Factor for Solar and Visible Transmittance', 'Solar Diffusing')
-                    paramvs = ['{}-layer-{}'.format(matname, pm)] + matlist[1:3] + [self.thicklist[pm]] + ['{:.3f}'.format(float(sm)) for sm in matlist[4:-1]] + [1, ('No', 'Yes')[matlist[-1]]]
+                    paramvs = ['{}-layer-{}'.format(self['matname'], pm)] + matlist[1:3] + [self.thicklist[pm]] + ['{:.3f}'.format(float(sm)) for sm in matlist[4:-1]] + [1, ('No', 'Yes')[matlist[-1]]]
                     ep_text += epentry("WindowMaterial:{}".format(matlist[0]), params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Gas':
@@ -2389,7 +2425,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             in_sock = self.inputs['Outer layer']# if self.envi_con_type == "Window" else self.inputs[0]
             n = 0
             params = ['Name']
-            paramvs = [matname]
+            paramvs = [self['matname']]
             ep_text = ''
             self.resist = 0
             get_mat(self, 1).envi_shading = 0
@@ -2398,7 +2434,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 node = in_sock.links[0].from_node
 
                 if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):                    
-                    paramvs.append('{}-layer-{}'.format(matname, n)) 
+                    paramvs.append('{}-layer-{}'.format(self['matname'], n)) 
                     params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
                     ep_text += node.ep_write(n)  
                     self.resist += node.resist
@@ -2414,13 +2450,13 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 in_sock = self.inputs['Outer layer']
                 n = 0
                 params = ['Name'] 
-                paramvs = ['{}-shading'.format(matname)]
+                paramvs = ['{}-shading'.format(self['matname'])]
                 
                 while in_sock.links:
                     node = in_sock.links[0].from_node
                     
                     if node.outputs['Layer'].links[0].to_node.bl_idname != 'envi_sgl_node':
-                        paramvs.append('{}-layer-{}'.format(matname, n)) 
+                        paramvs.append('{}-layer-{}'.format(self['matname'], n)) 
                         params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
                     in_sock = node.inputs['Layer']
 
@@ -2433,7 +2469,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         if self.envi_con_type =='Window':
             if self.fclass == '0':
                 params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
-                paramvs = ('{}-frame-layer{}'.format(matname, 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(matname), '{}-frame-layer{}'.format(matname, 0))
+                paramvs = ('{}-frame-layer{}'.format(self['matname'], 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(self['matname']), '{}-frame-layer{}'.format(self['matname'], 0))
                 ep_text += epentry('Material', params[:-2], paramvs[:-2])
                 ep_text += epentry('Construction', params[-2:], paramvs[-2:])
             
@@ -2444,12 +2480,12 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                            'Divider Outside Projection', 'Divider Inside Projection', 'Divider Conductance', 'Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance',
                            'Divider Solar Absorptance', 'Divider Visible Absorptance', 'Divider Thermal Emissivity', 'Outside Reveal Solar Absorptance',
                            'Inside Sill Depth (m)', 'Inside Sill Solar Absorptance', 'Inside Reveal Depth (m)', 'Inside Reveal Solar Absorptance')
-                fparamvs = ['{}-fad'.format(matname)] +  ['{:.3f}'.format(p) for p in (self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte)] +\
+                fparamvs = ['{}-fad'.format(self['matname'])] +  ['{:.3f}'.format(p) for p in (self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte)] +\
                             [('', 'DividedLite', 'Suspended')[int(self.dt)]] + ['{:.3f}'.format(p) for p in (self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd, 
                             self.issa, self.ird, self.irsa)]
                 ep_text += epentry('WindowProperty:FrameAndDivider', fparams, fparamvs)
             elif self.fclass == '2':
-                ep_text += self.layer_write(self.inputs['Outer frame layer'], matname)
+                ep_text += self.layer_write(self.inputs['Outer frame layer'], self['matname'])
         
         return ep_text
     

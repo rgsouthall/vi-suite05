@@ -1893,13 +1893,15 @@ def nfprop(fname, fdesc, fmin, fmax, fdef):
 def nfvprop(fvname, fvattr, fvdef, fvsub):
     return(FloatVectorProperty(name=fvname, attr = fvattr, default = fvdef, subtype = fvsub, update = nodeexported))
 
-def boundpoly(obj, mat, poly, enng):
+def boundpoly(obj, emnode, poly, enng):
     mat = obj.data.materials[poly.material_index]
-    if mat.envi_boundary:
+    if emnode.envi_boundary:
         nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
+        
         for node in nodes:
             insock = node.inputs['{}_{}_b'.format(mat.name, poly.index)]
-            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]              
+            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]
+              
             if insock.links:
                 bobj = bpy.data.objects[insock.links[0].from_node.zone]
                 return(('', '', '', ''))
@@ -1911,7 +1913,7 @@ def boundpoly(obj, mat, poly, enng):
             else:
                 return(("Adiabatic", "", "NoSun", "NoWind"))
 
-    elif mat.envi_thermalmass:
+    elif emnode.envi_thermalmass:
         return(("Adiabatic", "", "NoSun", "NoWind"))
     elif poly.calc_center_bounds()[2] <= 0:
         return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
