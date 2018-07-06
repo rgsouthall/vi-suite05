@@ -43,7 +43,8 @@ def resnameunits():
                 '26': ("HR Heating", "Heat recovery heating (W)"), '27': ("Volume flow", "Thermal chimney volume flow rate (m3/2)"), '28': ("Mass flow", "Thermal chmimney mass flow rate (kg/s"),
                 '29': ("Out temp.", "Thermal chimney outlet temperature (C)"), '30': ("Heat loss", "Thermal chimney heat loss (W)"), '31': ("Heat gain", "Thermal chimney heat gain (W)"),
                 '32': ("Volume", "Thermal chimnwey volume (m3)"), '33': ("Mass", "Thermal chimney mass (kg)"), '34': ('delta P', 'Linkage Pressure Differential (Pa)'),
-                '35': ('Equipment', 'Other equipment heat gains (W)')}
+                '35': ('Equipment', 'Other equipment heat gains (W)'), '36': ('PV Energy', 'PV energy (J)'), '37': ('PV Power', 'PV power (W)'),
+                '38': ('PV Temp.', 'PV Temperature (C)'), '39': ('PV Eff.', 'PV efficiency (%)')}
 
     return [bpy.props.BoolProperty(name = rnu[str(rnum)][0], description = rnu[str(rnum)][1], default = False) for rnum in range(len(rnu))]
 
@@ -67,7 +68,8 @@ def enresprops(disp):
             '2': (0, "resim{}".format(disp), "resiach{}".format(disp), 0, "resco2{}".format(disp), "resihl{}".format(disp)), 
             '3': (0, "resl12ms{}".format(disp), "reslof{}".format(disp), 0, "resldp{}".format(disp)), 
             '4':(0, "restcvf{}".format(disp), "restcmf{}".format(disp), 0, "restcot{}".format(disp), "restchl{}".format(disp),
-                 0, "restchg{}".format(disp), "restcv{}".format(disp), 0, "restcm{}".format(disp))}
+                 0, "restchg{}".format(disp), "restcv{}".format(disp), 0, "restcm{}".format(disp)),
+            '5':(0, "respve{}".format(disp), "respvw{}".format(disp), 0, "respveff{}".format(disp), "respvt{}".format(disp))}
 
 def recalculate_text(scene):   
     resdict = {'Temp': ('envi_temp', u'\u00b0C'), 'Hum': ('envi_hum', '%'), 'CO2': ('envi_co2', 'ppm'), 'Heat': ('envi_heat', 'hW'), 'Cool': ('envi_cool', 'cW'), 
@@ -324,7 +326,11 @@ def retrmenus(innode, node):
     chimtypes = list(OrderedDict.fromkeys([metric for m, metric in enumerate(zrl[2]) if zrl[1][m] == 'Chimney' and zrl[0][m] == frame]))
     chimtype = [(metric, metric, "Plot " + metric) for metric in chimtypes]
     chimrtypes = list(OrderedDict.fromkeys([metric for m, metric in enumerate(zrl[3]) if zrl[1][m] == 'Chimney' and zrl[0][m] == frame]))       
-    chimrtype = [(metric, metric, "Plot " + metric) for metric in chimrtypes]     
+    chimrtype = [(metric, metric, "Plot " + metric) for metric in chimrtypes]   
+    powtypes = list(OrderedDict.fromkeys([metric for m, metric in enumerate(zrl[2]) if zrl[1][m] == 'Power' and zrl[0][m] == frame]))
+    powtype = [(metric, metric, "Plot " + metric) for metric in powtypes]
+    powrtypes = list(OrderedDict.fromkeys([metric for m, metric in enumerate(zrl[3]) if zrl[1][m] == 'Power' and zrl[0][m] == frame]))
+    powrtype = [(metric, metric, "Plot " + metric) for metric in powrtypes]
     fmenu = bpy.props.EnumProperty(items=ftype, name="", description="Frame number", default = ftype[0][0])
     rtypemenu = bpy.props.EnumProperty(items=rtype, name="", description="Result types", default = rtype[0][0])
     statmenu = bpy.props.EnumProperty(items=[('Average', 'Average', 'Average Value'), ('Maximum', 'Maximum', 'Maximum Value'), ('Minimum', 'Minimum', 'Minimum Value')], name="", description="Zone result", default = 'Average')
@@ -342,9 +348,11 @@ def retrmenus(innode, node):
     posrmenu = bpy.props.EnumProperty(items=prtype, name="", description="Position result", default = prtype[0][0]) if ptypes else ''
     cammenu =  bpy.props.EnumProperty(items=camtype, name="", description="Camera result", default = camtype[0][0]) if camtype else ''
     camrmenu = bpy.props.EnumProperty(items=camrtype, name="", description="Camera result", default = camrtype[0][0]) if camtypes else ''
+    powmenu = bpy.props.EnumProperty(items=powtype, name="", description="Power result", default = powtype[0][0]) if powtype else ''
+    powrmenu = bpy.props.EnumProperty(items=powrtype, name="", description="Power result", default = powrtype[0][0]) if powrtype else ''
     multfactor = bpy.props.FloatProperty(name = "", description = "Result multiplication factor", min = -10000, max = 10000, default = 1)
     
-    return (valid, fmenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, multfactor)
+    return (valid, fmenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor)
 
 def processh(lines, znlist):    
     envdict = {'Site Outdoor Air Drybulb Temperature [C] !Hourly': "Temperature (degC)",
@@ -387,6 +395,10 @@ def processh(lines, znlist):
                 'AFN Linkage Node 2 to Node 1 Volume Flow Rate [m3/s] !Hourly': 'Linkage Flow in',
                 'AFN Surface Venting Window or Door Opening Factor [] !Hourly': 'Opening Factor',
                 'AFN Linkage Node 1 to Node 2 Pressure Difference [Pa] !Hourly': 'delta P (Pa)'}
+    presdict = {'Generator Produced DC Electric Energy [J] !Hourly': 'PV Energy (J)',
+                'Generator Produced DC Electric Power [W] !Hourly': 'PV Power (W)',
+                'Generator PV Array Efficiency [] !Hourly': 'PV Efficiency (%)',
+                'Generator PV Cell Temperature [C] !Hourly': 'PV Temperature (C)'}
     hdict = {}
     
     for l, line in enumerate(lines):
@@ -402,6 +414,8 @@ def processh(lines, znlist):
                 hdict[linesplit[0]] = ['External',  linesplit[2],  enresdict[linesplit[3]]]
             elif linesplit[3] in lresdict:
                 hdict[linesplit[0]] = ['Linkage',  linesplit[2],  lresdict[linesplit[3]]]
+            elif linesplit[3] in presdict:  
+                hdict[linesplit[0]] = ['Power',  linesplit[2],  presdict[linesplit[3]]]
         if line == 'End of Data Dictionary\n':
             break
     return hdict,  l + 1
@@ -592,6 +606,8 @@ def retmenu(dnode, axis, mtype):
         return [dnode.inputs[axis].cammenu, dnode.inputs[axis].camrmenu]    
     elif mtype == 'Frames':
         return ['', 'Frames']
+    elif mtype == 'Power':
+        return [dnode.inputs[axis].powmenu, dnode.inputs[axis].powrmenu]
         
 def retdata(dnode, axis, mtype, resdict, frame):
     if mtype == 'Climate':
@@ -608,4 +624,5 @@ def retdata(dnode, axis, mtype, resdict, frame):
         return resdict[frame][mtype][dnode.inputs[axis].posmenu][dnode.inputs[axis].posrmenu]
     elif mtype == 'Camera':
         return resdict[frame][mtype][dnode.inputs[axis].cammenu][dnode.inputs[axis].camrmenu]
-        
+    elif mtype == 'Power':
+        return resdict[frame][mtype][dnode.inputs[axis].powmenu][dnode.inputs[axis].powrmenu]    

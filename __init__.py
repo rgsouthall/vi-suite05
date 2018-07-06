@@ -724,7 +724,7 @@ def register():
     (Scene.resaa_disp, Scene.resaws_disp, Scene.resawd_disp, Scene.resah_disp, Scene.resas_disp, Scene.reszt_disp, Scene.reszh_disp, Scene.reszhw_disp, Scene.reszcw_disp, Scene.reszsg_disp, Scene.reszppd_disp, 
      Scene.reszpmv_disp, Scene.resvls_disp, Scene.resvmh_disp, Scene.resim_disp, Scene.resiach_disp, Scene.reszco_disp, Scene.resihl_disp, Scene.reszlf_disp, Scene.reszof_disp, Scene.resmrt_disp,
      Scene.resocc_disp, Scene.resh_disp, Scene.resfhb_disp, Scene.reszahw_disp, Scene.reszacw_disp, Scene.reshrhw_disp, Scene.restcvf_disp, Scene.restcmf_disp, Scene.restcot_disp, Scene.restchl_disp, 
-     Scene.restchg_disp, Scene.restcv_disp, Scene.restcm_disp, Scene.resldp_disp, Scene.resoeg_disp)  = resnameunits() 
+     Scene.restchg_disp, Scene.restcv_disp, Scene.restcm_disp, Scene.resldp_disp, Scene.resoeg_disp, Scene.respve_disp, Scene.respvw_disp, Scene.respveff_disp, Scene.respvt_disp)  = resnameunits() 
      
     (Scene.resazmaxt_disp, Scene.resazmint_disp, Scene.resazavet_disp, 
      Scene.resazmaxhw_disp, Scene.resazminhw_disp, Scene.resazavehw_disp, 

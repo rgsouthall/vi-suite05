@@ -1191,12 +1191,14 @@ class ViExEnNode(Node, ViNodes):
     sdoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 1, update = nodeupdate)
     edoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 365, update = nodeupdate)
     timesteps = IntProperty(name = "", description = "Time steps per hour", min = 1, max = 60, default = 1, update = nodeupdate)
-    restype= EnumProperty(items = [("0", "Zone Thermal", "Thermal Results"), ("1", "Comfort", "Comfort Results"), ("2", "Zone Ventilation", "Zone Ventilation Results"), 
-                                             ("3", "Ventilation Link", "Ventilation Link Results"), ("4", "Thermal Chimney", "Thermal Chimney Results")],
+    restype= EnumProperty(items = [("0", "Zone Thermal", "Thermal Results"), ("1", "Comfort", "Comfort Results"), 
+                                   ("2", "Zone Ventilation", "Zone Ventilation Results"), ("3", "Ventilation Link", "Ventilation Link Results"), 
+                                   ("4", "Thermal Chimney", "Thermal Chimney Results"), ("5", "Power", "Power Production Results")],
                                    name="", description="Specify the EnVi results category", default="0", update = nodeupdate)
 
     (resaam, resaws, resawd, resah, resasm, restt, resh, restwh, restwc, reswsg, rescpp, rescpm, resvls, resvmh, resim, resiach, resco2, resihl, resl12ms,
-     reslof, resmrt, resocc, resh, resfhb, ressah, ressac, reshrhw, restcvf, restcmf, restcot, restchl, restchg, restcv, restcm, resldp, resoeg) = resnameunits()
+     reslof, resmrt, resocc, resh, resfhb, ressah, ressac, reshrhw, restcvf, restcmf, restcot, restchl, restchg, restcv, restcm, resldp, resoeg,
+     respve, respvw, respvt, respveff) = resnameunits()
      
     def init(self, context):
         self['nodeid'] = nodeid(self)
@@ -1435,7 +1437,10 @@ class ViResSock(NodeSocket):
     valid = ['Vi Results']
 
     def draw(self, context, layout, node, text):
-        typedict = {"Time": [], "Frames": [], "Climate": ['climmenu'], "Zone": ("zonemenu", "zonermenu"), "Linkage":("linkmenu", "linkrmenu"), "External":("enmenu", "enrmenu"), "Chimney":("chimmenu", "chimrmenu"), "Position":("posmenu", "posrmenu"), "Camera":("cammenu", "camrmenu")}
+        typedict = {"Time": [], "Frames": [], "Climate": ['climmenu'], "Zone": ("zonemenu", "zonermenu"), 
+                    "Linkage":("linkmenu", "linkrmenu"), "External":("enmenu", "enrmenu"), 
+                    "Chimney":("chimmenu", "chimrmenu"), "Position":("posmenu", "posrmenu"), 
+                    "Camera":("cammenu", "camrmenu"), "Power":("powmenu", "powrmenu")}
         row = layout.row()
 
         if self.links and self.links[0].from_node.get('frames'):
@@ -1571,7 +1576,9 @@ class ViEnRNode(Node, ViNodes):
                     bl_label = 'X-axis'
                                     
 #                    if innode['reslists']:
-                    (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, multfactor) = retrmenus(innode, self)
+                    (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
+                     zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                     chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
                         
             bpy.utils.register_class(ViEnRXIn)
     
@@ -1591,7 +1598,9 @@ class ViEnRNode(Node, ViNodes):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY1In'
                         bl_label = 'Y-axis 1'
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, multfactor) = retrmenus(innode, self)
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                         chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
     
                     self.inputs['Y-axis 2'].hide = False
                 bpy.utils.register_class(ViEnRY1In)
@@ -1613,7 +1622,9 @@ class ViEnRNode(Node, ViNodes):
                         bl_idname = 'ViEnRY2In'
                         bl_label = 'Y-axis 2'
     
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, multfactor) = retrmenus(innode, self)
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                         chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
     
                     self.inputs['Y-axis 3'].hide = False
     
@@ -1633,7 +1644,9 @@ class ViEnRNode(Node, ViNodes):
                         bl_idname = 'ViEnRY3In'
                         bl_label = 'Y-axis 3'
     
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, chimrmenu, posmenu, posrmenu, cammenu, camrmenu, multfactor) = retrmenus(innode, self)
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                         chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
     
                 bpy.utils.register_class(ViEnRY3In)
         except Exception as e:
@@ -2183,13 +2196,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             newrow(layout, "Heat transfer:", self, "hti")
                             newrow(layout, "Photovoltaic:", self, "pp")
                             
+                            
                             if self.pp == '0':
-                                newrow(layout, "Series in parallel:", self, "ssp")
-                                newrow(layout, "Modules in series:", self, "mis")
                                 newrow(layout, "PV area ratio:", self, "pvsa")
                                 newrow(layout, "Efficiency:", self, "eff")
                             elif self.pp == '1':
                                 newrow(layout, "Model:", self, "e1menu")
+                                newrow(layout, "Series in parallel:", self, "ssp")
+                                newrow(layout, "Modules in series:", self, "mis")
+                                
                                 if self.e1menu == 'Custom':
                                     newrow(layout, "Cell type:", self, "ct")
                                     newrow(layout, "Silicon:", self, "mis")

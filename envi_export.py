@@ -333,7 +333,9 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                        "Output:Variable,*,Zone Thermal Chimney Current Density Air Volume Flow Rate,hourly;\n": node.restcvf,
                        "Output:Variable,*,Zone Thermal Chimney Mass Flow Rate,hourly;\n": node.restcmf, "Output:Variable,*,Zone Thermal Chimney Outlet Temperature,hourly;\n": node.restcot,
                        "Output:Variable,*,Zone Thermal Chimney Heat Loss Energy,hourly;\n": node.restchl,"Output:Variable,*,Zone Thermal Chimney Heat Gain Energy,hourly;\n": node.restchg,
-                       "Output:Variable,*,Zone Thermal Chimney Volume,hourly;\n": node.restcv, "Output:Variable,*,Zone Thermal Chimney Mass,hourly;\n": node.restcm}
+                       "Output:Variable,*,Zone Thermal Chimney Volume,hourly;\n": node.restcv, "Output:Variable,*,Zone Thermal Chimney Mass,hourly;\n": node.restcm,
+                       "Output:Variable,*,Generator Produced DC Electric Energy,hourly;\n": node.respve, "Output:Variable,*,Generator Produced DC Electric Power,hourly;\n": node.respvw,
+                       "Output:Variable,*,Generator PV Array Efficiency,hourly;\n": node.respveff, "Output:Variable,*,Generator PV Cell Temperature,hourly;\n": node.respvt}
         
         for amb in ("Output:Variable,*,Site Outdoor Air Drybulb Temperature,Hourly;\n", "Output:Variable,*,Site Wind Speed,Hourly;\n", "Output:Variable,*,Site Wind Direction,Hourly;\n",
                     "Output:Variable,*,Site Outdoor Air Relative Humidity,hourly;\n", "Output:Variable,*,Site Direct Solar Radiation Rate per Area,hourly;\n", "Output:Variable,*,Site Diffuse Solar Radiation Rate per Area,hourly;\n"):

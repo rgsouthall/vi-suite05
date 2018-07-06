@@ -10,7 +10,12 @@ def label(dnode, metric, axis, variant):
         return catdict[variant]
 
 def llabel(dnode, metric, axis, variant):
-    rdict = {'Climate': 'Ambient', 'Zone': dnode.inputs[axis].zonemenu, 'Linkage':dnode.inputs[axis].linkmenu, 'Frames': 'Frames', 'Camera': dnode.inputs[axis].cammenu, 'Position': dnode.inputs[axis].posmenu, 'External': dnode.inputs[axis].enmenu}
+    rdict = {'Climate': 'Ambient', 'Zone': dnode.inputs[axis].zonemenu, 
+             'Linkage':dnode.inputs[axis].linkmenu, 
+             'Frames': 'Frames', 'Camera': dnode.inputs[axis].cammenu, 
+             'Position': dnode.inputs[axis].posmenu, 
+             'External': dnode.inputs[axis].enmenu,
+             'Power': dnode.inputs[axis].powmenu}
     ldict = {'type': rdict[dnode.inputs[axis].rtypemenu], 'metric': metric, }
     return ldict[variant]
     
