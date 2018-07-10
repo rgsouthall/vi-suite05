@@ -2161,14 +2161,14 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     scc = FloatProperty(name = "Amps", description = "Short circuit current", min = 1, max = 1000, default = 25)
     sgd = FloatProperty(name = "mm", description = "Screen to glass distance", min = 1, max = 1000, default = 25)
     ocv = FloatProperty(name = "V", description = "Open circuit voltage", min = 0.0, max = 100, default = 60)
-    rt = FloatProperty(name = "K", description = "Reference temperature", min = 278, max = 328, default = 298)
+    rt = FloatProperty(name = "C", description = "Reference temperature", min = 0, max = 40, default = 25)
     ri = FloatProperty(name = "W/m2", description = "Reference insolation", min = 100, max = 2000, default = 1000)
     mc = FloatProperty(name = "", description = "Module current at maximum power", min = 1, max = 10, default = 5.6)
     mv = FloatProperty(name = "", description = "Module voltage at maximum power", min = 0.0, max = 75, default = 17)
     tcscc = FloatProperty(name = "", description = "Temperature Coefficient of Short Circuit Current", min = 0.00001, max = 0.01, default = 0.002)
     tcocv = FloatProperty(name = "", description = "Temperature Coefficient of Open Circuit Voltage", min = -0.5, max = 0, default = -0.1)
-    atnoct = FloatProperty(name = "K", description = "Reference ambient temperature", min = 273, max = 313, default = 293)
-    ctnoct = FloatProperty(name = "K", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 273, max = 350, default = 318)
+    atnoct = FloatProperty(name = "C", description = "Reference ambient temperature", min = 0, max = 40, default = 20)
+    ctnoct = FloatProperty(name = "C", description = "Nominal Operating Cell Temperature Test Cell Temperature", min = 0, max = 60, default = 45)
     inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
     hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
@@ -2371,7 +2371,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                        self.tap, self.sbg, self.sr, (self.scc, self.e1ddict[self.e1menu][0])[self.e1menu != 'Custom'], (self.ocv, self.e1ddict[self.e1menu][1])[self.e1menu != 'Custom'],
                        self.rt, self.ri, (self.mc, self.e1ddict[self.e1menu][3])[self.e1menu != 'Custom'], (self.mv, self.e1ddict[self.e1menu][2])[self.e1menu != 'Custom'],
                        (self.tcscc, self.e1ddict[self.e1menu][4])[self.e1menu != 'Custom'], (self.tcocv, self.e1ddict[self.e1menu][5])[self.e1menu != 'Custom'],
-                       self.atnoct, (self.ctnoct, self.e1ddict[self.e1menu][7])[self.e1menu != 'Custom'], self.inoct, self.hlc, self.thc)
+                       self.atnoct, (self.ctnoct, self.e1ddict[self.e1menu][7] - 273.14)[self.e1menu != 'Custom'], self.inoct, self.hlc, self.thc)
             ep_text += epentry('PhotovoltaicPerformance:EquivalentOne-Diode', params, paramvs)
         
         return ep_text

@@ -33,6 +33,7 @@ def rvariant(dnode):
     clims = [dnode.inputs[axis].climmenu for axis in axes if dnode.inputs[axis].links and dnode.inputs[axis].rtypemenu == 'Climate']
     links = [dnode.inputs[axis].linkmenu for axis in axes if dnode.inputs[axis].links and dnode.inputs[axis].rtypemenu == 'Linkage']
     chims = [dnode.inputs[axis].chimmenu for axis in axes if dnode.inputs[axis].links and dnode.inputs[axis].rtypemenu == 'Chimney']
+
     if zones and len(set(zones)) + len(set(clims)) == len(zones + clims):
         return 'type'
     else:
