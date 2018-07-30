@@ -38,7 +38,7 @@ class ViNetwork(NodeTree):
     bl_label = 'VI Network'
     bl_icon = 'LAMP_SUN'
     viparams = {}
-        
+
 class ViNodes:
     @classmethod
     def poll(cls, ntree):
@@ -62,12 +62,12 @@ class ViLoc(Node, ViNodes):
             entries = []
             addonfolder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
             vi_prefs = bpy.context.user_preferences.addons['{}'.format(addonfolder)].preferences
-        
+
             if vi_prefs and os.path.isdir(bpy.path.abspath(vi_prefs.epweath)):
                 epwpath = bpy.path.abspath(vi_prefs.epweath)
             else:
                 epwpath = os.path.dirname(os.path.abspath(__file__)) + '/EPFiles/Weather/'
-    
+
             for wfile in glob.glob(epwpath+"/*.epw"):
                 with open(wfile, 'r') as wf:
                     for wfl in wf.readlines():
@@ -75,22 +75,22 @@ class ViLoc(Node, ViNodes):
                             entries.append((wfile, '{} - {}'.format(wfl.split(',')[3], wfl.split(',')[1]), 'Weather Location'))
                             break
             self['entries'] = entries if entries else [('None', 'None', 'None')]
-            
-            if os.path.isfile(self.weather):            
-                with open(self.weather, 'r') as epwfile:                
+
+            if os.path.isfile(self.weather):
+                with open(self.weather, 'r') as epwfile:
                     self['frames'] = ['0']
                     epwlines = epwfile.readlines()[8:]
                     epwcolumns = list(zip(*[epwline.split(',') for epwline in epwlines]))
                     self['year'] = 2015 if len(epwlines) == 8760 else 2016
                     times = ('Month', 'Day', 'Hour', 'DOS')
-                    
+
                     for t, ti in enumerate([' '.join(epwcolumns[c]) for c in range(1,4)] + [' '.join(['{}'.format(int(d/24) + 1) for d in range(len(epwlines))])]):
                         reslists.append(['0', 'Time', '', times[t], ti])
-                        
+
                     for c in {"Temperature ("+ u'\u00b0'+"C)": 6, 'Humidity (%)': 8, "Direct Solar (W/m"+u'\u00b2'+")": 14, "Diffuse Solar (W/m"+u'\u00b2'+")": 15,
                               'Wind Direction (deg)': 20, 'Wind Speed (m/s)': 21}.items():
                         reslists.append(['0', 'Climate', '', c[0], ' '.join([cdata for cdata in list(epwcolumns[c[1]])])])
-    
+
                     self.outputs['Location out']['epwtext'] = epwfile.read()
                     self.outputs['Location out']['valid'] = ['Location', 'Vi Results']
             else:
@@ -103,13 +103,13 @@ class ViLoc(Node, ViNodes):
 
         for node in [l.to_node for l in self.outputs['Location out'].links]:
             node.update()
-                
+
     def retentries(self, context):
         try:
             return [tuple(e) for e in self['entries']]
         except:
             return [('None', 'None','None' )]
-                  
+
     weather = EnumProperty(name='Weather file', items=retentries, update=updatelatlong)
     loc = EnumProperty(items=[("0", "Manual", "Manual location"), ("1", "EPW ", "Get location from EPW file")], name = "", description = "Location", default = "0", update = updatelatlong)
     maxws = FloatProperty(name="", description="Max wind speed", min=0, max=90, default=0)
@@ -119,17 +119,17 @@ class ViLoc(Node, ViNodes):
     dedoy = IntProperty(name="", description="", min=1, max=365, default=365)
 
     def init(self, context):
-        self['nodeid'] = nodeid(self)    
+        self['nodeid'] = nodeid(self)
 #        self.id_data.use_fake_user = True
         bpy.data.node_groups[nodeid(self).split('@')[1]].use_fake_user = True
         self.outputs.new('ViLoc', 'Location out')
         self['year'] = 2015
-        self['entries'] = [('None', 'None', 'None')] 
+        self['entries'] = [('None', 'None', 'None')]
 
     def update(self):
         socklink(self.outputs['Location out'], self['nodeid'].split('@')[1])
         nodecolour(self, self.ready())
-        
+
     def draw_buttons(self, context, layout):
         row = layout.row()
         row.label(text = 'Source:')
@@ -142,14 +142,14 @@ class ViLoc(Node, ViNodes):
             row.prop(context.scene, "latitude")
             row = layout.row()
             row.prop(context.scene, "longitude")
-            
+
     def ready(self):
         if self.loc == '1' and not self.weather:
             return 1
         if any([link.to_node.bl_label in ('LiVi CBDM', 'EnVi Export') and self.loc != "1" for link in self.outputs['Location out'].links]):
             return 1
         return 0
-        
+
 class ViGExLiNode(Node, ViNodes):
     '''Node describing a LiVi geometry export node'''
     bl_idname = 'ViGExLiNode'
@@ -166,7 +166,7 @@ class ViGExLiNode(Node, ViNodes):
     startframe = IntProperty(name="", description="Start frame for animation", min = 0, default = 0, update = nodeupdate)
     endframe = IntProperty(name="", description="End frame for animation", min = 0, default = 0, update = nodeupdate)
     fallback = BoolProperty(name="", description="Enforce simple geometry export", default = 0, update = nodeupdate)
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
@@ -195,7 +195,7 @@ class ViGExLiNode(Node, ViNodes):
     def preexport(self, scene):
         self['Text'] = {}
         self['Options'] = {'offset': self.offset, 'fs': (scene.frame_current, self.startframe)[self.animated], 'fe': (scene.frame_current, self.endframe)[self.animated], 'cp': self.cpoint, 'anim': self.animated}
-        
+
     def postexport(self, scene):
         bpy.data.node_groups[self['nodeid'].split('@')[1]].use_fake_user = 1
         self['exportstate'] = [str(x) for x in (self.animated, self.startframe, self.endframe, self.cpoint, self.offset, self.fallback)]
@@ -209,7 +209,7 @@ class LiViNode(Node, ViNodes):
 
     def nodeupdate(self, context):
         scene = context.scene
-        nodecolour(self, self['exportstate'] != [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu, 
+        nodecolour(self, self['exportstate'] != [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu,
                    self.animated, self.skymenu, self.shour, self.sdoy, self.startmonth, self.endmonth, self.damin, self.dasupp, self.dalux, self.daauto,
                    self.ehour, self.edoy, self.interval, self.hdr, self.hdrname, self.skyname, self.resname, self.turb, self.mtxname, self.cbdm_start_hour,
                    self.cbdm_end_hour, self.bambuildmenu)])
@@ -218,12 +218,12 @@ class LiViNode(Node, ViNodes):
         if self.edoy == self.sdoy:
             if self.ehour < self.shour:
                 self.ehour = self.shour
-        
-        self['skynum'] = int(self.skymenu)         
-        suns = [ob for ob in scene.objects if ob.type == 'LAMP' and ob.data.type == 'SUN'] 
-                
+
+        self['skynum'] = int(self.skymenu)
+        suns = [ob for ob in scene.objects if ob.type == 'LAMP' and ob.data.type == 'SUN']
+
         if self.contextmenu == 'Basic' and self['skynum'] < 2:
-            starttime = datetime.datetime(2015, 1, 1, int(self.shour), int((self.shour - int(self.shour))*60)) + datetime.timedelta(self.sdoy - 1) if self['skynum'] < 3 else datetime.datetime(2013, 1, 1, 12)                                       
+            starttime = datetime.datetime(2015, 1, 1, int(self.shour), int((self.shour - int(self.shour))*60)) + datetime.timedelta(self.sdoy - 1) if self['skynum'] < 3 else datetime.datetime(2013, 1, 1, 12)
             self['endframe'] = self.startframe + int(((24 * (self.edoy - self.sdoy) + self.ehour - self.shour)/self.interval)) if self.animated else [scene.frame_current]
             frames = range(self.startframe, self['endframe'] + 1) if self.animated else [scene.frame_current]
             scene.frame_start, scene.frame_end = self.startframe, frames[-1]
@@ -242,8 +242,8 @@ class LiViNode(Node, ViNodes):
             for so in suns:
                 selobj(scene, so)
                 bpy.ops.object.delete()
-                
-    spectrumtype =  [('0', "Visible", "Visible radiation spectrum calculation"), ('1', "Full", "Full radiation spectrum calculation")]                           
+
+    spectrumtype =  [('0', "Visible", "Visible radiation spectrum calculation"), ('1', "Full", "Full radiation spectrum calculation")]
 #    banalysistype = [('0', "Illu/Irrad/DF", "Illumninance/Irradiance/Daylight Factor Calculation"), ('1', "Glare", "Glare Calculation")]
     skylist = [("0", "Sunny", "CIE Sunny Sky description"), ("1", "Partly Coudy", "CIE Sunny Sky description"),
                ("2", "Coudy", "CIE Partly Cloudy Sky description"), ("3", "DF Sky", "Daylight Factor Sky description")]
@@ -296,7 +296,7 @@ class LiViNode(Node, ViNodes):
     damin = IntProperty(name = '', default = 100, min = 1, max = 2000, update = nodeupdate)
     dasupp = IntProperty(name = '', default = 300, min = 1, max = 2000, update = nodeupdate)
     daauto = IntProperty(name = '', default = 3000, min = 1, max = 5000, update = nodeupdate)
-    sdamin = IntProperty(name = '', default = 300, min = 1, max = 2000, update = nodeupdate) 
+    sdamin = IntProperty(name = '', default = 300, min = 1, max = 2000, update = nodeupdate)
     asemax = IntProperty(name = '', default = 1000, min = 1, max = 2000, update = nodeupdate)
     startmonth = IntProperty(name = '', default = 1, min = 1, max = 12, description = 'Start Month', update = nodeupdate)
     endmonth = IntProperty(name = '', default = 12, min = 1, max = 12, description = 'End Month', update = nodeupdate)
@@ -316,19 +316,19 @@ class LiViNode(Node, ViNodes):
     def draw_buttons(self, context, layout):
         newrow(layout, 'Context:', self, 'contextmenu')
         (sdate, edate) = retdates(self.sdoy, self.edoy, 2015)
-        if self.contextmenu == 'Basic':            
+        if self.contextmenu == 'Basic':
             newrow(layout, "Spectrum:", self, 'spectrummenu')
             newrow(layout, "Program:", self, 'skyprog')
             if self.skyprog == '0':
                 newrow(layout, "Sky type:", self, 'skymenu')
                 newrow(layout, "Ground ref:", self, 'gref')
                 newrow(layout, "Ground col:", self, 'gcol')
-                
+
                 if self.skymenu in ('0', '1', '2'):
                     newrow(layout, "Start hour:", self, 'shour')
                     newrow(layout, 'Start day {}/{}:'.format(sdate.day, sdate.month), self, "sdoy")
                     newrow(layout, "Animation;", self, 'animated')
-                    
+
                     if self.animated:
                         newrow(layout, "Start frame:", self, 'startframe')
                         row = layout.row()
@@ -338,7 +338,7 @@ class LiViNode(Node, ViNodes):
                         newrow(layout, 'End day {}/{}:'.format(edate.day, edate.month), self, "edoy")
                         newrow(layout, "Interval (hours):", self, 'interval')
                     newrow(layout, "Turbidity", self, 'turb')
-                
+
             elif self.skyprog == '1':
                 newrow(layout, "Epsilon:", self, 'epsilon')
                 newrow(layout, "Delta:", self, 'delta')
@@ -347,7 +347,7 @@ class LiViNode(Node, ViNodes):
                 newrow(layout, "Start hour:", self, 'shour')
                 newrow(layout, 'Start day {}/{}:'.format(sdate.day, sdate.month), self, "sdoy")
                 newrow(layout, "Animation;", self, 'animated')
-                
+
                 if self.animated:
                     newrow(layout, "Start frame:", self, 'startframe')
                     row = layout.row()
@@ -356,7 +356,7 @@ class LiViNode(Node, ViNodes):
                     newrow(layout, "End hour:", self, 'ehour')
                     newrow(layout, 'End day {}/{}:'.format(edate.day, edate.month), self, "edoy")
                     newrow(layout, "Interval (hours):", self, 'interval')
-                
+
             elif self.skyprog == '2':
                 row = layout.row()
                 row.operator('node.hdrselect', text = 'HDR select').nodeid = self['nodeid']
@@ -367,7 +367,7 @@ class LiViNode(Node, ViNodes):
 
             elif self.skyprog == '3':
                 row = layout.row()
-                
+
                 row.operator('node.skyselect', text = 'Sky select').nodeid = self['nodeid']
                 row.prop(self, 'skyname')
             row = layout.row()
@@ -387,14 +387,14 @@ class LiViNode(Node, ViNodes):
                 newrow(layout, 'Weekdays only:', self, 'weekdays')
                 newrow(layout, 'Start hour:', self, 'cbdm_start_hour')
                 newrow(layout, 'End hour:', self, 'cbdm_end_hour')
-                newrow(layout, 'Source file:', self, 'sourcemenu2') 
+                newrow(layout, 'Source file:', self, 'sourcemenu2')
                 if self.sourcemenu2 == '1':
                     row = layout.row()
                     row.operator('node.mtxselect', text = 'Select MTX').nodeid = self['nodeid']
                     row = layout.row()
                     row.prop(self, 'mtxname')
             newrow(layout, 'HDR:', self, 'hdr')
-                
+
         elif self.contextmenu == 'CBDM':
             newrow(layout, 'Type:', self, 'cbanalysismenu')
             if self.cbanalysismenu == '0':
@@ -406,7 +406,7 @@ class LiViNode(Node, ViNodes):
             newrow(layout, 'End hour:', self, 'cbdm_end_hour')
             row = layout.row()
             row.label("--")
-            
+
             if self.cbanalysismenu == '2':
                 newrow(layout, '(s)DA Min lux:', self, 'dalux')
                 row = layout.row()
@@ -417,7 +417,7 @@ class LiViNode(Node, ViNodes):
                 row = layout.row()
                 row.label("--")
                 newrow(layout, 'ASE Lux level:', self, 'asemax')
-                   
+
             if self.cbanalysismenu == '0':
                 newrow(layout, 'Source file:', self, 'sourcemenu')
             else:
@@ -431,7 +431,7 @@ class LiViNode(Node, ViNodes):
                 newrow(layout, "HDR file:", self, 'hdrname')
             else:
                 newrow(layout, 'HDR:', self, 'hdr')
-        
+
         if self.contextmenu == 'Basic':
             if int(self.skymenu) > 2 or (int(self.skymenu) < 3 and self.inputs['Location in'].links):
                 row = layout.row()
@@ -440,23 +440,23 @@ class LiViNode(Node, ViNodes):
             row = layout.row()
             row.operator("node.liexport", text = "Export").nodeid = self['nodeid']
         elif (self.contextmenu == 'CBDM' and self.cbanalysismenu == '0' and self.sourcemenu2 == '1') or \
-            (self.contextmenu == 'CBDM' and self.cbanalysismenu != '0' and self.sourcemenu == '1'):         
+            (self.contextmenu == 'CBDM' and self.cbanalysismenu != '0' and self.sourcemenu == '1'):
             row = layout.row()
-            row.operator("node.liexport", text = "Export").nodeid = self['nodeid']   
+            row.operator("node.liexport", text = "Export").nodeid = self['nodeid']
         elif self.inputs['Location in'].links and self.inputs['Location in'].links[0].from_node.loc == '1' and self.inputs['Location in'].links[0].from_node.weather != 'None':
             row = layout.row()
-            row.operator("node.liexport", text = "Export").nodeid = self['nodeid'] 
+            row.operator("node.liexport", text = "Export").nodeid = self['nodeid']
 
     def update(self):
         socklink(self.outputs['Context out'], self['nodeid'].split('@')[1])
         if self.inputs.get('Location in'):
-            self.nodeupdate(bpy.context) 
-    
+            self.nodeupdate(bpy.context)
+
     def preexport(self):
-        (interval, shour, ehour) = (1, self.cbdm_start_hour - 1, self.cbdm_end_hour - 1) if self.contextmenu == 'CBDM' or (self.contextmenu == 'Compliance' and self.canalysismenu =='3') else (round(self.interval, 3), self.shour, self.ehour)        
+        (interval, shour, ehour) = (1, self.cbdm_start_hour - 1, self.cbdm_end_hour - 1) if self.contextmenu == 'CBDM' or (self.contextmenu == 'Compliance' and self.canalysismenu =='3') else (round(self.interval, 3), self.shour, self.ehour)
         starttime = datetime.datetime(2015, 1, 1, 0) + datetime.timedelta(days = self.sdoy - 1) + datetime.timedelta(hours = shour)
 
-        if self.contextmenu == 'CBDM' or (self.contextmenu == 'Basic' and self.animated):            
+        if self.contextmenu == 'CBDM' or (self.contextmenu == 'Basic' and self.animated):
             endtime = datetime.datetime(2015, 1, 1, 0) + datetime.timedelta(days = self.edoy - 1)  + datetime.timedelta(hours = ehour)
         elif self.contextmenu == 'Compliance' and self.canalysismenu == '3':
             starttime = datetime.datetime(2015, 1, 1, 0) + datetime.timedelta(hours = shour)
@@ -466,7 +466,7 @@ class LiViNode(Node, ViNodes):
 
         times = [starttime]
         time = starttime
-        
+
         while time < endtime:
             time += datetime.timedelta(hours = interval)
             if (self.contextmenu == 'Compliance' and self.canalysismenu == '3') or self.contextmenu == 'CBDM':
@@ -474,8 +474,8 @@ class LiViNode(Node, ViNodes):
                     times.append(time)
             else:
                 times.append(time)
-               
-        self.times = times 
+
+        self.times = times
         self.starttime = times[0]
         self.endtime = times[-1]
         self['skynum'] = int(self.skymenu)
@@ -483,20 +483,20 @@ class LiViNode(Node, ViNodes):
         self['epwbase'] = os.path.splitext(os.path.basename(self.inputs['Location in'].links[0].from_node.weather)) if self.inputs['Location in'].links else ''
         self['Text'], self['Options'] = {}, {}
         self['watts'] = 0#1 if self.contextmenu == "CBDM" and self.cbanalysismenu in ('1', '2') else 0
-        
-    def export(self, scene, export_op):         
-        self.startframe = self.startframe if self.animated and self.contextmenu == 'Basic' else scene.frame_current 
+
+    def export(self, scene, export_op):
+        self.startframe = self.startframe if self.animated and self.contextmenu == 'Basic' else scene.frame_current
         self['endframe'] = self.startframe + int(((24 * (self.edoy - self.sdoy) + self.ehour - self.shour)/self.interval)) if self.contextmenu == 'Basic' and self.animated else scene.frame_current
         self['mtxfile'] = ''
         self['preview'] = 0
-        
-        if self.contextmenu == "Basic":  
+
+        if self.contextmenu == "Basic":
             self['preview'] = 1
-            
+
             if self.skyprog in ('0', '1'):
                 self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[self['skynum']] if self.skyprog == '0' else "-P {} {}".format(self.epsilon, self.delta)
                 for f, frame in enumerate(range(self.startframe, self['endframe'] + 1)):
-                    if self.skyprog == '0':                    
+                    if self.skyprog == '0':
                         skytext = livi_sun(scene, self, f) + livi_sky(self['skynum'])
                         if self['skynum'] < 2:
                             if frame == self.startframe:
@@ -508,10 +508,10 @@ class LiViNode(Node, ViNodes):
                                     sun['VIType'] = 'Sun'
                         if self.hdr:
                             hdrexport(scene, f, frame, self, skytext)
-                        
+
                     else:
                         skytext = livi_sun(scene, self, f) + livi_sky(self['skynum'])
-                    
+
                     self['Text'][str(frame)] = skytext + livi_ground(*self.gcol, self.gref)
 
             elif self.skyprog == '2':
@@ -522,7 +522,7 @@ class LiViNode(Node, ViNodes):
                 else:
                     export_op.report({'ERROR'}, "Not a valid HDR file")
                     return 'Error'
-            
+
             elif self.skyprog == '3':
                 if self.skyname and os.path.isfile(self.skyname):
                     shutil.copyfile(self.skyname, "{}-0.sky".format(scene['viparams']['filebase']))
@@ -536,7 +536,7 @@ class LiViNode(Node, ViNodes):
 
             elif self.skyprog == '4':
                 self['Text'][str(scene.frame_current)] = ''
-        
+
         elif self.contextmenu == "CBDM":
             if (self.cbanalysismenu =='0' and self.sourcemenu == '0') or (self.cbanalysismenu != '0' and self.sourcemenu2 == '0'):
                 self['mtxfile'] = cbdmmtx(self, scene, self.inputs['Location in'].links[0].from_node, export_op)
@@ -559,7 +559,7 @@ class LiViNode(Node, ViNodes):
                     self['Text'][str(scene.frame_current)] = cbdmhdr(self, scene)
 
         elif self.contextmenu == "Compliance":
-            if self.canalysismenu in ('0', '1', '2'):            
+            if self.canalysismenu in ('0', '1', '2'):
                 self['skytypeparams'] = ("-b 22.86 -c", "-b 22.86 -c", "-b 18 -u")[int(self.canalysismenu)]
                 skyentry = livi_sun(scene, self, 0, 0) + livi_sky(3)
                 if self.canalysismenu in ('0', '1'):
@@ -575,7 +575,7 @@ class LiViNode(Node, ViNodes):
                     self['mtxfile'] = cbdmmtx(self, scene, self.inputs['Location in'].links[0].from_node, export_op)
                 elif self.sourcemenu2 == '1':
                     self['mtxfile'] = self.mtxname
-                
+
                 self['Text'][str(scene.frame_current)] = "void glow sky_glow \n0 \n0 \n4 1 1 1 0 \nsky_glow source sky \n0 \n0 \n4 0 0 1 180 \nvoid glow ground_glow \n0 \n0 \n4 1 1 1 0 \nground_glow source ground \n0 \n0 \n4 0 0 -1 180\n\n"
 
                 if self.sourcemenu2 == '0':
@@ -586,28 +586,28 @@ class LiViNode(Node, ViNodes):
                         self['Options']['MTX'] = mtxfile.read()
                 if self.hdr:
                     self['Text'][str(scene.frame_current)] = cbdmhdr(self, scene)
-                
-    def postexport(self):  
+
+    def postexport(self):
         typedict = {'Basic': '0', 'Compliance': self.canalysismenu, 'CBDM': self.cbanalysismenu}
         unitdict = {'Basic': ("Lux", 'W/m2')[int(self.spectrummenu)], 'Compliance': ('DF (%)', 'DF (%)', 'DF (%)', 'sDA (%)')[int(self.canalysismenu)], 'CBDM': (('Mlxh', 'kWh')[int(self.spectrummenu)], 'kWh', 'DA (%)')[int(self.cbanalysismenu)]}
         btypedict = {'0': self.bambuildmenu, '1': '', '2': self.bambuildmenu, '3': self.lebuildmenu}
         self['Options'] = {'Context': self.contextmenu, 'Preview': self['preview'], 'Type': typedict[self.contextmenu], 'fs': self.startframe, 'fe': self['endframe'],
                     'anim': self.animated, 'shour': self.shour, 'sdoy': self.sdoy, 'ehour': self.ehour, 'edoy': self.edoy, 'interval': self.interval, 'buildtype': btypedict[self.canalysismenu], 'canalysis': self.canalysismenu, 'storey': self.buildstorey,
-                    'bambuild': self.bambuildmenu, 'cbanalysis': self.cbanalysismenu, 'unit': unitdict[self.contextmenu], 'damin': self.damin, 'dalux': self.dalux, 'dasupp': self.dasupp, 'daauto': self.daauto, 'asemax': self.asemax, 'cbdm_sh': self.cbdm_start_hour, 
+                    'bambuild': self.bambuildmenu, 'cbanalysis': self.cbanalysismenu, 'unit': unitdict[self.contextmenu], 'damin': self.damin, 'dalux': self.dalux, 'dasupp': self.dasupp, 'daauto': self.daauto, 'asemax': self.asemax, 'cbdm_sh': self.cbdm_start_hour,
                     'cbdm_eh': self.cbdm_end_hour, 'weekdays': (7, 5)[self.weekdays], 'sourcemenu': (self.sourcemenu, self.sourcemenu2)[self.cbanalysismenu not in ('2', '3', '4', '5')],
                     'mtxfile': self['mtxfile'], 'times': [t.strftime("%d/%m/%y %H:%M:%S") for t in self.times]}
         nodecolour(self, 0)
-        self['exportstate'] = [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu, 
+        self['exportstate'] = [str(x) for x in (self.contextmenu, self.spectrummenu, self.canalysismenu, self.cbanalysismenu,
                    self.animated, self.skymenu, self.shour, self.sdoy, self.startmonth, self.endmonth, self.damin, self.dasupp, self.dalux, self.daauto,
                    self.ehour, self.edoy, self.interval, self.hdr, self.hdrname, self.skyname, self.resname, self.turb, self.mtxname, self.cbdm_start_hour,
                    self.cbdm_end_hour, self.bambuildmenu)]
-                      
+
 class ViLiINode(Node, ViNodes):
     '''Node describing a LiVi image generation'''
     bl_idname = 'ViLiINode'
     bl_label = 'LiVi Image'
     bl_icon = 'LAMP'
-    
+
     def nodeupdate(self, context):
         self["_RNA_UI"] = {"Processors": {"min": 1, "max": int(context.scene['viparams']['nproc']), "name": ""}}
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.camera, self.basename, self.illu, self.fisheye, self.fov,
@@ -615,17 +615,17 @@ class ViLiINode(Node, ViNodes):
                    self.x, self.y)])
         if bpy.data.objects.get(self.camera):
             context.scene.camera = bpy.data.objects[self.camera]
-        
+
         if self.simacc == '3':
             self.validparams = validradparams(self.cusacc)
-            
+
     startframe = IntProperty(name = '', default = 0)
     endframe = IntProperty(name = '', default = 0)
     cusacc = StringProperty(
             name="", description="Custom Radiance simulation parameters", default="", update = nodeupdate)
-    simacc = EnumProperty(items=[("0", "Low", "Low accuracy and high speed (preview)"),("1", "Medium", "Medium speed and accuracy"), ("2", "High", "High but slow accuracy"), 
+    simacc = EnumProperty(items=[("0", "Low", "Low accuracy and high speed (preview)"),("1", "Medium", "Medium speed and accuracy"), ("2", "High", "High but slow accuracy"),
                                            ("3", "Custom", "Edit Radiance parameters")], name="", description="Simulation accuracy", default="0", update = nodeupdate)
-    rpictparams = (("-ab", 2, 3, 4), ("-ad", 256, 1024, 4096), ("-as", 128, 512, 2048), ("-aa", 0, 0, 0), ("-dj", 0, 0.7, 1), 
+    rpictparams = (("-ab", 2, 3, 4), ("-ad", 256, 1024, 4096), ("-as", 128, 512, 2048), ("-aa", 0, 0, 0), ("-dj", 0, 0.7, 1),
                    ("-ds", 0.5, 0.15, 0.15), ("-dr", 1, 3, 5), ("-ss", 0, 2, 5), ("-st", 1, 0.75, 0.1), ("-lw", 0.0001, 0.00001, 0.0000002), ("-lr", 3, 3, 4))
     pmap = BoolProperty(name = '', default = False, update = nodeupdate)
     pmapgno = IntProperty(name = '', default = 50000)
@@ -633,7 +633,7 @@ class ViLiINode(Node, ViNodes):
     x = IntProperty(name = '', min = 1, max = 10000, default = 2000, update = nodeupdate)
     y = IntProperty(name = '', min = 1, max = 10000, default = 1000, update = nodeupdate)
     basename = StringProperty(name="", description="Base name for image files", default="", update = nodeupdate)
-    run = BoolProperty(name = '', default = False) 
+    run = BoolProperty(name = '', default = False)
     illu = BoolProperty(name = '', default = True, update = nodeupdate)
     validparams = BoolProperty(name = '', default = True)
     mp = BoolProperty(name = '', default = False, update = nodeupdate)
@@ -641,14 +641,14 @@ class ViLiINode(Node, ViNodes):
     fisheye = BoolProperty(name = '', default = 0, update = nodeupdate)
     fov = FloatProperty(name = '', default = 180, min = 1, max = 180, update = nodeupdate)
     processes = IntProperty(name = '', default = 1, min = 1, max = 1000, update = nodeupdate)
-    
+
     def retframes(self):
         try:
             return min([c['fs'] for c in (self.inputs['Context in'].links[0].from_node['Options'], self.inputs['Geometry in'].links[0].from_node['Options'])]),\
-                    max([c['fe'] for c in (self.inputs['Context in'].links[0].from_node['Options'], self.inputs['Geometry in'].links[0].from_node['Options'])])            
+                    max([c['fe'] for c in (self.inputs['Context in'].links[0].from_node['Options'], self.inputs['Geometry in'].links[0].from_node['Options'])])
         except:
             return 0, 0
-            
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
@@ -656,39 +656,39 @@ class ViLiINode(Node, ViNodes):
         self.inputs.new('ViLiC', 'Context in')
         self.outputs.new('ViLiI', 'Image')
         self['Processors'] = 1
-        
-    def draw_buttons(self, context, layout):       
+
+    def draw_buttons(self, context, layout):
         sf, ef = self.retframes()
         row = layout.row()
         row.label(text = 'Frames: {} - {}'.format(sf, ef))
         layout.prop_search(self, 'camera', bpy.data, 'cameras', text='Camera*', icon='NONE')
-        
+
         if all([sock.links for sock in self.inputs]) and self.camera:
-            newrow(layout, 'Base name:', self, 'basename')        
+            newrow(layout, 'Base name:', self, 'basename')
             newrow(layout, 'Illuminance*:', self, 'illu')
             newrow(layout, 'Fisheye*:', self, 'fisheye')
-    
+
             if self.fisheye:
                 newrow(layout, 'FoV*:', self, 'fov')
-            
+
             newrow(layout, 'Accuracy:', self, 'simacc')
-    
+
             if self.simacc == '3':
                 newrow(layout, "Radiance parameters:", self, 'cusacc')
             newrow(layout, 'Photon map*:', self, 'pmap')
-    
+
             if self.pmap:
                newrow(layout, 'Global photons*:', self, 'pmapgno')
                newrow(layout, 'Caustic photons*:', self, 'pmapcno')
 
-               
+
             if self.simacc != '3' or (self.simacc == '3' and self.validparams) and not self.run:
                 row = layout.row()
-                row.operator("node.radpreview", text = 'Preview').nodeid = self['nodeid']  
+                row.operator("node.radpreview", text = 'Preview').nodeid = self['nodeid']
             newrow(layout, 'X resolution*:', self, 'x')
             newrow(layout, 'Y resolution*:', self, 'y')
             newrow(layout, 'Multi-thread:', self, 'mp')
-            
+
             if self.mp and sys.platform != 'win32':
                 row = layout.row()
                 row.prop(self, '["Processors"]')
@@ -696,10 +696,10 @@ class ViLiINode(Node, ViNodes):
             if (self.simacc != '3' or (self.simacc == '3' and self.validparams)) and not self.run:
                 row = layout.row()
                 row.operator("node.radimage", text = 'Image').nodeid = self['nodeid']
-        
-    def update(self):        
+
+    def update(self):
         self.run = 0
-        
+
     def presim(self):
         scene = bpy.context.scene
         pmaps = []
@@ -713,23 +713,23 @@ class ViLiINode(Node, ViNodes):
         self['radfiles'], self['reslists'] = {}, [[]]
         self['radparams'] = self.cusacc if self.simacc == '3' else (" {0[0]} {1[0]} {0[1]} {1[1]} {0[2]} {1[2]} {0[3]} {1[3]} {0[4]} {1[4]} {0[5]} {1[5]} {0[6]} {1[6]} {0[7]} {1[7]} {0[8]} {1[8]} {0[9]} {1[9]} {0[10]} {1[10]} ".format([n[0] for n in self.rpictparams], [n[int(self.simacc)+1] for n in self.rpictparams]))
         self['basename'] = self.basename if self.basename else 'image'
-        
+
         for frame in self['frames']:
             scene.frame_set(frame)
             scene.camera = bpy.data.objects[self.camera]
             cam = bpy.data.objects[self.camera]
             cang = cam.data.angle*180/math.pi if not self.fisheye else self.fov
-            vh = cang if self.x >= self.y else cang * self.x/self.y 
-            vv = cang if self.x < self.y else cang * self.y/self.x 
+            vh = cang if self.x >= self.y else cang * self.x/self.y
+            vv = cang if self.x < self.y else cang * self.y/self.x
             vd = (0.001, 0, -1*cam.matrix_world[2][2]) if (round(-1*cam.matrix_world[0][2], 3), round(-1*cam.matrix_world[1][2], 3)) == (0.0, 0.0) else [-1*cam.matrix_world[i][2] for i in range(3)]
             pmaps.append(self.pmap)
             self['pmapgnos'][str(frame)] = self.pmapgno
             self['pmapcnos'][str(frame)] = self.pmapcno
             self['pmparams'][str(frame)]['amentry'], self['pmparams'][str(frame)]['pportentry'], self['pmparams'][str(frame)]['cpentry'], self['pmparams'][str(frame)]['cpfileentry'] = retpmap(self, frame, scene)
-                
+
             if self.fisheye and self.fov == 180:
                 self['viewparams'][str(frame)]['-vth'] = ''
-                
+
             (self['viewparams'][str(frame)]['-vh'], self['viewparams'][str(frame)]['-vv']) = (self.fov, self.fov) if self.fisheye else (vh, vv)
             self['viewparams'][str(frame)]['-vd'] = ' '.join(['{:.3f}'.format(v) for v in vd])
             self['viewparams'][str(frame)]['-x'], self['viewparams'][str(frame)]['-y'] = self.x, self.y
@@ -737,34 +737,34 @@ class ViLiINode(Node, ViNodes):
                 self['viewparams'][str(frame)]['-X'], self['viewparams'][str(frame)]['-Y'] = self.processes, 1
             self['viewparams'][str(frame)]['-vp'] = '{0[0]:.3f} {0[1]:.3f} {0[2]:.3f}'.format(cam.location)
             self['viewparams'][str(frame)]['-vu'] = '{0[0]:.3f} {0[1]:.3f} {0[2]:.3f}'.format(cam.matrix_world.to_quaternion() * mathutils.Vector((0, 1, 0)))
-            
+
             if self.illu:
                 self['viewparams'][str(frame)]['-i'] = ''
         self['pmaps'] = pmaps
         self.run = 1
         nodecolour(self, 1)
-                
+
     def postsim(self, images):
         self['images'] = images
         self.run = 0
         self['exportstate'] = [str(x) for x in (self.camera, self.basename, self.illu, self.fisheye, self.fov,
             self.mp, self['Processors'], self.processes, self.cusacc, self.simacc, self.pmap, self.pmapgno, self.pmapcno,
             self.x, self.y)]
-        nodecolour(self, 0)   
+        nodecolour(self, 0)
 
 class ViLiFCNode(Node, ViNodes):
     '''Node describing a LiVi false colour image generation'''
     bl_idname = 'ViLiFCNode'
     bl_label = 'LiVi False Colour Image'
-    bl_icon = 'LAMP'  
+    bl_icon = 'LAMP'
 
     def nodeupdate(self, context):
-        nodecolour(self, self['exportstate'] != [str(x) for x in (self.basename, self.colour, self.lmax, self.unit, self.nscale, self.decades, 
+        nodecolour(self, self['exportstate'] != [str(x) for x in (self.basename, self.colour, self.lmax, self.unit, self.nscale, self.decades,
                    self.legend, self.lw, self.lh, self.contour, self.overlay, self.bands, self.ofile, self.hdrfile)])
 
-    basename = StringProperty(name="", description="Base name of the falsecolour image(s)", default="", update = nodeupdate)    
+    basename = StringProperty(name="", description="Base name of the falsecolour image(s)", default="", update = nodeupdate)
     colour = EnumProperty(items=[("0", "Default", "Default color mapping"), ("1", "Spectral", "Spectral color mapping"), ("2", "Thermal", "Thermal colour mapping"), ("3", "PM3D", "PM3D colour mapping"), ("4", "Eco", "Eco color mapping")],
-            name="", description="Simulation accuracy", default="0", update = nodeupdate)             
+            name="", description="Simulation accuracy", default="0", update = nodeupdate)
     lmax = IntProperty(name = '', min = 0, max = 100000, default = 1000, update = nodeupdate)
     unit = EnumProperty(items=[("0", "Lux", "Spectral color mapping"),("1", "Candelas", "Thermal colour mapping"), ("2", "DF", "PM3D colour mapping"), ("3", "Irradiance(v)", "PM3D colour mapping")],
             name="", description="Unit", default="0", update = nodeupdate)
@@ -784,23 +784,23 @@ class ViLiFCNode(Node, ViNodes):
     ofile = StringProperty(name="", description="Location of the file to overlay", default="", subtype="FILE_PATH", update = nodeupdate)
     hdrfile  = StringProperty(name="", description="Location of the file to overlay", default="", subtype="FILE_PATH", update = nodeupdate)
     disp = FloatProperty(name = '', min = 0.0001, max = 10, default = 1, precision = 4, update = nodeupdate)
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
         self.inputs.new('ViLiI', 'Image')
-                
+
     def draw_buttons(self, context, layout):
         if not self.inputs['Image'].links or not self.inputs['Image'].links[0].from_node['images'] or not os.path.isfile(bpy.path.abspath(self.inputs['Image'].links[0].from_node['images'][0])):
             row = layout.row()
             row.prop(self, 'hdrfile')
-        if (self.inputs['Image'].links and self.inputs['Image'].links[0].from_node['images'] and os.path.isfile(bpy.path.abspath(self.inputs['Image'].links[0].from_node['images'][0]))) or os.path.isfile(self.hdrfile): 
+        if (self.inputs['Image'].links and self.inputs['Image'].links[0].from_node['images'] and os.path.isfile(bpy.path.abspath(self.inputs['Image'].links[0].from_node['images'][0]))) or os.path.isfile(self.hdrfile):
             newrow(layout, 'Base name:', self, 'basename')
             newrow(layout, 'Unit:', self, 'unit')
             newrow(layout, 'Colour:', self, 'colour')
             newrow(layout, 'Divisions:', self, 'divisions')
             newrow(layout, 'Legend:', self, 'legend')
-            
+
             if self.legend:
                 newrow(layout, 'Scale:', self, 'nscale')
                 if self.nscale == '1':
@@ -808,25 +808,25 @@ class ViLiFCNode(Node, ViNodes):
                 newrow(layout, 'Legend max:', self, 'lmax')
                 newrow(layout, 'Legend width:', self, 'lw')
                 newrow(layout, 'Legend height:', self, 'lh')
-            
+
             newrow(layout, 'Contour:', self, 'contour')
-            
+
             if self.contour:
-               newrow(layout, 'Overlay:', self, 'overlay') 
+               newrow(layout, 'Overlay:', self, 'overlay')
                if self.overlay:
-                   newrow(layout, 'Overlay file:', self, 'ofile') 
+                   newrow(layout, 'Overlay file:', self, 'ofile')
                    newrow(layout, 'Overlay exposure:', self, 'disp')
-               newrow(layout, 'Bands:', self, 'bands') 
-   
+               newrow(layout, 'Bands:', self, 'bands')
+
             if self.inputs['Image'].links and os.path.isfile(self.inputs['Image'].links[0].from_node['images'][0]):
                 row = layout.row()
                 row.operator("node.livifc", text = 'Process').nodeid = self['nodeid']
-            
+
     def presim(self):
         self['basename'] = self.basename if self.basename else 'fc'
-        
+
     def postsim(self):
-        self['exportstate'] = [str(x) for x in (self.basename, self.colour, self.lmax, self.unit, self.nscale, self.decades, 
+        self['exportstate'] = [str(x) for x in (self.basename, self.colour, self.lmax, self.unit, self.nscale, self.decades,
                    self.legend, self.lw, self.lh, self.contour, self.overlay, self.bands)]
         nodecolour(self, 0)
 
@@ -834,12 +834,12 @@ class ViLiGLNode(Node, ViNodes):
     '''Node describing a LiVi glare analysis'''
     bl_idname = 'ViLiGLNode'
     bl_label = 'LiVi Glare analysis'
-    bl_icon = 'LAMP'  
+    bl_icon = 'LAMP'
 
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.hdrname)])
 
-    hdrname = StringProperty(name="", description="Base name of the Glare image", default="", update = nodeupdate)    
+    hdrname = StringProperty(name="", description="Base name of the Glare image", default="", update = nodeupdate)
     gc = FloatVectorProperty(size = 3, name = '', attr = 'Color', default = [1, 0, 0], subtype = 'COLOR', update = nodeupdate)
     rand = BoolProperty(name = '', default = True, update = nodeupdate)
 
@@ -847,7 +847,7 @@ class ViLiGLNode(Node, ViNodes):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
         self.inputs.new('ViLiI', 'Image')
-                
+
     def draw_buttons(self, context, layout):
         if self.inputs['Image'].links and os.path.isfile(bpy.path.abspath(self.inputs['Image'].links[0].from_node['images'][0])):
             newrow(layout, 'Base name:', self, 'hdrname')
@@ -856,7 +856,7 @@ class ViLiGLNode(Node, ViNodes):
                 newrow(layout, 'Colour:', self, 'gc')
             row = layout.row()
             row.operator("node.liviglare", text = 'Glare').nodeid = self['nodeid']
-    
+
     def presim(self):
         self['hdrname'] = self.hdrname if self.hdrname else 'glare'
 
@@ -866,10 +866,10 @@ class ViLiGLNode(Node, ViNodes):
                 Popen('evalglare {}'.format(im), stdout = glfile)
 
     def postsim(self):
-        self['exportstate'] = [str(x) for x in (self.hdrname, self.colour, self.lmax, self.unit, self.nscale, self.decades, 
+        self['exportstate'] = [str(x) for x in (self.hdrname, self.colour, self.lmax, self.unit, self.nscale, self.decades,
                    self.legend, self.lw, self.lh, self.contour, self.overlay, self.bands)]
         nodecolour(self, 0)
-        
+
 class ViLiSNode(Node, ViNodes):
     '''Node describing a LiVi simulation'''
     bl_idname = 'ViLiSNode'
@@ -880,7 +880,7 @@ class ViLiSNode(Node, ViNodes):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.cusacc, self.simacc, self.csimacc, self.pmap, self.pmapcno, self.pmapgno)])
         if self.simacc == '3':
             self.validparams = validradparams(self.cusacc)
-        
+
     simacc = EnumProperty(items=[("0", "Low", "Low accuracy and high speed (preview)"),("1", "Medium", "Medium speed and accuracy"), ("2", "High", "High but slow accuracy"),("3", "Custom", "Edit Radiance parameters"), ],
             name="", description="Simulation accuracy", default="0", update = nodeupdate)
     csimacc = EnumProperty(items=[("0", "Custom", "Edit Radiance parameters"), ("1", "Initial", "Initial accuracy for this metric"), ("2", "Final", "Final accuracy for this metric")],
@@ -906,8 +906,8 @@ class ViLiSNode(Node, ViNodes):
         self.outputs.new('ViR', 'Results out')
         nodecolour(self, 1)
         self['maxres'], self['minres'], self['avres'], self['exportstate'], self['year'] = {}, {}, {}, '', 2015
-        
-    def draw_buttons(self, context, layout): 
+
+    def draw_buttons(self, context, layout):
         scene = context.scene
         try:
             row = layout.row()
@@ -918,9 +918,9 @@ class ViLiSNode(Node, ViNodes):
                newrow(layout, 'Global photons:', self, 'pmapgno')
                newrow(layout, 'Caustic photons:', self, 'pmapcno')
             row = layout.row()
-            row.label("Accuracy:")            
+            row.label("Accuracy:")
             row.prop(self, self['simdict'][cinnode['Options']['Context']])
-            
+
             if (self.simacc == '3' and cinnode['Options']['Context'] == 'Basic') or (self.csimacc == '0' and cinnode['Options']['Context'] in ('Compliance', 'CBDM')):
                newrow(layout, "Radiance parameters:", self, 'cusacc')
             if not self.run and self.validparams:
@@ -938,7 +938,7 @@ class ViLiSNode(Node, ViNodes):
         if self.outputs.get('Results out'):
             socklink(self.outputs['Results out'], self['nodeid'].split('@')[1])
         self.run = 0
-    
+
     def presim(self):
         self['coptions'] = self.inputs['Context in'].links[0].from_node['Options']
         self['goptions'] = self.inputs['Geometry in'].links[0].from_node['Options']
@@ -947,10 +947,10 @@ class ViLiSNode(Node, ViNodes):
             self['radparams'] = self.cusacc if self.simacc == '3' else (" {0[0]} {1[0]} {0[1]} {1[1]} {0[2]} {1[2]} {0[3]} {1[3]} {0[4]} {1[4]} {0[5]} {1[5]} {0[6]} {1[6]} {0[7]} {1[7]} {0[8]} {1[8]} {0[9]} {1[9]} {0[10]} {1[10]} ".format([n[0] for n in self.rtracebasic], [n[int(self.simacc)+1] for n in self.rtracebasic]))
         else:
             self['radparams'] = self.cusacc if self.csimacc == '0' else (" {0[0]} {1[0]} {0[1]} {1[1]} {0[2]} {1[2]} {0[3]} {1[3]} {0[4]} {1[4]} {0[5]} {1[5]} {0[6]} {1[6]} {0[7]} {1[7]} {0[8]} {1[8]} {0[9]} {1[9]} {0[10]} {1[10]} ".format([n[0] for n in self.rtraceadvance], [n[int(self.csimacc)] for n in self.rtraceadvance]))
-    
+
     def sim(self, scene):
         self['frames'] = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
-        
+
     def postsim(self):
         self['exportstate'] = [str(x) for x in (self.cusacc, self.simacc, self.csimacc, self.pmap, self.pmapcno, self.pmapgno)]
         nodecolour(self, 0)
@@ -960,10 +960,10 @@ class ViSPNode(Node, ViNodes):
     bl_idname = 'ViSPNode'
     bl_label = 'VI Sun Path'
     bl_icon = 'LAMP'
-    
+
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.suns, self.th, self.res)])
-    
+
     suns = EnumProperty(items = [('0', 'Single', 'Single sun'), ('1', 'Monthly', 'Monthly sun for chosen time'), ('2', 'Hourly', 'Hourly sun for chosen date')], name = '', description = 'Sunpath sun type', default = '0', update=nodeupdate)
     th = FloatProperty(name="", description="Line thickness", min=0.1, max=1, default=0.15, update = nodeupdate)
     res = FloatProperty(name="", description="Calc point offset", min=1, max=10, default=6, update = nodeupdate)
@@ -994,10 +994,10 @@ class ViSVFNode(Node, ViNodes):
     bl_idname = 'ViSVFNode'
     bl_label = 'VI SVF'
     bl_icon = 'LAMP'
-    
+
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.startframe, self.endframe, self.cpoint, self.offset, self.animmenu)])
-    
+
     animtype = [('Static', "Static", "Simple static analysis"), ('Geometry', "Geometry", "Animated geometry analysis")]
     animmenu = EnumProperty(name="", description="Animation type", items=animtype, default = 'Static', update = nodeupdate)
     startframe = IntProperty(name = '', default = 0, min = 0, max = 1024, description = 'Start frame')
@@ -1008,7 +1008,7 @@ class ViSVFNode(Node, ViNodes):
     signore = BoolProperty(name = '', default = 0, description = 'Ignore sensor surfaces', update = nodeupdate)
     skytype = [('0', "Tregenza", "145 Tregenza sky patches"), ('1', "Reinhart 577", "577 Reinhart sky patches"), ('2', 'Reinhart 2305', '2305 Reinhart sky patches')]
     skypatches = EnumProperty(name="", description="Animation type", items=skytype, default = '0', update = nodeupdate)
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self['goptions'] = {}
@@ -1018,7 +1018,7 @@ class ViSVFNode(Node, ViNodes):
     def draw_buttons(self, context, layout):
         newrow(layout, 'Ignore sensor:', self, "signore")
         newrow(layout, 'Animation:', self, "animmenu")
-        if self.animmenu != 'Static': 
+        if self.animmenu != 'Static':
             row = layout.row(align=True)
             row.alignment = 'EXPAND'
             row.label('Frames:')
@@ -1029,15 +1029,15 @@ class ViSVFNode(Node, ViNodes):
         newrow(layout, 'Offset:', self, 'offset')
         row = layout.row()
         row.operator("node.svf", text="Sky View Factor").nodeid = self['nodeid']
-     
+
     def preexport(self):
         self['goptions']['offset'] = self.offset
-        
+
     def postexport(self, scene):
         nodecolour(self, 0)
-        self.outputs['Results out'].hide = False if self.get('reslists') else True            
+        self.outputs['Results out'].hide = False if self.get('reslists') else True
         self['exportstate'] = [str(x) for x in (self.startframe, self.endframe, self.cpoint, self.offset, self.animmenu)]
-        
+
 class ViSSNode(Node, ViNodes):
     '''Node to create a VI-Suite shadow map'''
     bl_idname = 'ViSSNode'
@@ -1060,7 +1060,7 @@ class ViSSNode(Node, ViNodes):
             name="", description="Specify the calculation point geometry", default="0", update = nodeupdate)
     offset = FloatProperty(name="", description="Calc point offset", min=0.001, max=10, default=0.01, update = nodeupdate)
     signore = BoolProperty(name = '', default = 0, description = 'Ignore sensor surfaces', update = nodeupdate)
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.inputs.new('ViLoc', 'Location in')
@@ -1075,7 +1075,7 @@ class ViSSNode(Node, ViNodes):
             (sdate, edate) = retdates(self.sdoy, self.edoy, self.inputs[0].links[0].from_node['year'])
             newrow(layout, 'Ignore sensor:', self, "signore")
             newrow(layout, 'Animation:', self, "animmenu")
-            if self.animmenu != 'Static':            
+            if self.animmenu != 'Static':
                 row = layout.row(align=True)
                 row.alignment = 'EXPAND'
                 row.label('Frames:')
@@ -1097,13 +1097,13 @@ class ViSSNode(Node, ViNodes):
 
     def postexport(self, scene):
         nodecolour(self, 0)
-        self.outputs['Results out'].hide = False if self.get('reslists') else True            
+        self.outputs['Results out'].hide = False if self.get('reslists') else True
         self['exportstate'] = [str(x) for x in (self.animmenu, self.sdoy, self.edoy, self.starthour, self.endhour, self.interval, self.cpoint, self.offset)]
-    
+
     def update(self):
         if self.outputs.get('Results out'):
             socklink(self.outputs['Results out'], self['nodeid'].split('@')[1])
-        
+
 class ViWRNode(Node, ViNodes):
     '''Node describing a VI-Suite wind rose generator'''
     bl_idname = 'ViWRNode'
@@ -1140,7 +1140,7 @@ class ViWRNode(Node, ViNodes):
     def export(self):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.wrtype, self.sdoy, self.edoy)]
-        
+
     def update(self):
         pass
 
@@ -1148,10 +1148,10 @@ class ViGExEnNode(Node, ViNodes):
     '''Node describing an EnVi Geometry Export'''
     bl_idname = 'ViGExEnNode'
     bl_label = 'EnVi Geometry'
-    
+
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.animmenu)])
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('ViEnG', 'Geometry out')
@@ -1164,10 +1164,10 @@ class ViGExEnNode(Node, ViNodes):
 
     def update(self):
         socklink(self.outputs['Geometry out'], self['nodeid'].split('@')[1])
-        
+
     def preexport(self, scene):
          pass
-               
+
     def postexport(self):
         nodecolour(self, 0)
 
@@ -1194,15 +1194,15 @@ class ViExEnNode(Node, ViNodes):
     sdoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 1, update = nodeupdate)
     edoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 365, update = nodeupdate)
     timesteps = IntProperty(name = "", description = "Time steps per hour", min = 1, max = 60, default = 1, update = nodeupdate)
-    restype= EnumProperty(items = [("0", "Zone Thermal", "Thermal Results"), ("1", "Comfort", "Comfort Results"), 
-                                   ("2", "Zone Ventilation", "Zone Ventilation Results"), ("3", "Ventilation Link", "Ventilation Link Results"), 
+    restype= EnumProperty(items = [("0", "Zone Thermal", "Thermal Results"), ("1", "Comfort", "Comfort Results"),
+                                   ("2", "Zone Ventilation", "Zone Ventilation Results"), ("3", "Ventilation Link", "Ventilation Link Results"),
                                    ("4", "Thermal Chimney", "Thermal Chimney Results"), ("5", "Power", "Power Production Results")],
                                    name="", description="Specify the EnVi results category", default="0", update = nodeupdate)
 
     (resaam, resaws, resawd, resah, resasm, restt, resh, restwh, restwc, reswsg, rescpp, rescpm, resvls, resvmh, resim, resiach, resco2, resihl, resl12ms,
      reslof, resmrt, resocc, resh, resfhb, ressah, ressac, reshrhw, restcvf, restcmf, restcot, restchl, restchg, restcv, restcm, resldp, resoeg,
      respve, respvw, respvt, respveff) = resnameunits()
-     
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('ViEnC', 'Context out')
@@ -1233,13 +1233,13 @@ class ViExEnNode(Node, ViNodes):
         col = row.column()
         col.prop(self, "restype")
         resdict = enresprops('')
-        
+
         for rprop in resdict[self.restype]:
             if not rprop:
                 row = layout.row()
             else:
                 row.prop(self, rprop)
-                
+
         if all([s.links for s in self.inputs]) and not any([s.links[0].from_node.use_custom_color for s in self.inputs]):
             row = layout.row()
             row.operator("node.enexport", text = 'Export').nodeid = self['nodeid']
@@ -1248,12 +1248,12 @@ class ViExEnNode(Node, ViNodes):
         if self.inputs.get('Location in') and self.outputs.get('Context out'):
             socklink(self.outputs['Context out'], self['nodeid'].split('@')[1])
             self['year'] = self.inputs['Location in'].links[0].from_node['year'] if self.inputs['Location in'].links else 2015
-    
+
     def preexport(self, scene):
         (self.fs, self.fe) = (self.fs, self.fe) if self.animated else (scene.frame_current, scene.frame_current)
         scene['enparams']['fs'], scene['enparams']['fe'] = self.fs, self.fe
         (self.sdate, self.edate) = retdates(self.sdoy, self.edoy, self['year'])
-        
+
     def postexport(self):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.loc, self.terrain, self.timesteps, self.animated, self.fs, self.fe, self.sdoy, self.edoy)]
@@ -1263,13 +1263,13 @@ class ViEnELCDNode(Node, ViNodes):
     bl_idname = 'ViEnELCDNode'
     bl_label = 'EnVi Distribution'
     bl_icon = 'LAMP'
-    
-    
+
+
     def init(self, context):
         self.outputs.new('ViR', 'Results out')
-        
+
     def ep_write(self):
-        params = ('Name', 'Generator List Name', 'Generator Operation Scheme Type', 
+        params = ('Name', 'Generator List Name', 'Generator Operation Scheme Type',
                   'Generator Demand Limit Scheme Purchased Electric Demand Limit {W}',
                   'Generator Track Schedule Name Scheme Schedule Name',
                   'Generator Track Meter Scheme Meter Name', 'Electrical Buss Type',
@@ -1277,17 +1277,17 @@ class ViEnELCDNode(Node, ViNodes):
         paramvs = 'Electric Load Center', 'PVs', 'Baseload', '0', '', '', 'DirectCurrentWithInverter', 'Simple Ideal Inverter'
         return epentry("ElectricLoadCenter:Distribution", params, paramvs)
 
-    
+
 class ViEnELCGNode(Node, ViNodes):
     '''Node describing EnergyPlus generators'''
     bl_idname = 'ViEnELCGNode'
     bl_label = 'EnVi Generators'
-    bl_icon = 'LAMP'    
-    
+    bl_icon = 'LAMP'
+
     def init(self, context):
         self.inputs.new('ViR', 'Results out')
-        
-        
+
+
 class ViEnSimNode(Node, ViNodes):
     '''Node describing an EnergyPlus simulation'''
     bl_idname = 'ViEnSimNode'
@@ -1340,7 +1340,7 @@ class ViEnSimNode(Node, ViNodes):
         self['Start'], self['End'] = innode.sdoy, innode.edoy
 #        self["_RNA_UI"] = {"AStart": {"min":context.scene['enparams']['fs'], "max":context.scene['enparams']['fe']}, "AEnd": {"min":context.scene['enparams']['fs'], "max":context.scene['enparams']['fe']}}
         self['AStart'], self['AEnd'] = context.scene['enparams']['fs'], context.scene['enparams']['fe']
-     
+
     def postsim(self, sim_op, condition):
 #        scene = bpy.context.scene
         nodecolour(self, 0)
@@ -1348,7 +1348,7 @@ class ViEnSimNode(Node, ViNodes):
         if condition == 'FINISHED':
             processf(sim_op, self)
 
-        
+
 class ViEnRFNode(Node, ViNodes):
     '''Node for EnergyPlus results file selection'''
     bl_idname = 'ViEnRFNode'
@@ -1357,16 +1357,16 @@ class ViEnRFNode(Node, ViNodes):
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [self.resfilename])
         self['frames'] = [context.scene.frame_current]
-        
+
     esoname = StringProperty(name="", description="Name of the EnVi results file", default="", update=nodeupdate)
     filebase = StringProperty(name="", description="Name of the EnVi results file", default="")
     dsdoy, dedoy = IntProperty(), IntProperty()
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('ViR', 'Results out')
         self['exportstate'] = ''
-        self['year'] = 2015        
+        self['year'] = 2015
         nodecolour(self, 1)
 
     def draw_buttons(self, context, layout):
@@ -1387,9 +1387,9 @@ class ViEnInNode(Node, ViNodes):
     '''Node for EnergyPlus input file selection'''
     bl_idname = 'ViEnInNode'
     bl_label = 'EnVi Input File'
-    
+
     def nodeupdate(self, context):
-        context.scene['enparams']['fs'] = context.scene['enparams']['fe'] = context.scene.frame_current            
+        context.scene['enparams']['fs'] = context.scene['enparams']['fe'] = context.scene.frame_current
         shutil.copyfile(self.idffilename, os.path.join(context.scene['viparams']['newdir'], 'in{}.idf'.format(context.scene.frame_current)))
         locnode = self.inputs['Location in'].links[0].from_node
         self['year'] = locnode['year']
@@ -1419,8 +1419,8 @@ class ViEnInNode(Node, ViNodes):
 
     def draw_buttons(self, context, layout):
         row = layout.row()
-        
-        if self.inputs['Location in'].links: 
+
+        if self.inputs['Location in'].links:
             row = layout.row()
             row.operator('node.idfselect', text = 'IDF select').nodeid = self['nodeid']
             row.prop(self, 'idfname')
@@ -1440,14 +1440,14 @@ class ViResSock(NodeSocket):
     valid = ['Vi Results']
 
     def draw(self, context, layout, node, text):
-        typedict = {"Time": [], "Frames": [], "Climate": ['climmenu'], "Zone": ("zonemenu", "zonermenu"), 
-                    "Linkage":("linkmenu", "linkrmenu"), "External":("enmenu", "enrmenu"), 
-                    "Chimney":("chimmenu", "chimrmenu"), "Position":("posmenu", "posrmenu"), 
+        typedict = {"Time": [], "Frames": [], "Climate": ['climmenu'], "Zone": ("zonemenu", "zonermenu"),
+                    "Linkage":("linkmenu", "linkrmenu"), "External":("enmenu", "enrmenu"),
+                    "Chimney":("chimmenu", "chimrmenu"), "Position":("posmenu", "posrmenu"),
                     "Camera":("cammenu", "camrmenu"), "Power":("powmenu", "powrmenu")}
         row = layout.row()
 
         if self.links and self.links[0].from_node.get('frames'):
-            if len(self.links[0].from_node['frames']) > 1 and node.parametricmenu == '0': 
+            if len(self.links[0].from_node['frames']) > 1 and node.parametricmenu == '0':
                 row.prop(self, "framemenu", text = text)
                 row.prop(self, "rtypemenu")
             else:
@@ -1464,7 +1464,7 @@ class ViResSock(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 0.75)
-        
+
 class ViResUSock(NodeSocket):
     '''Vi unlinked results socket'''
     bl_idname = 'ViEnRInU'
@@ -1476,12 +1476,12 @@ class ViResUSock(NodeSocket):
 
     def draw(self, context, layout, node, text):
         layout.label(self.bl_label)
-    
+
 class ViEnRNode(Node, ViNodes):
     '''Node for 2D results plotting'''
     bl_idname = 'ViChNode'
     bl_label = 'VI Chart'
-    
+
     def aupdate(self, context):
         self.update()
 
@@ -1492,9 +1492,9 @@ class ViEnRNode(Node, ViNodes):
     charttype = EnumProperty(items = ctypes, name = "Chart Type", default = "0")
     timemenu = EnumProperty(items=[("0", "Hourly", "Hourly results"),("1", "Daily", "Daily results"), ("2", "Monthly", "Monthly results")],
                 name="", description="Results frequency", default="0")
-    parametricmenu = EnumProperty(items=pmitems, name="", description="Parametric result display", update=aupdate)    
+    parametricmenu = EnumProperty(items=pmitems, name="", description="Parametric result display", update=aupdate)
     bl_width_max = 800
-           
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.inputs.new("ViEnRXIn", "X-axis")
@@ -1513,23 +1513,23 @@ class ViEnRNode(Node, ViNodes):
             innode = self.inputs['X-axis'].links[0].from_node
             if innode.get('reslists'):
                 newrow(layout, 'Animated:', self, 'parametricmenu')
-                if self.parametricmenu == '0':                
-                    (sdate, edate) = retdates(self['Start'], self['End'], innode['year']) 
+                if self.parametricmenu == '0':
+                    (sdate, edate) = retdates(self['Start'], self['End'], innode['year'])
                     label = "Start/End Day: {}/{} {}/{}".format(sdate.day, sdate.month, edate.day, edate.month)
                 else:
                     row = layout.row()
                     label = "Frame"
-     
-                row = layout.row()    
+
+                row = layout.row()
                 row.label(label)
                 row.prop(self, '["Start"]')
                 row.prop(self, '["End"]')
-                    
+
                 if self.parametricmenu == '0':
                     row = layout.row()
                     row.prop(self, "charttype")
                     row.prop(self, "timemenu")
-    
+
                 if self.inputs['Y-axis 1'].links and 'NodeSocketUndefined' not in [sock.bl_idname for sock in self.inputs if sock.links]:
                     layout.operator("node.chart", text = 'Create plot').nodeid = self['nodeid']
                     row = layout.row()
@@ -1541,9 +1541,9 @@ class ViEnRNode(Node, ViNodes):
                 class ViEnRXIn(ViResUSock):
                     '''Energy geometry out socket'''
                     bl_idname = 'ViEnRXIn'
-                    bl_label = 'X-axis'    
+                    bl_label = 'X-axis'
                     valid = ['Vi Results']
-                    
+
             else:
                 innode = self.inputs['X-axis'].links[0].from_node
                 rl = innode['reslists']
@@ -1555,9 +1555,9 @@ class ViEnRNode(Node, ViNodes):
                         self['pmitems'] = [("0", "Static", "Static results")]
                 except:
                     self['pmitems'] = [("0", "Static", "Static results")]
-                
+
                 time.sleep(0.1)
-    
+
                 if self.parametricmenu == '1' and len(set(zrl[0])) > 1:
                     frames = [int(k) for k in set(zrl[0]) if k != 'All']
                     startframe, endframe = min(frames), max(frames)
@@ -1569,70 +1569,70 @@ class ViEnRNode(Node, ViNodes):
                         endday = datetime.datetime(int(innode['year']), int(zrl[4][zrl[3].index('Month')].split()[-1]), int(zrl[4][zrl[3].index('Day')].split()[-1])).timetuple().tm_yday
                         self["_RNA_UI"] = {"Start": {"min":startday, "max":endday}, "End": {"min":startday, "max":endday}}
                         self['Start'], self['End'] = startday, endday
-    
+
                 if self.inputs.get('Y-axis 1'):
                     self.inputs['Y-axis 1'].hide = False
-    
+
                 class ViEnRXIn(ViResSock):
                     '''Energy geometry out socket'''
                     bl_idname = 'ViEnRXIn'
                     bl_label = 'X-axis'
-                                    
+
 #                    if innode['reslists']:
-                    (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
-                     zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                    (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu,
+                     zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu,
                      chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
-                        
+
             bpy.utils.register_class(ViEnRXIn)
-    
+
             if self.inputs.get('Y-axis 1'):
                 if not self.inputs['Y-axis 1'].links or not self.inputs['Y-axis 1'].links[0].from_node['reslists']:
                     class ViEnRY1In(ViResUSock):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY1In'
                         bl_label = 'Y-axis 1'
-    
+
                     if self.inputs.get('Y-axis 2'):
                         self.inputs['Y-axis 2'].hide = True
                 else:
                     innode = self.inputs['Y-axis 1'].links[0].from_node
-    
+
                     class ViEnRY1In(ViResSock):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY1In'
                         bl_label = 'Y-axis 1'
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
-                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu,
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu,
                          chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
-    
+
                     self.inputs['Y-axis 2'].hide = False
                 bpy.utils.register_class(ViEnRY1In)
-    
+
             if self.inputs.get('Y-axis 2'):
                 if not self.inputs['Y-axis 2'].links or not self.inputs['Y-axis 2'].links[0].from_node['reslists']:
                     class ViEnRY2In(ViResUSock):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY2In'
                         bl_label = 'Y-axis 2'
-    
+
                     if self.inputs.get('Y-axis 3'):
                         self.inputs['Y-axis 3'].hide = True
                 else:
                     innode = self.inputs[2].links[0].from_node
-    
+
                     class ViEnRY2In(ViResSock):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY2In'
                         bl_label = 'Y-axis 2'
-    
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
-                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu,
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu,
                          chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
-    
+
                     self.inputs['Y-axis 3'].hide = False
-    
+
                 bpy.utils.register_class(ViEnRY2In)
-    
+
             if self.inputs.get('Y-axis 3'):
                 if not self.inputs['Y-axis 3'].links or not self.inputs['Y-axis 3'].links[0].from_node['reslists']:
                     class ViEnRY3In(ViResUSock):
@@ -1641,16 +1641,16 @@ class ViEnRNode(Node, ViNodes):
                         bl_label = 'Y-axis 3'
                 else:
                     innode = self.inputs[3].links[0].from_node
-    
+
                     class ViEnRY3In(ViResSock):
                         '''Energy geometry out socket'''
                         bl_idname = 'ViEnRY3In'
                         bl_label = 'Y-axis 3'
-    
-                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu, 
-                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu, 
+
+                        (valid, framemenu, statmenu, rtypemenu, climmenu, zonemenu,
+                         zonermenu, linkmenu, linkrmenu, enmenu, enrmenu, chimmenu,
                          chimrmenu, posmenu, posrmenu, cammenu, camrmenu, powmenu, powrmenu, multfactor) = retrmenus(innode, self)
-    
+
                 bpy.utils.register_class(ViEnRY3In)
         except Exception as e:
             print('Chart node update failure 2 ', e)
@@ -1685,7 +1685,7 @@ class ViLiWResOut(NodeSocket):
 
     def draw_color(self, context, node):
         return (1.0, 0.2, 0.2, 0.75)
-        
+
 class ViLiCBDMSock(NodeSocket):
     '''LiVi irradiance out socket'''
     bl_idname = 'ViLiCBDM'
@@ -1699,7 +1699,7 @@ class ViLiCBDMSock(NodeSocket):
 
     def draw_color(self, context, node):
         return (1.0, 1.0, 1.0, 0.75)
-    
+
 
 class ViLiGSock(NodeSocket):
     '''Lighting geometry socket'''
@@ -1728,7 +1728,7 @@ class ViLiCSock(NodeSocket):
 
     def draw_color(self, context, node):
         return (1.0, 1.0, 0.0, 0.75)
-    
+
 class ViLiISock(NodeSocket):
     '''Lighting context in socket'''
     bl_idname = 'ViLiI'
@@ -1742,7 +1742,7 @@ class ViLiISock(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.5, 1.0, 0.0, 0.75)
-        
+
 class ViGen(NodeSocket):
     '''VI Generative geometry socket'''
     bl_idname = 'ViGen'
@@ -1840,9 +1840,9 @@ class EnViDataIn(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.0, 1.0, 0.0, 0.75)
-    
-    
-    
+
+
+
 class ENVI_Material_Nodes:
     @classmethod
     def poll(cls, ntree):
@@ -1854,7 +1854,7 @@ class EnViMatNetwork(NodeTree):
     bl_label = 'EnVi Material'
     bl_icon = 'IMGDISPLAY'
     nodetypes = {}
-    
+
 class ENVI_OLayer_Socket(NodeSocket):
     '''EnVi opaque layer socket'''
     bl_idname = 'envi_ol_sock'
@@ -1881,16 +1881,16 @@ class ENVI_OutLayer_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         if node.envi_con_type == 'Window':
-            return (0.65, 0.65, 1, 1)  
+            return (0.65, 0.65, 1, 1)
         else:
             return (0.65, 0.16, 0.16, 1)
-    
+
     def ret_valid(self, node):
         if node.envi_con_type == 'Window':
             return ['TLayer', 'ScreenLayer', 'BlindLayer', 'ShadeLayer']
         else:
             return ['OLayer']
-    
+
 class ENVI_TLayer_Socket(NodeSocket):
     '''EnVi transparent layer socket'''
     bl_idname = 'envi_tl_sock'
@@ -1905,7 +1905,7 @@ class ENVI_TLayer_Socket(NodeSocket):
 
     def ret_valid(self, node):
         return ['TLayer']
-    
+
 class ENVI_Frame_Socket(NodeSocket):
     '''EnVi frame socket'''
     bl_idname = 'envi_f_sock'
@@ -1917,10 +1917,10 @@ class ENVI_Frame_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (1, 0.1, 1, 1.0)
-    
+
     def ret_valid(self, node):
         return ['OLayer']
-    
+
 class ENVI_GLayer_Socket(NodeSocket):
     '''EnVi gas layer socket'''
     bl_idname = 'envi_gl_sock'
@@ -1932,10 +1932,10 @@ class ENVI_GLayer_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (1, 1, 1, 1.0)
-    
+
     def ret_valid(self, node):
         return ['GLayer']
-    
+
 class ENVI_SLayer_Socket(NodeSocket):
     '''EnVi shade layer socket'''
     bl_idname = 'envi_sl_sock'
@@ -1950,7 +1950,7 @@ class ENVI_SLayer_Socket(NodeSocket):
 
     def ret_valid(self, node):
         return ['GLayer', 'Tlayer']
-    
+
 class ENVI_Screen_Socket(NodeSocket):
     '''EnVi screen layer socket'''
     bl_idname = 'envi_screen_sock'
@@ -1962,7 +1962,7 @@ class ENVI_Screen_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.65, 0.65, 1, 1.0)
-    
+
     def ret_valid(self, node):
         return ['ScreenLayer']
 
@@ -1977,10 +1977,10 @@ class ENVI_SGL_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.65, 0.65, 1, 1.0)
-    
+
     def ret_valid(self, node):
         return ['TLayer']
-    
+
 class ENVI_SControl_Socket(NodeSocket):
     '''EnVi shade control socket'''
     bl_idname = 'envi_sc_sock'
@@ -1992,13 +1992,13 @@ class ENVI_SControl_Socket(NodeSocket):
 
     def draw_color(self, context, node):
         return (0, 0, 0, 1.0)
-    
+
 class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi material construction'''
     bl_idname = 'EnViCon'
     bl_label = 'EnVi Construction'
     bl_icon = 'FORCE_WIND'
-    
+
     def con_update(self, context):
         if len(self.inputs) == 3:
             if not self.pv:
@@ -2031,7 +2031,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             self.inputs['Outer frame layer'].hide = False
 
         self.update()
-        
+
     def active_update(self, context):
         if self.active:
             for node in [n for n in self.id_data.nodes if n.bl_idname == 'EnViCon' and n != self]:
@@ -2059,15 +2059,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                             ("Window", "Window", "Window construction"), 
                                             ("Door", "Door", "Door construction"),
                                             ("Shading", "Shading", "Shading material"),
-                                            ("None", "None", "Surface to be ignored")], 
-                                            name = "", 
-                                            description = "Specify the construction type", 
+                                            ("None", "None", "Surface to be ignored")],
+                                            name = "",
+                                            description = "Specify the construction type",
                                             default = "None", update = con_update)
     envi_con_makeup = EnumProperty(items = [("0", "Pre-set", "Construction pre-set"),
                                             ("1", "Layers", "Custom layers"),
-                                            ("2", "Dummy", "Adiabatic")], 
-                                            name = "", 
-                                            description = "Pre-set construction of custom layers", 
+                                            ("2", "Dummy", "Adiabatic")],
+                                            name = "",
+                                            description = "Pre-set construction of custom layers",
                                             default = "0", update = con_update)
     envi_con_con = EnumProperty(items = bc_update, 
                                             name = "", 
@@ -2080,26 +2080,26 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_afsurface = BoolProperty(name = "", description = "Flag to siginify whether the material represents an airflow surface", default = False)
 #    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
-    
+
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
     active = BoolProperty(name = "", description = "Active construction", default = False, update = active_update)
-    
+
     # Frame parameters
     fclass = EnumProperty(items = [("0", "Simple spec.", "Simple frame designation"),
                                    ("1", "Detailed spec.", "Advanced frame designation"),
-                                   ("2", "Layers", "Layered frame designation")], 
-                                    name = "", 
-                                    description = "Window frame specification", 
+                                   ("2", "Layers", "Layered frame designation")],
+                                    name = "",
+                                    description = "Window frame specification",
                                     default = "0", update = frame_update)
-    
+
     fmat = EnumProperty(items = [("0", "Wood", "Wooden frame"),
                                    ("1", "Aluminium", "Aluminium frame"),
                                    ("2", "Plastic", "uPVC frame"),
-                                   ("3", "Layers", "Layered frame")], 
-                                    name = "", 
-                                    description = "Frame material", 
+                                   ("3", "Layers", "Layered frame")],
+                                    name = "",
+                                    description = "Frame material",
                                     default = "0", update = con_update)
-    
+
     fthi = FloatProperty(name = "m", description = "Frame thickness", min = 0.001, max = 10, default = 0.05)
     farea = FloatProperty(name = "%", description = "Frame area percentage", min = 0.001, max = 100, default = 10)
     fw = FloatProperty(name = "m", description = "Frame Width", min = 0.0, max = 10, default = 0.2)
@@ -2110,7 +2110,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     fsa = FloatProperty(name = "", description = "Frame Solar Absorptance", min = 0.01, max = 1, default = 0.7)
     fva = FloatProperty(name = "", description = "Frame Visible Absorptance", min = 0.01, max = 1, default = 0.7)
     fte = FloatProperty(name = "", description = "Frame Thermal Emissivity", min = 0.01, max = 1, default = 0.7)
-    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Divided lites"), ("2", "Suspended", "Suspended divider")], 
+    dt = EnumProperty(items = [("0", "None", "None"), ("1", "DividedLite", "Divided lites"), ("2", "Suspended", "Suspended divider")],
                                         name = "", description = "Type of divider", default = "0")
     dw = FloatProperty(name = "m", description = "Divider Width", min = 0.001, max = 10, default = 0.01)
     dhd = IntProperty(name = "", description = "Number of Horizontal Dividers", min = 0, max = 10, default = 0)
@@ -2133,7 +2133,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
     mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
     pv = BoolProperty(name = "", description = "Photovoltaic shader", default = False, update = con_update)
-    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
+    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"),
                                ("1", "One-Diode", "Model reflectred beam as beam"),
                                ("2", "Sandia", "Model reflected beam as diffuse")], 
                                 name = "", description = "Photovoltaic Performance Object Type", default = "0", update = con_update)
@@ -2148,7 +2148,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                ("PhotovoltaicThermalSolarCollector", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
                                 name = "", description = "Conversion Efficiency Input Mode'", default = "Decoupled")
 
-    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
+    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43),
                'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
                'BPsolar 3160': (4.8, 44.2, 35.1, 4.55, 0.00065, -0.16, 72, 320, 1.26),
                'BPsolar 380': (4.8, 22.1, 17.6, 4.55, 0.00065, -0.08, 36, 320, 0.65),
@@ -2169,17 +2169,17 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                'UniSolar PVL-64': (4.8, 23.8, 16.5, 3.88, 0.00065, -0.1, 40, 323, 0.65),
                'UniSolar PVL-128': (4.8, 47.6, 33, 3.88, 0.00065, -0.2, 80, 323, 1.25),
                'Custom': (None, None, None, None, None, None, None, None, None)}
-    
+
     e1items = [(p, p, '{} module'.format(p)) for p in e1ddict]
     e1menu = EnumProperty(items = e1items, name = "", description = "Module type", default = 'ASE 300-DFG/50')
-    
+
 
     pvsa = FloatProperty(name = "%", description = "Fraction of Surface Area with Active Solar Cells", min = 10, max = 100, default = 90)
     aa = FloatProperty(name = "m2", description = "Active area", min = 0.1, max = 10000, default = 5)
     eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
     ssp = IntProperty(name = "", description = "Number of series strings in parallel", min = 1, max = 100, default = 5)
     mis = IntProperty(name = "", description = "Number of modules in series", min = 1, max = 100, default = 5)
-    cis = IntProperty(name = "", description = "Number of cells in series", min = 1, max = 100, default = 36) 
+    cis = IntProperty(name = "", description = "Number of cells in series", min = 1, max = 100, default = 36)
     tap = FloatProperty(name = "", description = "Transmittance absorptance product", min = -1, max = 1, default = 0.9)
     sbg = FloatProperty(name = "eV", description = "Semiconductor band-gap", min = 0.1, max = 5, default = 1.12)
     sr = FloatProperty(name = "W", description = "Shunt resistance", min = 1, default = 1000000)
@@ -2197,7 +2197,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
     hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
-    
+
     def init(self, context):
         self.inputs.new('EnViSchedSocket', 'PV Schedule')
         self.inputs['PV Schedule'].hide = True
@@ -2211,7 +2211,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         newrow(layout, 'Active:', self, 'active')
         newrow(layout, 'Boundary:', self, "envi_con_con")
         newrow(layout, 'Type:', self, "envi_con_type")
-        
+
         if self.envi_con_type != "None":
 
 #            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
@@ -2292,14 +2292,14 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 if self.envi_con_makeup == '0':                    
                     if self.envi_con_type == 'Window':
                         newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")
-    
+
                         if self.envi_simple_glazing:
                             newrow(layout, 'U-Value:', self, "envi_sg_uv")
                             newrow(layout, 'SHGC:', self, "envi_sg_shgc")
                             newrow(layout, 'Vis trans.:', self, "envi_sg_vt")
-                    
+
                     if self.envi_con_type != 'Window' or not self.envi_simple_glazing:
-                        row = layout.row()                
+                        row = layout.row()
                         row.prop(self, 'envi_con_list')
                         
                         con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
@@ -2310,15 +2310,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             if layername in envi_mats.wgas_dat:
                                 row.label(text = '{} ({})'.format(layername, "14mm"))
                                 row.prop(self, "lt{}".format(l))
-    
+
                             elif layername in envi_mats.gas_dat:
                                 row.label(text = '{} ({})'.format(layername, "20-50mm"))
                                 row.prop(self, "lt{}".format(l))
-    
+
                             elif layername in envi_mats.glass_dat:
                                 row.label(text = '{} ({})'.format(layername, "{}mm".format(float(envi_mats.matdat[layername][3])*1000)))
                                 row.prop(self, "lt{}".format(l))
-    
+
                             else:
                                 row.label(text = '{} ({})'.format(layername, "{}mm".format(envi_mats.matdat[layername][7])))
                                 row.prop(self, "lt{}".format(l))
@@ -2328,18 +2328,18 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 if self.fclass == '0':
                     newrow(layout, 'Material:', self, "fmat")
                     newrow(layout, '% frame area:', self, "farea")
-                    
+
                 elif self.fclass == '1':
                     newrow(layout, "Width:", self, "fw")
                     newrow(layout, "Outer p:", self, "fop")
                     newrow(layout, "Inner p:", self, "fip")
-                    newrow(layout, "Conductivity:", self, "ftc") 
+                    newrow(layout, "Conductivity:", self, "ftc")
                     newrow(layout, "Cond. ratio:", self, "fratio")
                     newrow(layout, "Solar absorp.:", self, "fsa")
                     newrow(layout, "Visible trans.:", self, "fva")
                     newrow(layout, "Thermal emmis.:", self, "fte")
                     newrow(layout, "Divider type:", self, "dt")
-        
+
                     if self.dt != '0':
                         row = layout.row()
                         row.label('--Divider--')
@@ -2364,16 +2364,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             elif self.envi_con_type in ('Wall', 'Floor', 'Roof') and not self.pv:
                 row = layout.row()
                 try:
-                    row.label(text = 'U-value  = {:.3f} W/m2.K'.format(1/self.resist)) 
-                except: 
-                    row.label(text = 'U-value  = N/A') 
-            
+                    row.label(text = 'U-value  = {:.3f} W/m2.K'.format(1/self.resist))
+                except:
+                    row.label(text = 'U-value  = N/A')
+
             elif self.envi_con_type == 'PV' and self.envi_con_makeup == '0':
                 newrow(layout, "Series in parallel:", self, "ssp")
                 newrow(layout, "Modules in series:", self, "mis")
                 newrow(layout, "Area:", self, "fsa")
                 newrow(layout, "Efficiency:", self, "eff")
-        
+
     def update(self):
 #<<<<<<< HEAD
 #        self.valid()
@@ -2398,12 +2398,12 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             
     def pv_ep_write(self, sn):
         self['matname'] = get_mat(self, 1).name
-        
-        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 
-                  'Module Performance Name', 'Heat Transfer Integration Mode', 
+
+        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type',
+                  'Module Performance Name', 'Heat Transfer Integration Mode',
                   'Number of Series Strings in Parallel', 'Number of Modules in Series')
-                
-        paramvs = ['{}-pv'.format(sn), sn, 
+
+        paramvs = ['{}-pv'.format(sn), sn,
                    ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
                    self.hti, self.ssp, self.mis]
 #<<<<<<< HEAD
@@ -2412,7 +2412,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 #                
 #>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
         ep_text = epentry('Generator:Photovoltaic', params, paramvs)
-        
+
         if self.pp == '0':
             params = ('Name', 'Fraction of Surface Area with Active Solar Cell', 'Conversion Efficiency Input Mode', 'Value for Cell Efficiency if Fixed', 'Efficiency Schedule Name')
             paramvs = ('{}-pv-performance'.format(sn), self.pvsa * 0.01, ('Fixed', 'Scheduled')[len(self.inputs['PV Schedule'].links)], self.eff * 0.01, ('', '{}-pv-performance-schedule'.format(sn))[len(self.inputs['PV Schedule'].links)])
@@ -2424,7 +2424,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         elif self.pp == '1':
             params = ('Name', 'Cell type', 'Number of Cells in Series', 'Active Area (m2)', 'Transmittance Absorptance Product',
                       'Semiconductor Bandgap (eV)', 'Shunt Resistance (ohms)', 'Short Circuit Current (A)', 'Open Circuit Voltage (V)',
-                      'Reference Temperature (C)', 'Reference Insolation (W/m2)', 'Module Current at Maximum Power (A)', 
+                      'Reference Temperature (C)', 'Reference Insolation (W/m2)', 'Module Current at Maximum Power (A)',
                       'Module Voltage at Maximum Power (V)', 'Temperature Coefficient of Short Circuit Current (A/K)',
                       'Temperature Coefficient of Open Circuit Voltage (V/K)', 'Nominal Operating Cell Temperature Test Ambient Temperature (C)',
                       'Nominal Operating Cell Temperature Test Cell Temperature (C)', 'Nominal Operating Cell Temperature Test Insolation (W/m2)',
@@ -2435,9 +2435,9 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                        (self.tcscc, self.e1ddict[self.e1menu][4])[self.e1menu != 'Custom'], (self.tcocv, self.e1ddict[self.e1menu][5])[self.e1menu != 'Custom'],
                        self.atnoct, (self.ctnoct, self.e1ddict[self.e1menu][7] - 273.14)[self.e1menu != 'Custom'], self.inoct, self.hlc, self.thc)
             ep_text += epentry('PhotovoltaicPerformance:EquivalentOne-Diode', params, paramvs)
-        
+
         return ep_text
-     
+
     def ep_write(self):
         self['matname'] = get_mat(self, 1).name
         con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
@@ -2448,33 +2448,33 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
             paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
-            
-            for pm, presetmat in enumerate(mats):  
+
+            for pm, presetmat in enumerate(mats):
                 matlist = list(envi_mats.matdat[presetmat])
                 layer_name = '{}-layer-{}'.format(self['matname'], pm)
-                
+
                 if envi_mats.namedict.get(presetmat) == None:
                     envi_mats.namedict[presetmat] = 0
                     envi_mats.thickdict[presetmat] = [self.thicklist[pm]/1000]
                 else:
                     envi_mats.namedict[presetmat] = envi_mats.namedict[presetmat] + 1
                     envi_mats.thickdict[presetmat].append(self.thicklist[pm]/1000)
-                
+
                 if self.envi_con_type in ('Wall', 'Floor', 'Roof', 'Ceiling', 'Door') and presetmat not in envi_mats.gas_dat:
                     self.resist += self.thicklist[pm]/1000/float(matlist[1])
-                    params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')                    
-                    paramvs = ['{}-layer-{}'.format(self['matname'], pm), matlist[0], str(self.thicklist[pm]/1000)] + matlist[1:8]                    
+                    params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')
+                    paramvs = ['{}-layer-{}'.format(self['matname'], pm), matlist[0], str(self.thicklist[pm]/1000)] + matlist[1:8]
                     ep_text += epentry("Material", params, paramvs)
 
                     if presetmat in envi_mats.pcmd_datd:
                         stringmat = envi_mats.pcmd_datd[presetmat]
                         params = ('Name', 'Temperature Coefficient for Thermal Conductivity (W/m-K2)')
                         paramvs = ('{}-layer-{}'.format(self['matname'], pm), stringmat[0])
-                        
+
                         for i, te in enumerate(stringmat[1].split()):
                             params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
                             paramvs +=(te.split(':')[0], te.split(':')[1])
-                            
+
                         ep_text += epentry("MaterialProperty:PhaseChange", params, paramvs)
                         pcmparams = ('Name', 'Algorithm', 'Construction Name')
                         pcmparamsv = ('{} CondFD override'.format(self['matname']), 'ConductionFiniteDifference', self['matname'])
@@ -2492,13 +2492,13 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                   'Dirt Correction Factor for Solar and Visible Transmittance', 'Solar Diffusing')
                     paramvs = ['{}-layer-{}'.format(self['matname'], pm)] + matlist[1:3] + [self.thicklist[pm]] + ['{:.3f}'.format(float(sm)) for sm in matlist[4:-1]] + [1, ('No', 'Yes')[matlist[-1]]]
                     ep_text += epentry("WindowMaterial:{}".format(matlist[0]), params, paramvs)
-                
+
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Gas':
                     params = ('Name', 'Gas Type', 'Thickness')
                     paramvs = [layer_name] + [matlist[1]] + [self.thicklist[pm]]
                     ep_text += epentry("WindowMaterial:Gas", params, paramvs)
-                    
-        elif self.envi_con_makeup == '1':            
+
+        elif self.envi_con_makeup == '1':
             in_sock = self.inputs['Outer layer']# if self.envi_con_type == "Window" else self.inputs[0]
             n = 0
             params = ['Name']
@@ -2510,103 +2510,103 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             while in_sock.links:
                 node = in_sock.links[0].from_node
 
-                if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):                    
-                    paramvs.append('{}-layer-{}'.format(self['matname'], n)) 
+                if node.bl_idname not in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):
+                    paramvs.append('{}-layer-{}'.format(self['matname'], n))
                     params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
-                    ep_text += node.ep_write(n)  
+                    ep_text += node.ep_write(n)
                     self.resist += node.resist
                 else:
                     get_mat(self, 1).envi_shading = 1
-                    
+
                 in_sock = node.inputs['Layer']
                 n += 1
-                
+
             ep_text += epentry('Construction', params, paramvs)
-            
+
             if get_mat(self, 1).envi_shading:
                 in_sock = self.inputs['Outer layer']
                 n = 0
-                params = ['Name'] 
+                params = ['Name']
                 paramvs = ['{}-shading'.format(self['matname'])]
-                
+
                 while in_sock.links:
                     node = in_sock.links[0].from_node
-                    
+
                     if node.outputs['Layer'].links[0].to_node.bl_idname != 'envi_sgl_node':
-                        paramvs.append('{}-layer-{}'.format(self['matname'], n)) 
+                        paramvs.append('{}-layer-{}'.format(self['matname'], n))
                         params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
                     in_sock = node.inputs['Layer']
 
                     if node.bl_idname in ('envi_sl_node', 'envi_bl_node', 'envi_screen_node', 'envi_sgl_node'):
                         ep_text += node.ep_write(n)
-                    
+
                     n += 1
                 ep_text += epentry('Construction', params, paramvs)
-                
+
         if self.envi_con_type =='Window':
             if self.fclass == '0':
                 params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
                 paramvs = ('{}-frame-layer{}'.format(self['matname'], 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(self['matname']), '{}-frame-layer{}'.format(self['matname'], 0))
                 ep_text += epentry('Material', params[:-2], paramvs[:-2])
                 ep_text += epentry('Construction', params[-2:], paramvs[-2:])
-            
+
             if self.fclass == '1':
-                fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance', 
-                           'Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance', 'Frame Solar Absorptance', 'Frame Visible Absorptance', 
+                fparams = ('Frame/Divider Name', 'Frame Width', 'Frame Outside Projection', 'Frame Inside Projection', 'Frame Conductance',
+                           'Ratio of Frame-Edge Glass Conductance to Center-Of-Glass Conductance', 'Frame Solar Absorptance', 'Frame Visible Absorptance',
                            'Frame Thermal Emissivity', 'Divider Type', 'Divider Width', 'Number of Horizontal Dividers', 'Number of Vertical Dividers',
                            'Divider Outside Projection', 'Divider Inside Projection', 'Divider Conductance', 'Ratio of Divider-Edge Glass Conductance to Center-Of-Glass Conductance',
                            'Divider Solar Absorptance', 'Divider Visible Absorptance', 'Divider Thermal Emissivity', 'Outside Reveal Solar Absorptance',
                            'Inside Sill Depth (m)', 'Inside Sill Solar Absorptance', 'Inside Reveal Depth (m)', 'Inside Reveal Solar Absorptance')
                 fparamvs = ['{}-fad'.format(self['matname'])] +  ['{:.3f}'.format(p) for p in (self.fw, self.fop, self.fip, self.ftc, self.fratio, self.fsa, self.fva, self.fte)] +\
-                            [('', 'DividedLite', 'Suspended')[int(self.dt)]] + ['{:.3f}'.format(p) for p in (self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd, 
+                            [('', 'DividedLite', 'Suspended')[int(self.dt)]] + ['{:.3f}'.format(p) for p in (self.dw, self.dhd, self.dvd, self.dop, self.dip, self.dtc, self.dratio, self.dsa, self.dva, self.dte, self.orsa, self.isd,
                             self.issa, self.ird, self.irsa)]
                 ep_text += epentry('WindowProperty:FrameAndDivider', fparams, fparamvs)
             elif self.fclass == '2':
                 ep_text += self.layer_write(self.inputs['Outer frame layer'], self['matname'])
-        
+
         return ep_text
-    
+
     def layer_write(self, in_sock, matname):
         ep_text = ''
         n = 0
         params = ['Name']
         paramvs = ['{}-frame'.format(matname)]
-        
+
         while in_sock.links:
             node = in_sock.links[0].from_node
-            paramvs.append('{}-frame-layer-{}'.format(matname, n)) 
+            paramvs.append('{}-frame-layer-{}'.format(matname, n))
             params.append(('Outside layer', 'Layer {}'.format(n))[n > 0])
-            ep_text += node.ep_write(n)                    
+            ep_text += node.ep_write(n)
             in_sock = node.inputs['Layer']
             n += 1
-            
+
         ep_text += epentry('Construction', params, paramvs)
         return ep_text
-        
+
 class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi opaque material layer'''
     bl_idname = 'envi_ol_node'
     bl_label = 'EnVi opaque layer'
-    
 
-    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
-                                        ("1", "Custom", "Define custom material properties")], 
+
+    layer = EnumProperty(items = [("0", "Database", "Select from database"),
+                                        ("1", "Custom", "Define custom material properties")],
                                         name = "", description = "Class of layer", default = "0")
 
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
     thi = FloatProperty(name = "mm", description = "Thickness (mm)", min = 0.1, max = 10000, default = 100)
     tc = FloatProperty(name = "W/m.K", description = "Thickness (mm)", min = 0.001, max = 10, default = 0.5)
-    rough = EnumProperty(items = [("VeryRough", "VeryRough", "Roughness"), 
-                                  ("Rough", "Rough", "Roughness"), 
+    rough = EnumProperty(items = [("VeryRough", "VeryRough", "Roughness"),
+                                  ("Rough", "Rough", "Roughness"),
                                   ("MediumRough", "MediumRough", "Roughness"),
-                                  ("MediumSmooth", "MediumSmooth", "Roughness"), 
-                                  ("Smooth", "Smooth", "Roughness"), 
+                                  ("MediumSmooth", "MediumSmooth", "Roughness"),
+                                  ("Smooth", "Smooth", "Roughness"),
                                   ("VerySmooth", "VerySmooth", "Roughness")],
-                                  name = "", 
-                                  description = "Specify the material roughness for convection calculations", 
+                                  name = "",
+                                  description = "Specify the material roughness for convection calculations",
                                   default = "Rough")
-    
+
     rho = FloatProperty(name = "kg/m^3", description = "Density", min = 0.001, max = 10000, default = 800)
     shc = FloatProperty(name = "J/kg", description = "Thickness (mm)", min = 0.001, max = 10000, default = 800)
     tab = FloatProperty(name = "", description = "Thickness (mm)", min = 0, max = 1, default = 0.7)
@@ -2615,20 +2615,20 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     pcm = BoolProperty(name = "", description = "Phase Change Material", default = 0)
     tctc = FloatProperty(name = "", description = "Temp. coeff. for thermal conductivity (W/m-K2)", min = 0, max = 50, default = 0)
     tempemps = StringProperty(name = "", description = "Temperature/empalthy pairs", default = "")
-    resist = FloatProperty(name = "", description = "", min = 0, default = 0) 
+    resist = FloatProperty(name = "", description = "", min = 0, default = 0)
     envi_con_type = StringProperty(name = "", description = "Name")
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_ol_sock', 'Layer')
         self.inputs.new('envi_ol_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         newrow(layout, "Class:", self, "layer")
         if self.layer == '0':
             newrow(layout, "Type:", self, "materialtype")
             newrow(layout, "Material:", self, "material")
-            newrow(layout, "Thickness:", self, "thi") 
+            newrow(layout, "Thickness:", self, "thi")
         else:
             newrow(layout, "Conductivity:", self, "tc")
             newrow(layout, "Thickness:", self, "thi")
@@ -2643,38 +2643,38 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             if self.pcm:
                 newrow(layout, "TCTC:", self, "tctc")
                 newrow(layout, "Temps:Emps", self, "tempemps")
-    
+
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type if self.outputs['Layer'].links[0].to_socket.bl_idname != 'envi_f_sock' else 'Frame'
         self.valid()
-    
+
     def valid(self):
         if not self.outputs["Layer"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-    
+
     def pcm_write(self):
         params = ['Name', 'Temperature Coefficient for Thermal Conductivity (W/m-K2)']
-        
+
         if self.layer == '0':
             paramvs = [self['layer_name'], envi_mats.pcmd_dat[self.material][0]]
             mtempemps = envi_mats.pcmd_dat[self.material][1]
         else:
             paramvs = [self['layer_name'], self.tctc]
             mtempemps = self.tempemps
-            
+
         for i, te in enumerate(mtempemps.split()):
             params += ('Temperature {} (C)'.format(i), 'Enthalpy {} (J/kg)'.format(i))
             paramvs +=(te.split(':')[0], te.split(':')[1])
-        
+
         pcmparams = ('Name', 'Algorithm', 'Construction Name')
         pcmparamsv = ('{} CondFD override'.format(self['layer_name']), 'ConductionFiniteDifference', self['layer_name'])
-    
+
         return epentry("MaterialProperty:PhaseChange", params, paramvs) + epentry('SurfaceProperty:HeatTransferAlgorithm:Construction', pcmparams, pcmparamsv)
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
@@ -2691,7 +2691,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
 
         if self.layer == '0':
             matlist = list(envi_mats.matdat[self.material])
-            
+
             if self.materialtype != '6':
                 paramvs = [self['layer_name'], matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]  
                 self.resist = self.thi * 0.001/float(matlist[1])
@@ -2702,26 +2702,26 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             else:
                 paramvs = [self['layer_name'], matlist[2]]
                 self.resist = matlist[2]
-            
+
         else:
-            paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab), 
+            paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab),
                        '{:.3f}'.format(self.sab), '{:.3f}'.format(self.vab)]
             self.resist = self.thi/self.tc
-            
+
         ep_text = epentry(header, params, paramvs)
-        
+
         if self.pcm and self.material in envi_mats.pcmd_datd:
             ep_text += self.pcm_write()
-        
+
         return ep_text
-            
+
 class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi transparent material layer'''
     bl_idname = 'envi_tl_node'
     bl_label = 'EnVi transparent layer'
-    
-    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
-                                        ("1", "Custom", "Define custom material properties")], 
+
+    layer = EnumProperty(items = [("0", "Database", "Select from database"),
+                                        ("1", "Custom", "Define custom material properties")],
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
@@ -2738,18 +2738,18 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     bie = FloatProperty(name = "", description = "Back Side Infrared Hemispherical Emissivity", min = 0, max = 1, default = 0.7)
     diff = BoolProperty(name = "", description = "Diffusing", default = 0)
     envi_con_type = StringProperty(name = "", description = "Name")
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_tl_sock', 'Layer')
         self.inputs.new('envi_gl_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         if self.outputs['Layer'].links:
             newrow(layout, "Class:", self, "layer")
             if self.layer == '0':
                 newrow(layout, "Material:", self, "material")
-                newrow(layout, "Thickness:", self, "thi") 
+                newrow(layout, "Thickness:", self, "thi")
             else:
                 newrow(layout, "Conductivity:", self, "tc")
                 newrow(layout, "Thickness:", self, "thi")
@@ -2771,13 +2771,13 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
 
         self.valid()
-    
+
     def valid(self):
         if not self.outputs["Layer"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-     
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
@@ -2792,22 +2792,22 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
         if self.layer == '0':
             matlist = list(envi_mats.matdat[self.material])
             paramvs = [layer_name] + matlist[1:3] + [self.thi] + ['{:.3f}'.format(float(sm)) for sm in matlist[4:-1]] + [1, ('No', 'Yes')[matlist[-1]]]
-            
+
         else:
-            paramvs = ['{}-layer-{}'.format(material.name, ln), 'SpectralAverage', '', self.thi/1000, '{:.3f}'.format(self.stn), '{:.3f}'.format(self.fsn), '{:.3f}'.format(self.bsn), 
+            paramvs = ['{}-layer-{}'.format(material.name, ln), 'SpectralAverage', '', self.thi/1000, '{:.3f}'.format(self.stn), '{:.3f}'.format(self.fsn), '{:.3f}'.format(self.bsn),
                        '{:.3f}'.format(self.vtn), '{:.3f}'.format(self.fvrn), '{:.3f}'.format(self.bvrn), '{:.3f}'.format(self.itn),
                        '{:.3f}'.format(self.fie), '{:.3f}'.format(self.bie), '{:.3f}'.format(self.tc), 1, ('No', 'Yes')[self.diff]]
 
         return epentry("WindowMaterial:Glazing", params, paramvs)
-    
-    
+
+
 class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi transparent gas layer'''
     bl_idname = 'envi_gl_node'
     bl_label = 'EnVi gas layer'
-    
-    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
-                                        ("1", "Custom", "Define custom material properties")], 
+
+    layer = EnumProperty(items = [("0", "Database", "Select from database"),
+                                        ("1", "Custom", "Define custom material properties")],
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     material = EnumProperty(items = envi_layer, name = "", description = "Layer material")
@@ -2824,18 +2824,18 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
     mw = FloatProperty(name = "kg/kmol", description = "Molecular weight", min = 0, max = 1, default = 0.7)
     shr = FloatProperty(name = "", description = "Specific heat ratio", min = 0, max = 1, default = 0.7)
     envi_con_type = StringProperty(name = "", description = "Name")
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_gl_sock', 'Layer')
         self.inputs.new('envi_tl_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         if self.outputs['Layer'].links:
             newrow(layout, "Class:", self, "layer")
             if self.layer == '0':
                 newrow(layout, "Material:", self, "material")
-                newrow(layout, "Thickness:", self, "thi") 
+                newrow(layout, "Thickness:", self, "thi")
             else:
                 newrow(layout, "Thickness:", self, "thi")
                 newrow(layout, "Coeff A:", self, "ccA")
@@ -2855,7 +2855,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
         if self.outputs['Layer'].links:
             self.envi_con_type = self.outputs['Layer'].links[0].to_node.envi_con_type
         self.valid()
-    
+
     def valid(self):
         if not self.outputs["Layer"].links or not self.inputs["Layer"].links:
             nodecolour(self, 1)
@@ -2869,22 +2869,22 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
         if self.layer == '0':
             params = ('Name', 'Gas Type', 'Thickness')
             paramvs = ['{}-layer-{}'.format(material.name, ln), self.material, self.thi]
-            
+
         else:
-            params = ('gap name', 'type', 'thickness', 'Conductivity Coefficient A', 'Conductivity Coefficient B', 'Conductivity Coefficient C', 
+            params = ('gap name', 'type', 'thickness', 'Conductivity Coefficient A', 'Conductivity Coefficient B', 'Conductivity Coefficient C',
                       'Conductivity Viscosity A', 'Conductivity Viscosity B', 'Conductivity Viscosity C', 'Specific Heat Coefficient A',
                       'Specific Heat Coefficient B', 'Specific Heat Coefficient C', 'Molecular Weight', 'Specific Heat Ratio')
-            paramvs = ['{}-layer-{}'.format(material.name, ln), 'Custom', '{:.3f}'.format(self.thi), '{:.3f}'.format(self.ccA), '{:.3f}'.format(self.ccB), 
+            paramvs = ['{}-layer-{}'.format(material.name, ln), 'Custom', '{:.3f}'.format(self.thi), '{:.3f}'.format(self.ccA), '{:.3f}'.format(self.ccB),
                        '{:.3f}'.format(self.ccC), '{:.3f}'.format(self.vcA), '{:.3f}'.format(self.vcB), '{:.3f}'.format(self.vcC), '{:.3f}'.format(self.shcA),
                        '{:.3f}'.format(self.shcB), '{:.3f}'.format(self.shcC), '{:.3f}'.format(self.mw), '{:.3f}'.format(self.shr)]
-   
+
         return epentry("WindowMaterial:Gas", params, paramvs)
 
 class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window shader'''
     bl_idname = 'envi_sl_node'
     bl_label = 'EnVi shade'
-        
+
     st = FloatProperty(name = "", description = "Solar transmittance", min = 0.0, max = 1, default = 0.05)
     sr = FloatProperty(name = "", description = "Solar reflectance", min = 0.0, max = 1, default = 0.3)
     vt = FloatProperty(name = "", description = "Visible transmittance", min = 0.0, max = 1, default = 0.05)
@@ -2900,18 +2900,18 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
     rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
     afp = FloatProperty(name = "", description = "Air flow permeability", min = 0.0, max = 1, default = 0.)
     envi_con_type = StringProperty(name = "", description = "Name")
-    
+
     def init(self, context):
         self.outputs.new('envi_sl_sock', 'Layer')
-        self.inputs.new('envi_sc_sock', 'Control')        
+        self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_sl_sock', 'Layer')
-                
+
     def draw_buttons(self, context, layout):
         if self.outputs['Layer'].links:
             newrow(layout, "Solar trans.:", self, "st")
             newrow(layout, "Solar reflec.:", self, "sr")
             newrow(layout, "Vis. trans.:", self, "vt")
-            newrow(layout, "Vis. reflec.:", self, "vr") 
+            newrow(layout, "Vis. reflec.:", self, "vr")
             newrow(layout, "IHE:", self, "ihe")
             newrow(layout, "Infra. trans.:", self, "it")
             newrow(layout, "Thickness:", self, "thi")
@@ -2922,17 +2922,17 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Left milt.:", self, "lom")
             newrow(layout, "Right mult.:", self, "rom")
             newrow(layout, "Air perm.:", self, "afp")
-    
+
     def valid(self):
         if not self.outputs["Layer"].links or not self.inputs["Layer"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-            
+
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
         self.valid()
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
@@ -2942,23 +2942,23 @@ class ENVI_Shade_Node(Node, ENVI_Material_Nodes):
                   'Right-side opening multiplier', 'Air flow permeability')
         paramvs = ['{}-layer-{}'.format(material.name, ln)] + ['{:.3f}'.format(p) for p in (self.st, self.sr, self.vt, self.vr, self.ihe, self.it, 0.001 * self.thi, self.tc, 0.001 * self.sgd,
                    self.tom, self.bom, self.lom, self.rom, self.afp)]
-  
+
         return epentry('WindowMaterial:Shade', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
-        
+
 class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi external screen'''
     bl_idname = 'envi_screen_node'
     bl_label = 'EnVi screen'
-    
-    rb = EnumProperty(items = [("DoNotModel", "DoNotModel", "Do not model reflected beam component"), 
+
+    rb = EnumProperty(items = [("DoNotModel", "DoNotModel", "Do not model reflected beam component"),
                                ("ModelAsDirectBeam", "ModelAsDirectBeam", "Model reflectred beam as beam"),
-                               ("ModelAsDiffuse", "ModelAsDiffuse", "Model reflected beam as diffuse")], 
+                               ("ModelAsDiffuse", "ModelAsDiffuse", "Model reflected beam as diffuse")],
                                 name = "", description = "Composition of the layer", default = "ModelAsDiffuse")
-    ta = EnumProperty(items = [("0", "0", "Angle of Resolution for Screen Transmittance Output Map"), 
+    ta = EnumProperty(items = [("0", "0", "Angle of Resolution for Screen Transmittance Output Map"),
                                ("1", "1", "Angle of Resolution for Screen Transmittance Output Map"),
                                ("2", "2", "Angle of Resolution for Screen Transmittance Output Map"),
                                ("3", "3", "Angle of Resolution for Screen Transmittance Output Map"),
-                               ("5", "5", "Angle of Resolution for Screen Transmittance Output Map")], 
+                               ("5", "5", "Angle of Resolution for Screen Transmittance Output Map")],
                                 name = "", description = "Angle of Resolution for Screen Transmittance Output Map", default = "0")
 
     dsr = FloatProperty(name = "", description = "Diffuse solar reflectance", min = 0.0, max = 0.99, default = 0.5)
@@ -2972,18 +2972,18 @@ class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
     bom = FloatProperty(name = "", description = "Bottom opening multiplier", min = 0.0, max = 1, default = 0.5)
     lom = FloatProperty(name = "", description = "Left-side opening multiplier", min = 0.0, max = 1, default = 0.5)
     rom = FloatProperty(name = "", description = "Right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
-    
+
     def init(self, context):
         self.outputs.new('envi_screen_sock', 'Outer Layer')
         self['nodeid'] = nodeid(self)
         self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_tl_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         if self.outputs['Outer Layer'].links:
             newrow(layout, "Reflected beam:", self, "rb")
             newrow(layout, "Diffuse reflectance:", self, "dsr")
-            newrow(layout, "Visible reflectance:", self, "vr") 
+            newrow(layout, "Visible reflectance:", self, "vr")
             newrow(layout, "Thermal emmisivity:", self, "the")
             newrow(layout, "Conductivity:", self, "tc")
             newrow(layout, "Material spacing:", self, "sme")
@@ -2994,38 +2994,38 @@ class ENVI_Screen_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Left milt.:", self, "lom")
             newrow(layout, "Right mult.:", self, "rom")
             newrow(layout, "Resolution angle:", self, "ta")
-    
+
     def valid(self):
         if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-            
+
     def update(self):
         socklink2(self.outputs['Outer Layer'], self.id_data)
         self.valid()
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
-            
+
         params = ('Name', 'Reflected Beam Transmittance Accounting Method', 'Diffuse Solar Reflectance', 'Diffuse Visible Reflectance',
                   'Thermal Hemispherical Emissivity', 'Conductivity (W/m-K)', 'Screen Material Spacing (m)', 'Screen Material Diameter (m)',
-                  'Screen-to-Glass Distance (m)', 'Top Opening Multiplier', 'Bottom Opening Multiplier', 'Left-Side Opening Multiplier', 
+                  'Screen-to-Glass Distance (m)', 'Top Opening Multiplier', 'Bottom Opening Multiplier', 'Left-Side Opening Multiplier',
                   'Right-Side Opening Multiplier', 'Angle of Resolution for Output Map (deg)')
-        
+
         paramvs = ['{}-layer-{}'.format(material.name, ln), self.rb] + ['{:.3f}'.format(p) for p in (self.dsr, self.vr, self.the, self.tc, 0.001 * self.sme, 0.001 * self.smd,
                    0.001 * self.sgd, self.tom, self.bom, self.lom, self.rom)] + [self.ta]
-  
+
         return epentry('WindowMaterial:Screen', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
-    
+
 class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window blind'''
     bl_idname = 'envi_bl_node'
     bl_label = 'EnVi blind'
-    
-    so = EnumProperty(items = [("0", "Horizontal", "Select from database"), 
+
+    so = EnumProperty(items = [("0", "Horizontal", "Select from database"),
                                 ("1", "Vertical", "Define custom material properties")],
                                 name = "", description = "Slat orientation", default = '0')
     sw = FloatProperty(name = "mm", description = "Slat width", min = 0.1, max = 1000, default = 25)
@@ -3055,20 +3055,20 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     rom = FloatProperty(name = "", description = "Blind right-side opening multiplier", min = 0.0, max = 1, default = 0.5)
     minsa = FloatProperty(name = "deg", description = "Minimum slat angle", min = 0.0, max = 90, default = 0.0)
     maxsa = FloatProperty(name = "deg", description = "Maximum slat angle", min = 0.0, max = 90, default = 0.0)
-    
+
     def init(self, context):
         self.outputs.new('envi_sl_sock', 'Layer')
         self.inputs.new('envi_sc_sock', 'Control')
         self['nodeid'] = nodeid(self)
         self.inputs.new('envi_sl_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         if self.outputs['Layer'].links:
             newrow(layout, "Slat orient.:", self, "so")
             newrow(layout, "Slat width:", self, "sw")
             newrow(layout, "Slat sep.:", self, "ss")
             newrow(layout, "Slat thick.:", self, "st")
-            newrow(layout, "Slat angle:", self, "sa") 
+            newrow(layout, "Slat angle:", self, "sa")
             newrow(layout, "Slat cond.:", self, "stc")
             newrow(layout, "Slat beam trans.:", self, "sbst")
             newrow(layout, "Front beam trans.:", self, "fbst")
@@ -3082,7 +3082,7 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Slat diff. vis. trans.:", self, "sdvt")
             newrow(layout, "Front diff. vis. reflec.:", self, "fdvr")
             newrow(layout, "Back diff. vis. reflec.:", self, "bdvr")
-            newrow(layout, "Infra. trans.:", self, "sit") 
+            newrow(layout, "Infra. trans.:", self, "sit")
             newrow(layout, "Front infra. emiss.:", self, "sfie")
             newrow(layout, "Back infra. emiss.:", self, "sbie")
             newrow(layout, "Glass dist.:", self, "bgd")
@@ -3098,33 +3098,33 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-            
+
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
         self.valid()
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
         params = ('Name', 'Slat orientation', 'Slat width (m)', 'Slat separation (m)', 'Slat thickness (m)', 'Slat angle (deg)', 'Slat conductivity (W/m.K)',
-                  'Slat beam solar transmittance', 'Front Side Slat beam solar reflectance', 'Back Side Slat beam solar reflectance', 'Slat diffuse solar transmittance', 
+                  'Slat beam solar transmittance', 'Front Side Slat beam solar reflectance', 'Back Side Slat beam solar reflectance', 'Slat diffuse solar transmittance',
                   'Front Side Slat diffuse solar reflectance', 'Back Side Slat diffuse solar reflectance', 'Slat beam visible transmittance', 'Front Side Slat beam visible reflectance',
                   'Back Side Slat beam visible reflectance', 'Slat diffuse visible transmittance', "Front Side Slat diffuse visible reflectance", "Back Side Slat diffuse visible reflectance",
                   "Slat Infrared hemispherical transmittance", "Front Side Slat Infrared hemispherical emissivity", "Back Side Slat Infrared hemispherical emissivity", "Blind-to-glass distance",
                   "Blind top opening multiplier", "Blind bottom opening multiplier", "Blind left-side opening multiplier", "Blind right-side opening multiplier", "Minimum slat angle", "Maximum slat angle")
         paramvs = ['{}-layer-{}'.format(material.name, ln), ('Horizontal', 'Vertical')[int(self.so)]] + ['{:.3f}'.format(p) for p in (0.001 * self.sw, 0.001 * self.ss, 0.001 * self.st, self.sa, self.stc, self.sbst, self.fbst, self.bbst, self.sdst, self.fdsr, self.bdsr, self.sbvt,
                    self.fbvr, self.bbvr, self.sdvt, self.fdvr, self.bdvr, self.sit, self.sfie, self.sbie, 0.001 * self.bgd, self.tom, self.bom, self.lom, self.rom, self.minsa, self.maxsa)]
-  
+
         return epentry('WindowMaterial:Blind', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
-    
+
 class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     '''Node defining the EnVi switchable glazing layer'''
     bl_idname = 'envi_sgl_node'
     bl_label = 'EnVi switchable glazing layer'
-    
-    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
-                                        ("1", "Custom", "Define custom material properties")], 
+
+    layer = EnumProperty(items = [("0", "Database", "Select from database"),
+                                        ("1", "Custom", "Define custom material properties")],
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
     mats = [((mat, mat, 'Layer material')) for mat in envi_materials().glass_dat.keys()]
@@ -3141,19 +3141,19 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     fie = FloatProperty(name = "", description = "Front Side Infrared Hemispherical Emissivity'", min = 0, max = 1, default = 0.7)
     bie = FloatProperty(name = "", description = "Back Side Infrared Hemispherical Emissivity", min = 0, max = 1, default = 0.7)
     diff = BoolProperty(name = "", description = "Diffusing", default = 0)
-    
+
     def init(self, context):
         self.inputs.new('envi_sc_sock', 'Control')
         self['nodeid'] = nodeid(self)
         self.inputs.new('envi_sgl_sock', 'Layer')
         self.outputs.new('envi_sgl_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         if self.inputs['Layer'].links:
             newrow(layout, "Class:", self, "layer")
             if self.layer == '0':
                 newrow(layout, "Material:", self, "material")
-                newrow(layout, "Thickness:", self, "thi") 
+                newrow(layout, "Thickness:", self, "thi")
             else:
                 newrow(layout, "Conductivity:", self, "tc")
                 newrow(layout, "Thickness:", self, "thi")
@@ -3170,13 +3170,13 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
 
     def update(self):
         self.valid()
-    
+
     def valid(self):
         if not self.outputs["Layer"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-     
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
@@ -3191,27 +3191,27 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
         if self.layer == '0':
             matlist = list(envi_mats.matdat[self.material])
             paramvs = [layer_name] + matlist[1:3] + [self.thi] + ['{:.3f}'.format(float(sm)) for sm in matlist[4:-1]] + [1, ('No', 'Yes')[matlist[-1]]]
-            
+
         else:
-            paramvs = ['{}-layer-{}'.format(material.name, ln), 'SpectralAverage', '', self.thi/1000, '{:.3f}'.format(self.stn), '{:.3f}'.format(self.fsn), '{:.3f}'.format(self.bsn), 
+            paramvs = ['{}-layer-{}'.format(material.name, ln), 'SpectralAverage', '', self.thi/1000, '{:.3f}'.format(self.stn), '{:.3f}'.format(self.fsn), '{:.3f}'.format(self.bsn),
                        '{:.3f}'.format(self.vtn), '{:.3f}'.format(self.fvrn), '{:.3f}'.format(self.bvrn), '{:.3f}'.format(self.itn),
                        '{:.3f}'.format(self.fie), '{:.3f}'.format(self.bie), '{:.3f}'.format(self.tc), 1, ('No', 'Yes')[self.diff]]
 
-        return epentry("WindowMaterial:Glazing", params, paramvs)   + self.inputs['Control'].links[0].from_node.ep_write(ln) 
-          
+        return epentry("WindowMaterial:Glazing", params, paramvs)   + self.inputs['Control'].links[0].from_node.ep_write(ln)
+
 class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
     '''Node defining an EnVi window shade control'''
     bl_idname = 'envi_sc_node'
     bl_label = 'EnVi shade control'
-        
-    ttuple = ("Alwayson", "Alwaysoff", "OnIfScheduleAllows", "OnIfHighSolarOnWindow", "OnIfHighHorizontalSolar", 
-              "OnIfHighOutdoorAirTemperature", 
+
+    ttuple = ("Alwayson", "Alwaysoff", "OnIfScheduleAllows", "OnIfHighSolarOnWindow", "OnIfHighHorizontalSolar",
+              "OnIfHighOutdoorAirTemperature",
               "OnIfHighZoneAirTemperature", "OnIfHighZoneCooling", "OnIfHighGlare", "MeetDaylightIlluminanceSetpoint",
               "OnNightIfLowOutdoorTempAndOffDay", "OnNightIfLowInsideTempAndOffDay", "OnNightIfHeatingAndOffDay",
-              "OnNightIfLowOutdoorTempAndOnDayIfCooling", "OnNightIfHeatingAndOnDayIfCooling", 
-              "OffNightAndOnDayIfCoolingAndHighSolarOnWindow", "OnNightAndOnDayIfCoolingAndHighSolarOnWindow", 
+              "OnNightIfLowOutdoorTempAndOnDayIfCooling", "OnNightIfHeatingAndOnDayIfCooling",
+              "OffNightAndOnDayIfCoolingAndHighSolarOnWindow", "OnNightAndOnDayIfCoolingAndHighSolarOnWindow",
               "OnIfHighOutdoorAirTempAndHighSolarOnWindow", "OnIfHighOutdoorAirTempAndHighHorizontalSolar")
-    
+
     def type_menu(self, context):
         try:
             if self.outputs['Control'].links[0].to_node.bl_idname == 'envi_screen_node':
@@ -3226,13 +3226,13 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
 
     ctype = EnumProperty(items = type_menu, name = "", description = "Shading device")
     sp = FloatProperty(name = "", description = "Setpoint (W/m2, W or deg C)", min = 0.0, max = 1000, default = 20)
-    sac = EnumProperty(items = [("FixedSlatAngle", "Always on", "Shading component"), 
+    sac = EnumProperty(items = [("FixedSlatAngle", "Always on", "Shading component"),
                                 ("ScheduledSlatAngle", "OnIfHighOutdoorAirTempAndHighSolarOnWindow", "Switchable glazing component"),
                                 ("BlockBeamSolar", "OnIfHighOutdoorAirTempAndHighHorizontalSolar", "Switchable glazing component")
                                 ],
                                 name = "", description = "Shading device", default = 'FixedSlatAngle')
     sp2 = FloatProperty(name = "", description = "Setpoint 2 (W/m2, W or deg C)", min = 0.0, max = 1000, default = 20)
-      
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self.outputs.new('envi_sgl_sock', 'Layer')
@@ -3246,13 +3246,13 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
             newrow(layout, "Set-point", self, 'sp')
         if self.outputs['Control'].links and self.outputs['Control'].links[0].to_node.bl_idname == 'envi_blind_node':
             newrow(layout, 'Slat angle:', self, 'sac')
-           
+
     def valid(self):
         if not self.outputs["Control"].links:
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
-            
+
     def update(self):
         socklink2(self.outputs['Control'], self.id_data)
 #        socklink2(self.outputs['Layer'], self.id_data)
@@ -3263,14 +3263,14 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
 #                self.id_data.links.remove(link)
 #            self.outputs['Layer'].hide = True
         self.valid()
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
-            
+
         if self.outputs['Control'].links[0].to_node.bl_idname == 'envi_screen_node':
-            st = 'ExteriorScreen' 
+            st = 'ExteriorScreen'
         elif self.outputs['Control'].links[0].to_node.bl_idname == 'envi_bl_node':
             if ln == 0:
                 st = 'ExteriorBlind'
@@ -3287,19 +3287,19 @@ class ENVI_Shade_Control_Node(Node, ENVI_Material_Nodes):
                 st = 'InteriorShade'
         else:
             st = 'SwitchableGlazing'
-        
+
         (scs, sn) = ('Yes', '{}-shading-schedule-{}'.format(material.name, ln)) if self.inputs['Schedule'].links else ('No', '')
-                
+
         params = ('Name', 'Shading Type', 'Construction with Shading Name', 'Shading Control Type', 'Schedule Name', 'Setpoint (W/m2, W or deg C)', 'Shading Control Is Scheduled',
                   'Glare Control Is Active', 'Shading Device Material Name', 'Type of Slat Angle Control for Blinds', 'Slat Angle Schedule Name')
         paramvs = ('{}-shading-control'.format(material.name), st, '{}-shading'.format(material.name), self.ctype, sn, self.sp, scs, 'No', '', self.sac, '')
         return epentry('WindowProperty:ShadingControl', params, paramvs)
-        
+
 class EnViMatNodes:
     @classmethod
     def poll(cls, ntree):
         return ntree.bl_idname == 'EnViMatN'
-    
+
 class EnViMatNodeCategory(NodeCategory):
     @classmethod
     def poll(cls, context):
@@ -3311,7 +3311,7 @@ envimatnode_categories = [
                                                      NodeItem("envi_pv_node", label="PV Node")]),
         EnViMatNodeCategory("Layer", "Layer Node", items=[NodeItem("envi_ol_node", label="Opaque layer"),
                                                        NodeItem("envi_tl_node", label="Transparency layer"),
-                                                       NodeItem("envi_gl_node", label="Gas layer")]), 
+                                                       NodeItem("envi_gl_node", label="Gas layer")]),
         EnViMatNodeCategory("Shading", "Shading Node", items=[NodeItem("envi_sl_node", label="Shading layer"),
                                                        NodeItem("envi_bl_node", label="Blind layer"),
                                                        NodeItem("envi_screen_node", label="Screen layer"),
@@ -3323,13 +3323,13 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     '''Node defining a solar collector'''
     bl_idname = 'envi_pv_node'
     bl_label = 'EnVi PV'
-    
-    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
+
+    pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"),
                                ("1", "One-Diode", "Model reflectred beam as beam"),
-                               ("2", "Sandia", "Model reflected beam as diffuse")], 
+                               ("2", "Sandia", "Model reflected beam as diffuse")],
                                 name = "", description = "Photovoltaic Performance Object Type", default = "0")
-    ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
-                               ("1", "Amorphous", "Model reflectred beam as beam")], 
+    ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"),
+                               ("1", "Amorphous", "Model reflectred beam as beam")],
                                 name = "", description = "Photovoltaic Type", default = "0")
     hti = EnumProperty(items = [("Decoupled", "Decoupled", "Decoupled"), 
                                ("1", "Ulleberg", "DecoupledUllebergDynamic"),
@@ -3339,7 +3339,7 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
                                ("6", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
                                 name = "", description = "Conversion Efficiency Input Mode'", default = "Decoupled")
 
-    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
+    e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43),
                'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
                'BPsolar 3160': (4.8, 44.2, 35.1, 4.55, 0.00065, -0.16, 72, 320, 1.26),
                'BPsolar 380': (4.8, 22.1, 17.6, 4.55, 0.00065, -0.08, 36, 320, 0.65),
@@ -3360,10 +3360,10 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
                'UniSolar PVL-64': (4.8, 23.8, 16.5, 3.88, 0.00065, -0.1, 40, 323, 0.65),
                'UniSolar PVL-128': (4.8, 47.6, 33, 3.88, 0.00065, -0.2, 80, 323, 1.25),
                'Custom': None}
-    
+
     e1items = [(p, p, '{} module'.format(p)) for p in e1ddict]
     e1menu = EnumProperty(items = e1items, name = "", description = "Module type", default = 'ASE 300-DFG/50')
-    
+
 
     fsa = FloatProperty(name = "%", description = "Fraction of Surface Area with Active Solar Cells", min = 10, max = 100, default = 90)
     eff = FloatProperty(name = "%", description = "Visible reflectance", min = 0.0, max = 100, default = 20)
@@ -3386,26 +3386,26 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     inoct = FloatProperty(name = "W/m2", description = "Nominal Operating Cell Temperature Test Insolation", min = 100, max = 2000, default = 800)
     hlc = FloatProperty(name = "W/m2.K", description = "Module heat loss coefficient", min = 0.0, max = 50, default = 30)
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
-    
+
     def init(self, context):
         self.outputs.new('envi_ol_sock', 'Outer Layer')
         self['nodeid'] = nodeid(self)
         self.inputs.new('EnViSchedSocket', 'Schedule')
 #        self.inputs.new('envi_sc_sock', 'Control')
         self.inputs.new('envi_ol_sock', 'Layer')
-        
+
     def draw_buttons(self, context, layout):
         newrow(layout, "Heat transfer:", self, "hti")
         newrow(layout, "PV type:", self, "pp")
-        
+
         if self.pp == '0':
             newrow(layout, "Series in parallel:", self, "ssp")
             newrow(layout, "Modules in series:", self, "mis")
             newrow(layout, "Area:", self, "fsa")
-            
+
             if not self.inputs['Schedule'].links:
                 newrow(layout, "Efficiency:", self, "eff")
-                
+
         elif self.pp == '1':
             newrow(layout, "Model:", self, "e1menu")
             if self.e1menu == 'Custom':
@@ -3414,8 +3414,8 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Area:", self, "fsa")
                 newrow(layout, "Trans*absorp:", self, "tap")
                 newrow(layout, "Band gap:", self, "sbg")
-                newrow(layout, "Shunt:", self, "sr")    
-                newrow(layout, "Short:", self, "scc") 
+                newrow(layout, "Shunt:", self, "sr")
+                newrow(layout, "Short:", self, "scc")
                 newrow(layout, "Open:", self, "ocv")
                 newrow(layout, "Ref. temp.:", self, "rt")
                 newrow(layout, "Ref. insol.:", self, "ri")
@@ -3429,47 +3429,47 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
             else:
                 newrow(layout, "Trans*absorp:", self, "tap")
                 newrow(layout, "Band gap:", self, "sbg")
-                newrow(layout, "Shunt:", self, "sr")    
+                newrow(layout, "Shunt:", self, "sr")
                 newrow(layout, "Ref. temp.:", self, "rt")
                 newrow(layout, "Ref. insol.:", self, "ri")
                 newrow(layout, "Ambient temp.:", self, "atnoct")
                 newrow(layout, "Insolation:", self, "inoct")
-                
+
     def valid(self):
         pass
 #        if not self.outputs["Outer Layer"].links or not self.inputs["Layer"].links or not self.inputs["Control"].links:
 #            nodecolour(self, 1)
 #        else:
 #            nodecolour(self, 0)
-            
+
     def update(self):
         socklink2(self.outputs['Outer Layer'], self.id_data)
         self.valid()
-        
+
     def ep_write(self, ln):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
-        
-        
-        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type', 
-                  'Module Performance Name', 'Heat Transfer Integration Mode', 
+
+
+        params = ('Name', 'Surface Name', 'Photovoltaic Performance Object Type',
+                  'Module Performance Name', 'Heat Transfer Integration Mode',
                   'Number of Series Strings in Parallel', 'Number of Modules in Series')
-        
+
         paramvs = ['{}-pv'.format(material.name), ('Simple', 'EquivalentOne-Diode', 'Sandia')[int(self.pp)]]
-        
+
         if self.pp == '0':
             paramssimple = ('Name', 'Fraction of Surface Area with Active Solar Cells', 'Conversion Efficiency Input Mode',
                       'Value for Cell Efficiency if Fixed', 'Efficiency Schedule Name')
-            paramvssimple = ('{}-pv'.format(material.name), self.fsa, ('FIXED', 'SCHEDULED')[self.inputs['Schedule'].links], 
+            paramvssimple = ('{}-pv'.format(material.name), self.fsa, ('FIXED', 'SCHEDULED')[self.inputs['Schedule'].links],
                              (self.eff, '')[self.inputs['Schedule'].links], ('', '{}-pv-sched'.format(material.name))[self.inputs['Schedule'].links])
             print(epentry('PhotovoltaicPerformance :Simple' , paramssimple, paramvssimple))
-        
+
         elif self.pp == '1':
             paramse1d = ('Name', 'Cell type', 'Number of Cells in Series',
                       'Active Area', 'Transmittance Absorptance Product',
-                      'Semiconductor Bandgap', 'Shunt Resistance', 
-                      'Short Circuit Current', 'Open Circuit Voltage', 
+                      'Semiconductor Bandgap', 'Shunt Resistance',
+                      'Short Circuit Current', 'Open Circuit Voltage',
                       'Reference Temperature', 'Reference Insolation',
                       'Module Current at Maximum Power', 'Module Voltage at Maximum Power',
                       'Temperature Coefficient of Short Circuit Current', 'Temperature Coefficient of Open Circuit Voltage',
@@ -3480,10 +3480,10 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
                 paramvse1d = 1
             else:
                 paramvse1d =1
-        
+
         paramssandia = ('Name', 'Active Area', 'Number of Cells in Series',
-                  'Number of Cells in Parallel', 'Short-Circuit Current', 
-                  'Open-Circuit Voltage', 'Current at Maximum Power Point', 
+                  'Number of Cells in Parallel', 'Short-Circuit Current',
+                  'Open-Circuit Voltage', 'Current at Maximum Power Point',
                   'Voltage at Maximum PowerPoint', 'Sandia Database Parameter aIsc',
                   'Sandia Database Parameter aImp', 'Sandia Database Parameter c0',
                   'Sandia Database Parameter c1', 'Sandia Database Parameter Bvoc0',
@@ -3496,14 +3496,14 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
                   'Sandia Database Parameter b1', 'Sandia Database Parameter b2',
                   'Sandia Database Parameter b3', 'Sandia Database Parameter b4',
                   'Sandia Database Parameter b5', 'Sandia Database Parameter Delta(TC)',
-                  'Sandia Database Parameter fd', 'Sandia Database Parameter a', 
+                  'Sandia Database Parameter fd', 'Sandia Database Parameter a',
                   'Sandia Database Parameter b', 'Sandia Database Parameter c4',
                   'Sandia Database Parameter c5', 'Sandia Database Parameter Ix0',
                   'Sandia Database Parameter Ixx0', 'Sandia Database Parameter c6',
                   'Sandia Database Parameter c7')
-        
+
         return epentry('Generator:Photovoltaic', params, paramvs) + self.inputs['Control'].links[0].from_node.ep_write(ln)
-    
+
 # Generative nodes
 class ViGenNode(Node, ViNodes):
     '''Generative geometry manipulation node'''
@@ -3584,7 +3584,7 @@ class ViCSVExport(Node, ViNodes):
     bl_idname = 'ViCSV'
     bl_label = 'VI CSV Export'
     bl_icon = 'LAMP'
-    
+
     animated = BoolProperty(name = '', description = 'Animated results', default = 0)
 
     def init(self, context):
@@ -3601,7 +3601,7 @@ class ViCSVExport(Node, ViNodes):
             row.operator('node.csvexport', text = 'Export CSV file').nodeid = self['nodeid']
         except:
             pass
-        
+
     def update(self):
         pass
 
@@ -3610,7 +3610,7 @@ class ViTextEdit(Node, ViNodes):
     bl_idname = 'ViTextEdit'
     bl_label = 'VI Text Edit'
     bl_icon = 'LAMP'
-    
+
     contextmenu = StringProperty(name = '')
 
     def init(self, context):
@@ -3620,12 +3620,12 @@ class ViTextEdit(Node, ViNodes):
         self.inputs.new('ViText', 'Text in')
         self.outputs['Text out']['Text'] = {}
         self.outputs['Text out']['Options'] = {}
-        
+
     def draw_buttons(self, context, layout):
         if self.inputs['Text in'].links:
             inodename = self.inputs['Text in'].links[0].from_node.name
             row = layout.row()
-            row.label(text = 'Text name: {}'.format(inodename))            
+            row.label(text = 'Text name: {}'.format(inodename))
             if inodename in [im.name for im in bpy.data.texts] and self['bt'] != bpy.data.texts[inodename].as_string():
                 row = layout.row()
                 row.operator('node.textupdate', text = 'Update').nodeid = self['nodeid']
@@ -3691,7 +3691,7 @@ class VIOfM(NodeSocket):
 
     def draw_color(self, context, node):
         return (0.5, 1.0, 0.0, 0.75)
-    
+
 class VIOfC(NodeSocket):
     '''FloVi case socket'''
     bl_idname = 'VIOfC'
@@ -3768,7 +3768,7 @@ class ViBMExNode(Node, ViNodes):
     bm_ygrad = FloatProperty(name = "Y", description = "Blockmesh Y simple grading", min = 0, max = 10, default = 1, update = nodeupdate)
     bm_zgrad = FloatProperty(name = "Z", description = "Blockmesh Z simple grading", min = 0, max = 10, default = 1, update = nodeupdate)
     existing =  BoolProperty(name = '', default = 0)
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
@@ -3791,7 +3791,7 @@ class ViBMExNode(Node, ViNodes):
         row.operator("node.blockmesh", text = "Export").nodeid = self['nodeid']
         if not self.use_custom_color:
             newrow(layout, 'Use existing', self, 'existing')
-    
+
     def update(self):
         socklink(self.outputs['Mesh out'], self['nodeid'].split('@')[1])
 
@@ -3827,7 +3827,7 @@ class ViSHMExNode(Node, ViNodes):
     fnlayer = FloatProperty(name = "", description = "First layer thickness", min = 0.01, max = 30.0, default = 1.0, update = nodeupdate)
     olayer = FloatProperty(name = "", description = "Overall layer thickness", min = 0.01, max = 30.0, default = 1.0, update = nodeupdate)
     empties = EnumProperty(items = location, name = "", update = nodeupdate)
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
@@ -3845,11 +3845,11 @@ class ViSHMExNode(Node, ViNodes):
             newrow(layout, 'Min level:', self, 'surflmin')
             newrow(layout, 'CellsBL:', self, 'ncellsbl')
             newrow(layout, 'Layers:', self, 'layers')
-            
+
             if self.layers:
                 newrow(layout, 'Layer spec:', self, 'layerspec')
                 [newrow(layout, laytype[0], self, laytype[1]) for laytype in self.laytypedict[self.layerspec]]
-    
+
             row = layout.row()
             row.operator("node.snappy", text = "Export").nodeid = self['nodeid']
 
@@ -3871,7 +3871,7 @@ class ViFVExpNode(Node, ViNodes):
     nut = StringProperty()
     nuTilda = StringProperty()
 
-    def nodeupdate(self, context):   
+    def nodeupdate(self, context):
 #        self["_RNA_UI"] = {"Processors": {"min": 1, "max": int(context.scene['viparams']['nproc']), "name": ""}}
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.solver, self.dt, self.et, self.buoyancy, self.radiation, self.turbulence)])
 
@@ -3880,13 +3880,13 @@ class ViFVExpNode(Node, ViNodes):
                                              ('buoyantBoussinesqSimpleFoam', 'buoyantBoussinesqSimpleFoam', 'Steady state turbulence solver with Boussinesq buoyancy'),
                                               ('icoFoam', 'IcoFoam', 'Transient laminar solver'),
                                                ('pimpleFoam', 'PimpleFoam', 'Transient turbulence solver')], name = "", default = 'simpleFoam', update = nodeupdate)
-    
+
     processes = IntProperty(name = '', default = 1, min = 1, max = 1000, update = nodeupdate)
     dt = FloatProperty(name = "", description = "Simulation delta T", min = 0.001, max = 500, default = 50, update = nodeupdate)
     et = FloatProperty(name = "", description = "Simulation end time", min = 0.001, max = 5000, default = 500, update = nodeupdate)
     pval = FloatProperty(name = "", description = "Simulation delta T", min = -500, max = 500, default = 0.0, update = nodeupdate)
-    pnormval = FloatProperty(name = "", description = "Simulation delta T", min = -500, max = 500, default = 0.0, update = nodeupdate) 
-    pabsval = IntProperty(name = "", description = "Simulation delta T", min = 0, max = 10000000, default = 100000, update = nodeupdate) 
+    pnormval = FloatProperty(name = "", description = "Simulation delta T", min = -500, max = 500, default = 0.0, update = nodeupdate)
+    pabsval = IntProperty(name = "", description = "Simulation delta T", min = 0, max = 10000000, default = 100000, update = nodeupdate)
     uval = FloatVectorProperty(size = 3, name = '', attr = 'Velocity', default = [0, 0, 0], unit = 'VELOCITY', subtype = 'VELOCITY', min = -100, max = 100)
     buoyancy =  BoolProperty(name = '', default = 0, update=nodeupdate)
     boussinesq =  BoolProperty(name = '', default = 0, update=nodeupdate)
@@ -3905,13 +3905,13 @@ class ViFVExpNode(Node, ViNodes):
     aval = FloatProperty(name = "", description = "Simulation delta T", min = 0.1, max = 500, default = 0.1, update = nodeupdate)
     p_rghval = FloatProperty(name = "", description = "Simulation delta T", min = 0.1, max = 500, default = 0.1, update = nodeupdate)
     pv =  BoolProperty(name = '', description = "Launch ParaView", default = 0)
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
         self.outputs.new('VIOfC', 'Case out')
         self.inputs.new('VIOfM', 'Mesh in')
-        
+
 #        self['Processors'] = 1
         nodecolour(self, 1)
 
@@ -3927,7 +3927,7 @@ class ViFVExpNode(Node, ViNodes):
         else:
             newrow(layout, 'Pressure:', self, 'pabsval')
         newrow(layout, 'Velocity:', self, 'uval')
-        
+
         if self.solver != 'icoFoam':
             newrow(layout, 'Turbulence:', self, 'turbulence')
             if self.turbulence != 'laminar':
@@ -3941,19 +3941,19 @@ class ViFVExpNode(Node, ViNodes):
                 elif self.turbulence == 'kOmega':
                     newrow(layout, 'k value:', self, 'kval')
                     newrow(layout, 'Omega value:', self, 'oval')
-            
+
 #            newrow(layout, 'Buoyancy:', self, 'buoyancy')
-#            
+#
 #            if self.buoyancy:
 #               newrow(layout, 'Boussinesq:', self, 'boussinesq')
-            
-            
+
+
             if self.solver in ('buoyantSimpleFoam', 'buoyantBoussinesqSimpleFoam') or self.radiation:
                 newrow(layout, 'Temperature:', self, 'tval')
                 newrow(layout, 'alphat:', self, 'aval')
                 newrow(layout, 'p_rgh:', self, 'p_rghval')
             newrow(layout, 'Radiation:', self, 'radiation')
-                
+
         newrow(layout, 'Convergence:', self, 'convergence')
 #        newrow(layout, 'ParaView:', self, 'pv')
         row = layout.row()
@@ -3967,16 +3967,16 @@ class ViFVExpNode(Node, ViNodes):
         if os.path.isdir(scene['flparams']['of0filebase']):
             for file in os.listdir(scene['flparams']['of0filebase']):
                 os.remove(os.path.join(scene['flparams']['of0filebase'], file))
-        
+
         residuals = ['p', 'Ux', 'Uy', 'Uz']
-        if self.solver != 'icoFoam': 
+        if self.solver != 'icoFoam':
             if self.turbulence == 'kEpsilon':
                 residuals += ['k', 'epsilon']
             elif self.turbulence == 'kOmega':
                 residuals += ['k', 'omega']
         self['residuals'] = residuals
         return residuals
-                
+
     def postexport(self):
         self.exportstate = [str(x) for x in (self.solver, self.dt, self.et, self.buoyancy, self.radiation, self.turbulence)]
         nodecolour(self, 0)
@@ -3986,7 +3986,7 @@ class ViFVSimNode(Node, ViNodes):
     bl_idname = 'ViFVSimNode'
     bl_label = 'FloVi Simulation'
     bl_icon = 'LAMP'
-    
+
     def init(self, context):
         self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
@@ -3994,11 +3994,11 @@ class ViFVSimNode(Node, ViNodes):
         self.outputs.new('ViR', 'Results out')
 #        self['Processors'] = 1
         nodecolour(self, 1)
-    
+
     def draw_buttons(self, context, layout):
         row = layout.row()
         row.operator("node.fvsolve", text = "Calculate").nodeid = self['nodeid']
-    
+
     def presim(self):
         expnode = self.inputs['Case in'].links[0].from_node
         return (expnode.convergence, expnode.econvergence, expnode['residuals'], expnode.processes, expnode.solver)
@@ -4008,20 +4008,20 @@ class ViFVParaNode(Node, ViNodes):
     bl_idname = 'ViFVParaNode'
     bl_label = 'Paraview Export'
     bl_icon = 'LAMP'
-    
+
     def draw_buttons(self, context, layout):
         row = layout.row()
         row.operator("node.fvsolve", text = "Calculate").nodeid = self['nodeid']
-        
-        
+
+
 ####################### Vi Nodes Categories ##############################
 
 viexnodecat = [NodeItem("ViGExLiNode", label="LiVi Geometry"), NodeItem("LiViNode", label="LiVi Context"),
                 NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"),
                 NodeItem("ViEnELCDNode", label="EnVi Distribution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
-                NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"), 
+                NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"),
                 NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
-                
+
 vifilenodecat = [NodeItem("ViTextEdit", label="Text Edit")]
 vinodecat = [NodeItem("ViSPNode", label="VI-Suite Sun Path"), NodeItem("ViSSNode", label="VI-Suite Shadow Map"), NodeItem("ViWRNode", label="VI-Suite Wind Rose"), NodeItem("ViSVFNode", label="VI-Suite Sky View Factor"),
              NodeItem("ViLiSNode", label="LiVi Simulation"), NodeItem("ViEnSimNode", label="EnVi Simulation"), NodeItem("ViFVSimNode", label="FloVi Simulation")]
@@ -4031,7 +4031,7 @@ vigennodecat = [NodeItem("ViGenNode", label="VI-Suite Generative"), NodeItem("Vi
 vidisnodecat = [NodeItem("ViChNode", label="VI-Suite Chart")]
 vioutnodecat = [NodeItem("ViCSV", label="VI-Suite CSV"), NodeItem("ViText", label="VI-Suite Text"), NodeItem("ViFVParaNode", label="VI-Suite Paraview")]
 viimnodecat = [NodeItem("ViLiINode", label="LiVi Image"), NodeItem("ViLiFCNode", label="LiVi FC Image"), NodeItem("ViLiGLNode", label="LiVi Glare Image")]
-viinnodecat = [NodeItem("ViLoc", label="VI Location"), NodeItem("ViEnInNode", label="EnergyPlus Input File"), NodeItem("ViEnRFNode", label="EnergyPlus Result File"), 
+viinnodecat = [NodeItem("ViLoc", label="VI Location"), NodeItem("ViEnInNode", label="EnergyPlus Input File"), NodeItem("ViEnRFNode", label="EnergyPlus Result File"),
                NodeItem("ViASCImport", label="Import ESRI Grid file")]
 
 vinode_categories = [ViNodeCategory("Output", "Output Nodes", items=vioutnodecat), ViNodeCategory("Edit", "Edit Nodes", items=vifilenodecat), ViNodeCategory("Image", "Image Nodes", items=viimnodecat), ViNodeCategory("Display", "Display Nodes", items=vidisnodecat), ViNodeCategory("Generative", "Generative Nodes", items=vigennodecat), ViNodeCategory("Analysis", "Analysis Nodes", items=vinodecat), ViNodeCategory("Process", "Process Nodes", items=viexnodecat), ViNodeCategory("Input", "Input Nodes", items=viinnodecat)]
@@ -4525,7 +4525,7 @@ class EnViHvac(Node, EnViNodes):
         self.h = 1 if self.envi_hvachlt != '4' else 0
         self.c = 1 if self.envi_hvacclt != '4' else 0
         self['hc'] = ('', 'SingleHeating', 'SingleCooling', 'DualSetpoint')[(not self.h and not self.c, self.h and not self.c, not self.h and self.c, self.h and self.c).index(1)]
-        
+
     envi_hvact = bprop("", "", False)
     envi_hvacht = fprop(u'\u00b0C', "Heating temperature:", 1, 99, 50)
     envi_hvacct = fprop(u'\u00b0C', "Cooling temperature:", -10, 20, 13)
@@ -4611,13 +4611,13 @@ class EnViHvac(Node, EnViNodes):
     def update(self):
         for sock in self.outputs:
             socklink(sock, self['nodeid'].split('@')[1])
-    
+
     def eptcwrite(self, zn):
         if self['hc'] in ('SingleHeating', 'SingleCooling', 'DualSetpoint'):
             return epschedwrite(zn + '_thermocontrol', 'Control Type', ['Through: 12/31'], [['For: Alldays']], [[[['Until: 24:00,{}'.format(self['ctdict'][self['hc']])]]]])
         else:
             return ''
-            
+
     def eptspwrite(self, zn):
         params = ['Name', 'Setpoint Temperature Schedule Name']
         if self['hc'] ==  'DualSetpoint':
@@ -4719,23 +4719,23 @@ class EnViZone(Node, EnViNodes):
         for sock in sssocklist:
             self.afs += 1
             self.outputs.new('EnViSSFlowSocket', sock).sn = sock.split('_')[-2]
-            self.inputs.new('EnViSSFlowSocket', sock).sn = sock.split('_')[-2]                
+            self.inputs.new('EnViSSFlowSocket', sock).sn = sock.split('_')[-2]
 #        for s, sock in enumerate(bsocklist):
-#            self.outputs[sock].uvalue = '{:.4f}'.format(buvals[s])    
-#            self.inputs[sock].uvalue = '{:.4f}'.format(buvals[s]) 
+#            self.outputs[sock].uvalue = '{:.4f}'.format(buvals[s])
+#            self.inputs[sock].uvalue = '{:.4f}'.format(buvals[s])
         self.vol_update(context)
-        
+
     def vol_update(self, context):
-        obj = bpy.data.objects[self.zone]      
+        obj = bpy.data.objects[self.zone]
         obj['volume'] = obj['auto_volume'] if self.volcalc == '0' else self.zonevolume
         self['volume'] = obj['auto_volume']
-            
+
     def tspsupdate(self, context):
         if self.control != 'Temperature' and self.inputs['TSPSchedule'].links:
             remlink(self, self.inputs['TSPSchedule'].links)
         self.inputs['TSPSchedule'].hide = False if self.control == 'Temperature' else True
         self.update()
-                
+
     zone = StringProperty(name = '', update = zupdate)
     controltype = [("NoVent", "None", "No ventilation control"), ("Constant", "Constant", "From vent availability schedule"), ("Temperature", "Temperature", "Temperature control")]
     control = EnumProperty(name="", description="Ventilation control type", items=controltype, default='NoVent', update=tspsupdate)
@@ -4746,7 +4746,7 @@ class EnViZone(Node, EnViNodes):
     upperlim = FloatProperty(default = 50, name = "", min = 0, max = 100)
     afs = IntProperty(default = 0, name = "")
     alllinked = BoolProperty(default = 0, name = "")
-    
+
     def init(self, context):
         self['nodeid'] = nodeid(self)
         self['tsps'] = 1
@@ -4761,14 +4761,14 @@ class EnViZone(Node, EnViNodes):
     def update(self):
         sflowdict = {'EnViSFlowSocket': 'Envi surface flow', 'EnViSSFlowSocket': 'Envi sub-surface flow'}
         [bi, si, ssi, bo, so , sso] = [1, 1, 1, 1, 1, 1]
-                
+
         try:
             for inp in [inp for inp in self.inputs if inp.bl_idname in ('EnViBoundSocket', 'EnViSFlowSocket', 'EnViSSFlowSocket')]:
                 self.outputs[inp.name].hide = True if inp.links and self.outputs[inp.name].bl_idname == inp.bl_idname else False
-    
+
             for outp in [outp for outp in self.outputs if outp.bl_idname in ('EnViBoundSocket', 'EnViSFlowSocket', 'EnViSSFlowSocket')]:
                 self.inputs[outp.name].hide = True if outp.links and self.inputs[outp.name].bl_idname == outp.bl_idname else False
-    
+
             for inp in [inp for inp in self.inputs if inp.bl_idname in ('EnViBoundSocket', 'EnViSFlowSocket', 'EnViSSFlowSocket')]:
                 if inp.bl_idname == 'EnViBoundSocket' and not inp.hide and not inp.links:
                     bi = 0
@@ -4776,8 +4776,8 @@ class EnViZone(Node, EnViNodes):
                     if (not inp.hide and not inp.links) or (inp.links and inp.links[0].from_node.bl_label != sflowdict[inp.bl_idname]):
                         si = 0
                         if inp.links:
-                            remlink(self, [inp.links[0]])    
-            
+                            remlink(self, [inp.links[0]])
+
             for outp in [outp for outp in self.outputs if outp.bl_idname in ('EnViBoundSocket', 'EnViSFlowSocket', 'EnViSSFlowSocket')]:
                 if outp.bl_idname == 'EnViBoundSocket' and not outp.hide and not outp.links:
                     bo = 0
@@ -4789,16 +4789,16 @@ class EnViZone(Node, EnViNodes):
 
         except Exception as e:
             print("Don't panic")
-            
+
         self.alllinked = 1 if all((bi, si, ssi, bo, so, sso)) else 0
         nodecolour(self, self.errorcode())
-        
+
     def uvsockupdate(self):
         for sock in self.outputs:
             socklink(sock, self['nodeid'].split('@')[1])
             if sock.bl_idname == 'EnViBoundSocket':
                 uvsocklink(sock, self['nodeid'].split('@')[1])
-    
+
     def errorcode(self):
         if self.afs == 1:
             return 'Too few air-flow surfaces'
@@ -4808,7 +4808,7 @@ class EnViZone(Node, EnViNodes):
             return 'Unlinked air-flow/boundary socket'
         else:
             return ''
-                    
+
     def draw_buttons(self, context, layout):
         if self.errorcode():
             row = layout.row()
@@ -4817,15 +4817,15 @@ class EnViZone(Node, EnViNodes):
         yesno = (1, self.control == 'Temperature', self.control == 'Temperature', self.control == 'Temperature')
         vals = (("Control type:", "control"), ("Minimum OF:", "mvof"), ("Lower:", "lowerlim"), ("Upper:", "upperlim"))
         newrow(layout, 'Volume calc:', self, 'volcalc')
-        
+
         if self.volcalc == '0':
             row = layout.row()
             row.label('Auto volume: {:.1f}'.format(self['volume']))
         else:
             newrow(layout, 'Volume:', self, 'zonevolume')
-            
+
         [newrow(layout, val[0], self, val[1]) for v, val in enumerate(vals) if yesno[v]]
-        
+
     def epwrite(self):
         (tempschedname, mvof, lowerlim, upperlim) = (self.zone + '_tspsched', self.mvof, self.lowerlim, self.upperlim) if self.inputs['TSPSchedule'].is_linked else ('', '', '', '')
         vaschedname = self.zone + '_vasched' if self.inputs['VASchedule'].is_linked else ''
@@ -4855,16 +4855,16 @@ class EnViTC(Node, EnViNodes):
 
         for oname in [outputs for outputs in self.outputs if outputs.name not in bsocklist and outputs.bl_idname == 'EnViBoundSocket']:
             self.outputs.remove(oname)
-            
+
         for iname in [inputs for inputs in self.inputs if inputs.name not in bsocklist and inputs.bl_idname == 'EnViBoundSocket']:
             self.inputs.remove(iname)
-            
+
         for sock in sorted(set(bsocklist)):
             if not self.outputs.get(sock):
                 self.outputs.new('EnViBoundSocket', sock).sn = sock.split('_')[-2]
             if not self.inputs.get(sock):
                 self.inputs.new('EnViBoundSocket', sock).sn = sock.split('_')[-2]
-                
+
         for sock in (self.inputs[:] + self.outputs[:]):
             if sock.bl_idname == 'EnViBoundSocket' and sock.links:
                 zonenames += [(link.from_node.zone, link.to_node.zone)[sock.is_output] for link in sock.links]
@@ -4914,34 +4914,34 @@ class EnViTC(Node, EnViNodes):
 
         if [inp for inp in self.inputs if inp.bl_idname == 'EnViBoundSocket' and not inp.hide and not inp.links]:
             bi = 0
-                
+
         if [outp for outp in self.outputs if outp.bl_idname == 'EnViBoundSocket' and not outp.hide and not outp.links]:
             bo = 0
-        
+
         nodecolour(self, not all((bi, bo)))
-        
+
         for sock in [sock for sock in self.inputs[:] + self.outputs[:] if sock.bl_idname == 'EnViBoundSocket']:
             if sock.links and self.zone in [o.name for o in bpy.data.objects]:
                 zonenames += [link.to_node.zone for link in sock.links]
                 fheights += [max([(bpy.data.objects[self.zone].matrix_world * vert.co)[2] for vert in bpy.data.objects[self.zone].data.vertices]) - (bpy.data.objects[link.to_node.zone].matrix_world * bpy.data.objects[link.to_node.zone].data.polygons[int(link.to_socket.sn)].center)[2] for link in sock.links]
                 fareas += [facearea(bpy.data.objects[link.to_node.zone], bpy.data.objects[link.to_node.zone].data.polygons[int(link.to_socket.sn)]) for link in sock.links]
-    
+
             self['zonenames'] = zonenames
             for z, zn in enumerate(self['zonenames']):
                 self['Distance {}'.format(z)] = fheights[z]
                 self['Relative Ratio {}'.format(z)] = 1.0
                 self['Cross Section {}'.format(z)] = fareas[z]
-                
+
         for sock in self.outputs:
             socklink(sock, self['nodeid'].split('@')[1])
 
     def uvsockupdate(self):
         for sock in self.outputs:
             socklink(sock, self['nodeid'].split('@')[1])
-            
+
             if sock.bl_idname == 'EnViBoundSocket':
                 uvsocklink(sock, self['nodeid'].split('@')[1])
-                
+
     def epwrite(self):
         scheduled = 1 if self.inputs['Schedule'].links and not self.inputs['Schedule'].links[0].to_node.use_custom_color else 0
         paramvs = ('{}_TC'.format(self.zone), self.zone, ('', '{}_TCSched'.format(self.zone))[scheduled], self.waw, self.ocs, self.odc)
@@ -5126,7 +5126,7 @@ class EnViSSFlowNode(Node, EnViNodes):
             for link in sock.links:
                 othersock = (link.from_socket, link.to_socket)[sock.is_output]
                 othernode = (link.from_node, link.to_node)[sock.is_output]
-                
+
                 if sock.bl_idname == 'EnViSSFlowSocket' and othernode.bl_idname == 'EnViZone':
                     # The conditional below checks if the airflow surface is also on a boundary. If so only the surface belonging to the outputting zone node is written.
                     if (othersock.name[0:-2]+'b' in [s.name for s in othernode.outputs] and othernode.outputs[othersock.name[0:-2]+'b'].links) or othersock.name[0:-2]+'b' not in [s.name for s in othernode.outputs]:
@@ -5447,11 +5447,11 @@ class EnViProgNode(Node, EnViNodes):
 
     def epwrite(self):
         sentries, aentries = '', ''
-        
+
         for slink in self.outputs['Sensor'].links:
             snode = slink.to_node
             sparams = ('Name', 'Output:Variable or Output:Meter Index Key Name', 'EnergyManagementSystem:Sensor')
-            
+
             if snode.bl_idname == 'EnViEMSZone':
                 sparamvs = ('{}_{}'.format(snode.emszone, snode.sensordict[snode.sensortype][0]), '{}'.format(snode.emszone), snode.sensordict[snode.sensortype][1])
 
@@ -5490,7 +5490,7 @@ class EnViEMSZoneNode(Node, EnViNodes):
         try:
             obj = bpy.data.objects[self.emszone]
             odm = obj.data.materials
-            sssocklist = ['{}_{}_{}_{}'.format(adict[odm[face.material_index].envi_con_type], self.emszone, face.index, self.actdict[self.acttype][1]) for face in obj.data.polygons if odm[face.material_index].envi_afsurface == 1 and odm[face.material_index].envi_con_type in ('Window', 'Door')]          
+            sssocklist = ['{}_{}_{}_{}'.format(adict[odm[face.material_index].envi_con_type], self.emszone, face.index, self.actdict[self.acttype][1]) for face in obj.data.polygons if odm[face.material_index].envi_afsurface == 1 and odm[face.material_index].envi_con_type in ('Window', 'Door')]
             self.inputs[0].hide = False
             nodecolour(self, 0)
         except:
@@ -5563,4 +5563,3 @@ class ViASCImport(Node, ViNodes):
         newrow(layout, 'No data:', self, 'clear_nodata')
         row = layout.row()
         row.operator('node.ascimport', text = 'Import ASC').nodeid = self['nodeid']
-

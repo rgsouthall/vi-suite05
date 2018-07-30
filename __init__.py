@@ -72,10 +72,10 @@ def abspath(self, context):
         self.oflib = bpy.path.abspath(self.oflib)  
     if self.ofetc != bpy.path.abspath(self.ofetc):
         self.ofetc = bpy.path.abspath(self.ofetc)
-        
+
 class VIPreferences(AddonPreferences):
     bl_idname = __name__
-    
+
     radbin = StringProperty(name = '', description = 'Radiance binary directory location', default = '', subtype='DIR_PATH', update=abspath)
     radlib = StringProperty(name = '', description = 'Radiance library directory location', default = '', subtype='DIR_PATH', update=abspath)
     epbin = StringProperty(name = '', description = 'EnergyPlus binary directory location', default = '', subtype='DIR_PATH', update=abspath)
@@ -87,11 +87,11 @@ class VIPreferences(AddonPreferences):
                "EnergyPlus weather directory:": 'epweath', 'OpenFOAM bin directory': 'ofbin', 'OpenFOAM lib directory': 'oflib', 'OpenFOAM etc directory': 'ofetc'}
 
     def draw(self, context):
-        layout = self.layout 
-        
+        layout = self.layout
+
         for entry in self.ui_dict:
             row = layout.row()
-            row.label(text=entry)   
+            row.label(text=entry)
             row.prop(self, self.ui_dict[entry])
 
 @persistent
@@ -102,26 +102,26 @@ def update_chart_node(dummy):
     except Exception as e:
         print('Chart node update failure:', e)
 
-@persistent        
+@persistent
 def update_dir(dummy):
     if bpy.context.scene.get('viparams'):
         fp = bpy.data.filepath
         bpy.context.scene['viparams']['newdir'] = os.path.join(os.path.dirname(fp), os.path.splitext(os.path.basename(fp))[0])
-               
+
 @persistent
 def display_off(dummy):
     if bpy.context.scene.get('viparams') and bpy.context.scene['viparams'].get('vidisp'):
-        
+
         ifdict = {'sspanel': 'ss', 'lipanel': 'li', 'enpanel': 'en', 'bsdf_panel': 'bsdf'}
         if bpy.context.scene['viparams']['vidisp'] in ifdict:
             bpy.context.scene['viparams']['vidisp'] = ifdict[bpy.context.scene['viparams']['vidisp']]
         bpy.context.scene.vi_display = 0
-        
+
 @persistent
 def mesh_index(dummy):
     try:
         cao = bpy.context.active_object
-    
+
         if cao and cao.layers[1] and cao.mode == 'EDIT':
             if not bpy.app.debug:
                 bpy.app.debug = True
@@ -129,9 +129,9 @@ def mesh_index(dummy):
             bpy.app.debug = False
     except:
         pass
-            
+
 @persistent
-def select_nodetree(dummy): 
+def select_nodetree(dummy):
     for space in getViEditorSpaces():
         vings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'ViN']
         if vings:
@@ -141,7 +141,7 @@ def select_nodetree(dummy):
         envings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'EnViN']
         if envings:
             space.node_tree = envings[0]
-            
+
     for space in getEnViMaterialSpaces():
         try:
             if space.node_tree != bpy.context.active_object.active_material.envi_nodes:
@@ -150,15 +150,15 @@ def select_nodetree(dummy):
                     space.node_tree = envings[0]
         except:
             pass
-        
+
 bpy.app.handlers.scene_update_post.append(select_nodetree)
-        
+
 def getViEditorSpaces():
     if bpy.context.screen:
         return [area.spaces.active for area in bpy.context.screen.areas if area and area.type == "NODE_EDITOR" and area.spaces.active.tree_type == "ViN" and not area.spaces.active.edit_tree]
     else:
         return []
-        
+
 def getEnViEditorSpaces():
     if bpy.context.screen:
         return [area.spaces.active for area in bpy.context.screen.areas if area and area.type == "NODE_EDITOR" and area.spaces.active.tree_type == "EnViN" and not area.spaces.active.edit_tree]
@@ -166,14 +166,14 @@ def getEnViEditorSpaces():
         return []
 
 def getEnViMaterialSpaces():
-    if bpy.context.screen:        
+    if bpy.context.screen:
         return [area.spaces.active for area in bpy.context.screen.areas if area and area.type == "NODE_EDITOR" and area.spaces.active.tree_type == "EnViMatN"]
     else:
         return []
-        
+
 bpy.app.handlers.scene_update_post.append(select_nodetree)
 bpy.app.handlers.scene_update_post.append(mesh_index)
-            
+
 epversion = "8-9-0"
 envi_mats, envi_cons, conlayers = envi_materials(), envi_constructions(), 5
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -184,19 +184,19 @@ def path_update():
     vi_prefs = bpy.context.user_preferences.addons[__name__].preferences
     epdir = vi_prefs.epbin if vi_prefs and vi_prefs.epbin and os.path.isdir(vi_prefs.epbin) else os.path.join('{}'.format(addonpath), 'EPFiles')
     radldir = vi_prefs.radlib if vi_prefs and os.path.isdir(vi_prefs.radlib) else os.path.join('{}'.format(addonpath), 'Radfiles', 'lib')
-    radbdir = vi_prefs.radbin if vi_prefs and os.path.isdir(vi_prefs.radbin) else os.path.join('{}'.format(addonpath), 'Radfiles', 'bin') 
-    ofbdir = vi_prefs.ofbin if vi_prefs and os.path.isdir(vi_prefs.ofbin) else os.path.join('{}'.format(addonpath), 'OFFiles', 'bin') 
+    radbdir = vi_prefs.radbin if vi_prefs and os.path.isdir(vi_prefs.radbin) else os.path.join('{}'.format(addonpath), 'Radfiles', 'bin')
+    ofbdir = vi_prefs.ofbin if vi_prefs and os.path.isdir(vi_prefs.ofbin) else os.path.join('{}'.format(addonpath), 'OFFiles', 'bin')
     ofldir = vi_prefs.oflib if vi_prefs and os.path.isdir(vi_prefs.oflib) else os.path.join('{}'.format(addonpath), 'OFFiles', 'lib')
     ofedir = vi_prefs.ofetc if vi_prefs and os.path.isdir(vi_prefs.ofetc) else os.path.join('{}'.format(addonpath), 'OFFiles')
     os.environ["PATH"] += "{0}{1}".format(evsep[str(sys.platform)], os.path.dirname(bpy.app.binary_path))
-    
+
     if not os.environ.get('RAYPATH'):# or radldir not in os.environ['RAYPATH'] or radbdir not in os.environ['PATH']  or epdir not in os.environ['PATH']:
         if vi_prefs and os.path.isdir(vi_prefs.radlib):
             os.environ["RAYPATH"] = '{0}{1}{2}'.format(radldir, evsep[str(sys.platform)], os.path.join(addonpath, 'Radfiles', 'lib'))
         else:
             os.environ["RAYPATH"] = radldir
-           
-        os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}{0}{3}".format(evsep[str(sys.platform)], radbdir, epdir, ofbdir)    
+
+        os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}{0}{3}".format(evsep[str(sys.platform)], radbdir, epdir, ofbdir)
         os.environ["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"] + "{0}{1}".format(evsep[str(sys.platform)], ofldir) if os.environ.get("LD_LIBRARY_PATH") else "{0}{1}".format(evsep[str(sys.platform)], ofldir)
         os.environ["WM_PROJECT_DIR"] = ofedir
         
@@ -204,7 +204,7 @@ def colupdate(self, context):
     cmap(self)
 
 def confunc(i):
-    confuncdict = {'0': envi_cons.wall_con.keys(), '1': envi_cons.floor_con.keys(), '2': envi_cons.roof_con.keys(), 
+    confuncdict = {'0': envi_cons.wall_con.keys(), '1': envi_cons.floor_con.keys(), '2': envi_cons.roof_con.keys(),
     '3': envi_cons.door_con.keys(), '4': envi_cons.glaze_con.keys()}
     return [((con, con, 'Contruction type')) for con in list(confuncdict[str(i)])]
 
@@ -217,19 +217,19 @@ def eupdate(self, context):
 
     if context.active_object.mode == 'EDIT':
         return
-    if odiff:      
+    if odiff:
         for frame in range(scene['liparams']['fs'], scene['liparams']['fe'] + 1):
-            for o in [obj for obj in bpy.data.objects if obj.lires == 1 and obj.data.shape_keys and str(frame) in [sk.name for sk in obj.data.shape_keys.key_blocks]]:  
+            for o in [obj for obj in bpy.data.objects if obj.lires == 1 and obj.data.shape_keys and str(frame) in [sk.name for sk in obj.data.shape_keys.key_blocks]]:
                 bm = bmesh.new()
-                bm.from_mesh(o.data)  
-                bm.transform(o.matrix_world)            
+                bm.from_mesh(o.data)
+                bm.transform(o.matrix_world)
                 skb = bm.verts.layers.shape['Basis']
                 skf = bm.verts.layers.shape[str(frame)]
-                
+
                 if str(frame) in o['omax']:
                     if bm.faces.layers.float.get('res{}'.format(frame)):
                         extrude = bm.faces.layers.int['extrude']
-                        res = bm.faces.layers.float['res{}'.format(frame)] #if context.scene['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]                
+                        res = bm.faces.layers.float['res{}'.format(frame)] #if context.scene['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]
                         faces = [f for f in bm.faces if f[extrude]]
                         fnorms = array([f.normal.normalized() for f in faces]).T
                         fres = array([f[res] for f in faces])
@@ -239,13 +239,13 @@ def eupdate(self, context):
                         for f, face in enumerate(faces):
                             for v in face.verts:
                                 v[skf] = v[skb] + mathutils.Vector(extrudes[f])
-                    
+
                     elif bm.verts.layers.float.get('res{}'.format(frame)):
                         res = bm.verts.layers.float['res{}'.format(frame)]
                         vnorms = array([v.normal.normalized() for v in bm.verts]).T
                         vres = array([v[res] for v in bm.verts])
                         extrudes = multiply(vnorms, scene.vi_disp_3dlevel * ((vres-mino)/odiff)).T if scene.vi_leg_scale == '0' else \
-                            [0.1 * scene.vi_disp_3dlevel * (math.log10(maxo * (v[res] + 1 - mino)/odiff)) * v.normal.normalized() for v in bm.verts]  
+                            [0.1 * scene.vi_disp_3dlevel * (math.log10(maxo * (v[res] + 1 - mino)/odiff)) * v.normal.normalized() for v in bm.verts]
                         for v, vert in enumerate(bm.verts):
                             vert[skf] = vert[skb] + mathutils.Vector(extrudes[v])
 
@@ -259,7 +259,7 @@ def tupdate(self, context):
     for mat in [bpy.data.materials['{}#{}'.format('vi-suite', index)] for index in range(20)]:
         mat.use_transparency, mat.transparency_method, mat.alpha = 1, 'MASK', context.scene.vi_disp_trans
     cmap(self)
-        
+
 def wupdate(self, context):
     o = context.active_object
     if o and o.type == 'MESH':
@@ -269,7 +269,7 @@ def legupdate(self, context):
     scene = context.scene
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
     obs = [o for o in scene.objects if o.get('lires')]
-    
+
     if scene.vi_leg_scale == '0':
         bins = array([0.05 * i for i in range(1, 20)])
     elif scene.vi_leg_scale == '1':
@@ -277,28 +277,28 @@ def legupdate(self, context):
         bins = array([(slices[i] - 0.05 * (20 - i))/100 for i in range(21)])
         bins = array([1 - math.log10(i)/math.log10(21) for i in range(1, 22)][::-1])
         bins = bins[1:-1]
-    
+
     for o in obs:
         bm = bmesh.new()
         bm.from_mesh(o.data)
-        
+
         for f, frame in enumerate(frames):
             if bm.faces.layers.float.get('res{}'.format(frame)):
-                livires = bm.faces.layers.float['res{}'.format(frame)] 
+                livires = bm.faces.layers.float['res{}'.format(frame)]
                 ovals = array([f[livires] for f in bm.faces])
             elif bm.verts.layers.float.get('res{}'.format(frame)):
-                livires = bm.verts.layers.float['res{}'.format(frame)] 
+                livires = bm.verts.layers.float['res{}'.format(frame)]
                 ovals = array([sum([vert[livires] for vert in f.verts])/len(f.verts) for f in bm.faces])
-            
+
             if scene.vi_leg_max > scene.vi_leg_min:
                 vals = ovals - scene.vi_leg_min
                 vals = vals/(scene.vi_leg_max - scene.vi_leg_min)
             else:
                 vals = array([scene.vi_leg_max for f in bm.faces])
-                        
+
             nmatis = digitize(vals, bins)
 
-            if len(frames) == 1:                
+            if len(frames) == 1:
                 o.data.polygons.foreach_set('material_index', nmatis)
                 o.data.update()
 
@@ -307,19 +307,19 @@ def legupdate(self, context):
                     fc.keyframe_points[f].co = frame, nmatis[fi]
         bm.free()
     scene.frame_set(scene.frame_current)
-    
+
 def liviresupdate(self, context):
     setscenelivivals(context.scene)
     for o in [o for o in bpy.data.objects if o.lires]:
-        o.lividisplay(context.scene)  
+        o.lividisplay(context.scene)
     eupdate(self, context)
-                      
+
 def register():
-    bpy.utils.register_module(__name__)    
+    bpy.utils.register_module(__name__)
     Object, Scene, Material = bpy.types.Object, bpy.types.Scene, bpy.types.Material
 
 # VI-Suite object definitions
-    Object.vi_type = eprop([("0", "None", "Not a VI-Suite zone"), ("1", "EnVi Zone", "Designates an EnVi Thermal zone"), 
+    Object.vi_type = eprop([("0", "None", "Not a VI-Suite zone"), ("1", "EnVi Zone", "Designates an EnVi Thermal zone"),
                             ("2", "CFD Domain", "Specifies an OpenFoam BlockMesh"), ("3", "CFD Geometry", "Specifies an OpenFoam geometry"),
                             ("4", "Light Array", "Specifies a LiVi lighting array"), ("5", "Complex Fenestration", "Specifies complex fenestration for BSDF generation")], "", "Specify the type of VI-Suite zone", "0")
 
@@ -332,8 +332,8 @@ def register():
     Object.ies_rgb = fvprop(3, "",'IES Colour', [1.0, 1.0, 1.0], 'COLOR', 0, 1)
     Object.ies_ct = iprop("", "Colour temperature in Kelven", 0, 12000, 4700)
     (Object.licalc, Object.lires, Object.limerr, Object.manip, Object.bsdf_proxy) = [bprop("", "", False)] * 5
-    Object.compcalcapply = compcalcapply    
-    Object.basiccalcapply = basiccalcapply 
+    Object.compcalcapply = compcalcapply
+    Object.basiccalcapply = basiccalcapply
     Object.rtpoints = rtpoints
     Object.udidacalcapply = udidacalcapply
     Object.lividisplay = lividisplay
@@ -353,13 +353,13 @@ def register():
     Object.envi_ica = eprop([("0", "Default", "Use the system wide convection algorithm"), ("1", "Simple", "Use the simple convection algorithm"), ("2", "Detailed", "Use the detailed convection algorithm"), ("3", "Trombe", "Use the Trombe wall convection algorithm"), ("4", "Adaptive", "Use the adaptive convection algorithm")], "", "Specify the EnVi zone inside convection algorithm", "0")
 
 # FloVi object definitions
-              
+
 # Vi_suite material definitions
     Material.mattype = eprop([("0", "Geometry", "Geometry"), ("1", 'Light sensor', "LiVi sensing material".format(u'\u00b3')), ("2", "FloVi boundary", 'FloVi blockmesh boundary')], "", "VI-Suite material type", "0")
-                                 
-# LiVi material definitions                              
+
+# LiVi material definitions
     Material.radmat = radmat
-    Material.radmatdict = {'0': ['radcolour', 0, 'radrough', 'radspec'], '1': ['radcolour'], '2': ['radcolour', 0, 'radior'], '3': ['radcolour', 0, 'radspec', 'radrough', 0, 'radtrans',  'radtranspec'], '4': ['radcolour'], 
+    Material.radmatdict = {'0': ['radcolour', 0, 'radrough', 'radspec'], '1': ['radcolour'], '2': ['radcolour', 0, 'radior'], '3': ['radcolour', 0, 'radspec', 'radrough', 0, 'radtrans',  'radtranspec'], '4': ['radcolour'],
     '5': ['radcolmenu', 0, 'radcolour', 0, 'radct',  0, 'radintensity'], '6': ['radcolour', 0, 'radrough', 'radspec'], '7': [], '8': [], '9': []}
     Material.pport = bprop("", "Flag to signify whether the material represents a Photon Port", False)
     Material.radtex = bprop("", "Flag to signify whether the material has a texture associated with it", False)
@@ -379,7 +379,7 @@ def register():
     Material.radtranspec  = fprop("Trans spec", "Material specular transmission", 0, 1, 0.1)
     Material.radior  = fprop("IOR", "Material index of refractionn", 0, 5, 1.5)
     Material.radct = iprop("Temperature (K)", "Colour temperature in Kelven", 0, 12000, 4700)
-    Material.radintensity = fprop("Intensity", u"Material radiance (W/sr/m\u00b2)", 0, 100, 1)   
+    Material.radintensity = fprop("Intensity", u"Material radiance (W/sr/m\u00b2)", 0, 100, 1)
     Material.radfile = sprop("", "Radiance file material description", 1024, "")
     Material.vi_shadow = bprop("VI Shadow", "Flag to signify whether the material represents a VI Shadow sensing surface", False)
     Material.livi_sense = bprop("LiVi Sensor", "Flag to signify whether the material represents a LiVi sensing surface", False)
@@ -389,7 +389,7 @@ def register():
     rspacetype = [('0', "Kitchen", "Kitchen space"), ('1', "Living/Dining/Study", "Living/Dining/Study area"), ('2', "Communal", "Non-residential or communal area")]
     respacetype = [('0', "Sales", "Sales space"), ('1', "Occupied", "Occupied space")]
     lespacetype = [('0', "Healthcare", "Healthcare space"), ('1', "Other", "Other space")]
-    
+
     Material.hspacemenu = eprop(hspacetype, "", "Type of healthcare space", '0')
     Material.brspacemenu = eprop(rspacetype, "", "Type of residential space", '0')
     Material.crspacemenu = eprop(rspacetype[:2], "", "Type of residential space", '0')
@@ -400,7 +400,7 @@ def register():
 # EnVi material definitions
     Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_type = sprop("", "EnVi Material type", 64, "None")
-    
+
     Material.envi_shading = bprop("", "Flag to siginify whether the material contains shading elements", False)
 #    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
 #                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
@@ -430,7 +430,7 @@ def register():
 #    Material.envi_con_list = bpy.props.EnumProperty(items = envi_con_list, name = "", description = "Database construction")
 #    Material.envi_material_uv = sprop("", "Material U-value (non-film)", 64, "N/A")
 #    (Material.envi_export_lo_name, Material.envi_export_l1_name, Material.envi_export_l2_name, Material.envi_export_l3_name, Material.envi_export_l4_name) = \
-#    [sprop("", "Layer name", 0, "")] * conlayers    
+#    [sprop("", "Layer name", 0, "")] * conlayers
 #    (Material.envi_export_lo_tc, Material.envi_export_l1_tc, Material.envi_export_l2_tc, Material.envi_export_l3_tc, Material.envi_export_l4_tc) = \
 #    [fprop("Conductivity", "Thermal Conductivity", 0, 10, 0.5)] * conlayers
 #    (Material.envi_export_lo_rough, Material.envi_export_l1_rough, Material.envi_export_l2_rough, Material.envi_export_l3_rough, Material.envi_export_l4_rough) = \
@@ -477,7 +477,7 @@ def register():
 #    Material.envi_shad_att = bprop("Attached", "Flag to specify shading attached to the building",False)
 #    (Material.envi_tctc_lo, Material.envi_tctc_l1, Material.envi_tctc_l2, Material.envi_tctc_l3, Material.envi_tctc_l4) = [fprop("", "Temperature coefficient for thermal conductivity", 0, 50, 0.0)] * conlayers
 #    (Material.envi_tempsemps_lo, Material.envi_tempsemps_l1, Material.envi_tempsemps_l2, Material.envi_tempsemps_l3, Material.envi_tempsemps_l4) = [sprop("", "Temperatures/Enthalpy pairs", 1024, "")] * conlayers
-    
+
 # FloVi material definitions
     Material.fvmat = fvmat
     Material.flovi_bmb_type = eprop([("0", "Patch", "Wall boundary"), ("1", "Wall", "Inlet boundary"), ("2", "Symmetry", "Symmetry plane boundary"), ("3", "Empty", "Empty boundary")], "", "FloVi blockmesh boundary type", "0")
@@ -488,19 +488,19 @@ def register():
     Material.flovi_p_field = bprop("", "Take boundary velocity from the field velocity", False)
     Material.flovi_bmbp_p0val = fprop("", "Pressure value", -1000, 1000, 0)
     Material.flovi_bmbp_gamma = fprop("", "Pressure value", -1000, 1000, 1.4)
-    
+
     Material.flovi_bmbu_subtype = EnumProperty(items = ret_fvbu_menu, name = "", description = "FloVi sub-type boundary")
     Material.flovi_bmbu_val = fvprop(3, '', 'Vector value', [0, 0, 0], 'VELOCITY', -100, 100)
     Material.flovi_u_field = bprop("", "Take boundary velocity from the field velocity", False)
-    
+
     Material.flovi_bmbnut_subtype = EnumProperty(items = ret_fvbnut_menu, name = "", description = "FloVi sub-type boundary")
     Material.flovi_bmbnut_val = fprop("", "Nut value", -1000, 1000, 0.0)
     Material.flovi_nut_field = bprop("", "Take boundary nut from the field nut", False)
-    
+
     Material.flovi_bmbk_subtype = EnumProperty(items = ret_fvbk_menu, name = "", description = "FloVi sub-type boundary")
     Material.flovi_bmbk_val = fprop("", "k value", -1000, 1000, 0.0)
     Material.flovi_k_field = bprop("", "Take boundary k from the field k", False)
-    
+
     Material.flovi_bmbe_subtype = EnumProperty(items = ret_fvbepsilon_menu, name = "", description = "FloVi sub-type boundary")
     Material.flovi_bmbe_val = fprop("", "Epsilon value", -1000, 1000, 0.0)
     Material.flovi_e_field = bprop("", "Take boundary epsilon from the field epsilon", False)
@@ -523,7 +523,7 @@ def register():
 
     Material.flovi_bmbprgh_subtype = EnumProperty(items = ret_fvbprgh_menu, name = "", description = "FloVi sub-type boundary")
     Material.flovi_bmbprgh_val = fprop("", "p_rgh value", -1000, 1000, 0.0)
-    Material.flovi_prgh_field = bprop("", "Take boundary p_rgh from the field p_rgh", False)    
+    Material.flovi_prgh_field = bprop("", "Take boundary p_rgh from the field p_rgh", False)
 #    Material.flovi_bmpp_type = eprop([("zeroGradient", "Zero Gradient", "Zero gradient boundary")], "", "FloVi wall boundary type", "zeroGradient")
 #    Material.flovi_bmwp_type = eprop([("zeroGradient", "Zero Gradient", "Zero gradient boundary")], "", "FloVi wall boundary type", "zeroGradient")
 #    Material.flovi_bmwu_type = eprop([("fixedValue", "Fixed", "Fixed value boundary"), ("slip", "Slip", "Slip boundary")], "", "FloVi wall boundary type", "fixedValue")
@@ -536,9 +536,9 @@ def register():
 #    Material.flovi_bmu_x = fprop("X", "Value in the X-direction", -1000, 1000, 0.0)
 #    Material.flovi_bmu_y = fprop("Y", "Value in the Y-direction", -1000, 1000, 0.0)
 #    Material.flovi_bmu_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0)
-#    
+#
 ##    Material.flovi_bmwnut_y = fprop("Y", "Value in the Y-direction", -1000, 1000, 0.0)
-##    Material.flovi_bmwnut_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0) 
+##    Material.flovi_bmwnut_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0)
 #    Material.flovi_bmip_type = eprop([("zeroGradient", "Zero Gradient", "Zero gradient pressure boundary"), ("freestreamPressure", "Freestream Pressure", "Free stream pressure gradient boundary")], "", "FloVi wall boundary type", "zeroGradient")
 #    Material.flovi_bmiop_val = fprop("X", "Pressure value", -1000, 1000, 0.0)
 #    Material.flovi_bmop_type = eprop([("zeroGradient", "Zero Gradient", "Zero gradient pressure boundary"), ("freestreamPressure", "Freestream Pressure", "Free stream pressure gradient boundary"), ("fixedValue", "FixedValue", "Fixed value pressure boundary")], "", "FloVi wall boundary type", "zeroGradient")
@@ -546,8 +546,8 @@ def register():
 #    Material.flovi_bmou_type = eprop([("freestream", "Freestream velocity", "Freestream velocity boundary"), ("zeroGradient", "Zero Gradient", "Zero gradient  boundary"), ("fixedValue", "Fixed Value", "Fixed velocity boundary")], "", "FloVi wall boundary type", "zeroGradient")
 #    Material.flovi_bminut_type = eprop([("calculated", "Calculated", "Calculated value boundary")], "", "FloVi wall boundary type", "calculated")
 #    Material.flovi_bmonut_type = eprop([("calculated", "Calculated", "Calculated value boundary")], "", "FloVi wall boundary type", "calculated")
-#    Material.flovi_bminutilda_type = eprop([("freeStream", "Freestream", "Free stream value boundary")], "", "FloVi wall boundary type", "freeStream")    
-#    Material.flovi_bmonutilda_type = eprop([("freeStream", "Freestream", "Free stream value boundary")], "", "FloVi wall boundary type", "freeStream") 
+#    Material.flovi_bminutilda_type = eprop([("freeStream", "Freestream", "Free stream value boundary")], "", "FloVi wall boundary type", "freeStream")
+#    Material.flovi_bmonutilda_type = eprop([("freeStream", "Freestream", "Free stream value boundary")], "", "FloVi wall boundary type", "freeStream")
 #    Material.flovi_bmik_type = eprop([("fixedValue", "Fixed Value", "Fixed value boundary")], "", "FloVi wall boundary type", "fixedValue")
 #    Material.flovi_bmok_type = eprop([("inletOutlet", "Inlet/outlet", "Inlet/outlet boundary")], "", "FloVi wall boundary type", "inletOutlet")
 #    Material.flovi_bmie_type = eprop([("fixedValue", "Fixed Value", "Fixed value boundary")], "", "FloVi wall boundary type", "fixedValue")
@@ -567,12 +567,12 @@ def register():
 #    Material.flovi_bmnut = fprop("", "nuTilda value", -1000, 1000, 0.0)
 #    Material.flovi_bmk = fprop("", "k value", 0, 1000, 0.0)
 #    Material.flovi_bme = fprop("", "Epsilon value", 0, 1000, 0.0)
-#    Material.flovi_bmo = fprop("", "Omega value", 0, 1000, 0.0) 
+#    Material.flovi_bmo = fprop("", "Omega value", 0, 1000, 0.0)
     Material.flovi_ground = bprop("", "Ground material", False)
-#    Material.flovi_b_sval = fprop("", "Scalar value", -500, 500, 0.0) 
+#    Material.flovi_b_sval = fprop("", "Scalar value", -500, 500, 0.0)
 #    Material.flovi_b_vval = fvprop(3, '', 'Vector value', [0, 0, 0], 'VELOCITY', -100, 100)
-    
-    
+
+
 # BSDF material parameters
     Material.li_bsdf_direc = EnumProperty(items = [('+b', 'Backwards', 'Backwards BSDF'), ('+f', 'Forwards', 'Forwards BSDF'), ('+b +f', 'Bi-directional', 'Bi-directional BSDF')], name = '', description = 'BSDF direction', default = '+b')
     Material.li_bsdf_tensor = EnumProperty(items = [(' ', 'Klems', 'Uniform Klems sample'), ('-t3', 'Symmentric', 'Symmetric Tensor BSDF'), ('-t4', 'Assymmetric', 'Asymmetric Tensor BSDF')], name = '', description = 'BSDF tensor', default = ' ')
@@ -583,13 +583,13 @@ def register():
     Material.li_bsdf_proxy_depth = fprop("", "Depth of proxy geometry", -10, 10, 0)
 #    Material.flovi_bmionut = fprop("Value", "nuTilda value", -1000, 1000, 0.0)
 #    Material.flovi_bmionut_y = fprop("Y", "Value in the Y-direction", -1000, 1000, 0.0)
-#    Material.flovi_bmionut_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0)   
-    
+#    Material.flovi_bmionut_z = fprop("Z", "Value in the Z-direction", -1000, 1000, 0.0)
+
 # Scene parameters
     Scene.latitude = bpy.props.FloatProperty(name = "Latitude", description = "Site decimal latitude (N is positive)", min = -89.99, max = 89.99, default = 52.0)
     Scene.longitude = bpy.props.FloatProperty(name = "Longitude", description = "Site decimal longitude (E is positive)", min = -180, max = 180, default = 0.0)
     Scene.wind_type = eprop([("0", "Speed", "Wind Speed (m/s)"), ("1", "Direction", "Wind Direction (deg. from North)")], "", "Wind metric", "0")
-    Scene.vipath = sprop("VI Path", "Path to files included with the VI-Suite ", 1024, addonpath)        
+    Scene.vipath = sprop("VI Path", "Path to files included with the VI-Suite ", 1024, addonpath)
     Scene.suns = EnumProperty(items = [('0', 'Single', 'Single sun'), ('1', 'Monthly', 'Monthly sun for chosen time'), ('2', 'Hourly', 'Hourly sun for chosen date')], name = '', description = 'Sunpath sun type', default = '0', update=sunpath1)
     Scene.sunsstrength = bpy.props.FloatProperty(name = "", description = "Sun strength", min = 0, max = 100, default = 0.1, update=sunpath1)
     Scene.sunssize = bpy.props.FloatProperty(name = "", description = "Sun size", min = 0, max = 1, default = 0.01, update=sunpath1)
@@ -601,16 +601,16 @@ def register():
     Scene.vi_disp_3d = bprop("VI 3D display", "Boolean for 3D results display",  False)
     Scene.vi_disp_3dlevel = bpy.props.FloatProperty(name = "", description = "Level of 3D result plane extrusion", min = 0, max = 500, default = 0, update = eupdate)
     Scene.ss_disp_panel = iprop("Display Panel", "Shows the Display Panel", -1, 2, 0)
-    (Scene.lic_disp_panel, Scene.vi_display, Scene.sp_disp_panel, Scene.wr_disp_panel, Scene.ss_leg_display, Scene.en_disp_panel, Scene.li_compliance, Scene.vi_display_rp, Scene.vi_leg_display, 
+    (Scene.lic_disp_panel, Scene.vi_display, Scene.sp_disp_panel, Scene.wr_disp_panel, Scene.ss_leg_display, Scene.en_disp_panel, Scene.li_compliance, Scene.vi_display_rp, Scene.vi_leg_display,
      Scene.vi_display_sel_only, Scene.vi_display_vis_only) = [bprop("", "", False)] * 11
     Scene.vi_leg_max = bpy.props.FloatProperty(name = "", description = "Legend maximum", min = 0, max = 1000000, default = 1000, update=legupdate)
     Scene.vi_leg_min = bpy.props.FloatProperty(name = "", description = "Legend minimum", min = 0, max = 1000000, default = 0, update=legupdate)
     Scene.vi_scatter_max = bpy.props.FloatProperty(name = "", description = "Scatter maximum", min = 0, max = 1000000, default = 1000, update=legupdate)
     Scene.vi_scatter_min = bpy.props.FloatProperty(name = "", description = "Scatter minimum", min = 0, max = 1000000, default = 0, update=legupdate)
-    Scene.vi_leg_scale = EnumProperty(items = [('0', 'Linear', 'Linear scale'), ('1', 'Log', 'Logarithmic scale')], name = "", description = "Legend scale", default = '0', update=legupdate)    
+    Scene.vi_leg_scale = EnumProperty(items = [('0', 'Linear', 'Linear scale'), ('1', 'Log', 'Logarithmic scale')], name = "", description = "Legend scale", default = '0', update=legupdate)
     Scene.vi_leg_col = EnumProperty(items = [('rainbow', 'Rainbow', 'Rainbow colour scale'), ('gray', 'Grey', 'Grey colour scale'), ('hot', 'Hot', 'Hot colour scale'),
-                                             ('CMRmap', 'CMR', 'CMR colour scale'), ('jet', 'Jet', 'Jet colour scale'), ('plasma', 'Plasma', 'Plasma colour scale'), 
-                                             ('hsv', 'HSV', 'HSV colour scale'), ('viridis', 'Viridis', 'Viridis colour scale')], 
+                                             ('CMRmap', 'CMR', 'CMR colour scale'), ('jet', 'Jet', 'Jet colour scale'), ('plasma', 'Plasma', 'Plasma colour scale'),
+                                             ('hsv', 'HSV', 'HSV colour scale'), ('viridis', 'Viridis', 'Viridis colour scale')],
                                             name = "", description = "Legend scale", default = 'rainbow', update=colupdate)
     Scene.vi_res_mod = sprop("", "Result modifier", 1024, "")
     Scene.vi_res_py = bprop("", "Boolean for Python function modification of results",  False)
@@ -624,11 +624,11 @@ def register():
     Scene.vi_gridify_as = fprop("m", "Side direction size", 0.01, 10, 0.6)
 
 #    Scene.vi_lbsdf_direc = EnumProperty(items = bsdfdirec, name = "", description = "Legend scale")
-    
-    Scene.en_disp = EnumProperty(items = [('0', 'Cylinder', 'Cylinder display'), ('1', 'Box', 'Box display')], name = "", description = "Shape of EnVi result object", default = '0')    
-    Scene.en_disp_unit = EnumProperty(items = enunits, name = "", description = "Type of EnVi metric display")  
+
+    Scene.en_disp = EnumProperty(items = [('0', 'Cylinder', 'Cylinder display'), ('1', 'Box', 'Box display')], name = "", description = "Shape of EnVi result object", default = '0')
+    Scene.en_disp_unit = EnumProperty(items = enunits, name = "", description = "Type of EnVi metric display")
     Scene.en_disp_punit = EnumProperty(items = enpunits, name = "", description = "Type of EnVi metric display")
-    Scene.en_disp_type = EnumProperty(items = enparametric, name = "", description = "Type of EnVi display") 
+    Scene.en_disp_type = EnumProperty(items = enparametric, name = "", description = "Type of EnVi display")
 
     Scene.en_frame = iprop("", "EnVi frame", 0, 500, 0)
     Scene.en_temp_max = bpy.props.FloatProperty(name = "Max", description = "Temp maximum", default = 24, update=setcols)
@@ -719,44 +719,44 @@ def register():
 #    Scene.li_assind = sprop("", "Name of the assessing individual", 1024, '')
 #    Scene.li_jobno = sprop("", "Project job number", 1024, '')
     Scene.li_disp_basic = EnumProperty(items = [("0", "Illuminance", "Display Illuminance values"), ("1", "Visible Irradiance", "Display Irradiance values"), ("2", "Full Irradiance", "Display Irradiance values"), ("3", "DF", "Display Daylight factor values")], name = "", description = "Basic metric selection", default = "0", update = liviresupdate)
-    Scene.li_disp_da = EnumProperty(items = [("0", "DA", "Daylight Autonomy"), ("1", "sDA", "Spatial Daylight Autonomy"), ("2", "UDILow", "Spatial Daylight Autonomy"), ("3", "UDISup", "Spatial Daylight Autonomy"), 
-                                             ("4", "UDIAuto", "Spatial Daylight Autonomy"), ("5", "UDIHigh", "Spatial Daylight Autonomy"), ("6", "ASE", "Annual sunlight exposure"), ("7", "Max lux", "Maximum lux level"), 
+    Scene.li_disp_da = EnumProperty(items = [("0", "DA", "Daylight Autonomy"), ("1", "sDA", "Spatial Daylight Autonomy"), ("2", "UDILow", "Spatial Daylight Autonomy"), ("3", "UDISup", "Spatial Daylight Autonomy"),
+                                             ("4", "UDIAuto", "Spatial Daylight Autonomy"), ("5", "UDIHigh", "Spatial Daylight Autonomy"), ("6", "ASE", "Annual sunlight exposure"), ("7", "Max lux", "Maximum lux level"),
                                              ("8", "Avg Lux", "Average lux level"), ("9", "Min lux", "Minimum lux level")], name = "", description = "Result selection", default = "0", update = liviresupdate)
     Scene.li_disp_exp = EnumProperty(items = [("0", "LuxHours", "Display LuhHours values"), ("1", "Full Irradiance", "Display full spectrum radiation exposure values"), ("2", "Visible Irradiance", "Display visible spectrum radiation exposure values"),
                                               ("3", "Full Irradiance Density", "Display full spectrum radiation exposure values"), ("4", "Visible Irradiance Density", "Display visible spectrum radiation exposure values")], name = "", description = "Result selection", default = "0", update = liviresupdate)
     Scene.li_disp_irrad = EnumProperty(items = [("0", "kWh", "Display kWh values"), ("1", "kWh/m2", "Display kWh/m2 values")], name = "", description = "Result selection", default = "0", update = liviresupdate)
-    (Scene.resaa_disp, Scene.resaws_disp, Scene.resawd_disp, Scene.resah_disp, Scene.resas_disp, Scene.reszt_disp, Scene.reszh_disp, Scene.reszhw_disp, Scene.reszcw_disp, Scene.reszsg_disp, Scene.reszppd_disp, 
+    (Scene.resaa_disp, Scene.resaws_disp, Scene.resawd_disp, Scene.resah_disp, Scene.resas_disp, Scene.reszt_disp, Scene.reszh_disp, Scene.reszhw_disp, Scene.reszcw_disp, Scene.reszsg_disp, Scene.reszppd_disp,
      Scene.reszpmv_disp, Scene.resvls_disp, Scene.resvmh_disp, Scene.resim_disp, Scene.resiach_disp, Scene.reszco_disp, Scene.resihl_disp, Scene.reszlf_disp, Scene.reszof_disp, Scene.resmrt_disp,
-     Scene.resocc_disp, Scene.resh_disp, Scene.resfhb_disp, Scene.reszahw_disp, Scene.reszacw_disp, Scene.reshrhw_disp, Scene.restcvf_disp, Scene.restcmf_disp, Scene.restcot_disp, Scene.restchl_disp, 
-     Scene.restchg_disp, Scene.restcv_disp, Scene.restcm_disp, Scene.resldp_disp, Scene.resoeg_disp, Scene.respve_disp, Scene.respvw_disp, Scene.respveff_disp, Scene.respvt_disp)  = resnameunits() 
-     
-    (Scene.resazmaxt_disp, Scene.resazmint_disp, Scene.resazavet_disp, 
-     Scene.resazmaxhw_disp, Scene.resazminhw_disp, Scene.resazavehw_disp, 
-     Scene.resazth_disp, Scene.resazthm_disp, 
-     Scene.resazmaxcw_disp, Scene.resazmincw_disp, Scene.resazavecw_disp, 
-     Scene.resaztc_disp, Scene.resaztcm_disp, 
-     Scene.resazmaxco_disp, Scene.resazaveco_disp, Scene.resazminco_disp, 
+     Scene.resocc_disp, Scene.resh_disp, Scene.resfhb_disp, Scene.reszahw_disp, Scene.reszacw_disp, Scene.reshrhw_disp, Scene.restcvf_disp, Scene.restcmf_disp, Scene.restcot_disp, Scene.restchl_disp,
+     Scene.restchg_disp, Scene.restcv_disp, Scene.restcm_disp, Scene.resldp_disp, Scene.resoeg_disp, Scene.respve_disp, Scene.respvw_disp, Scene.respveff_disp, Scene.respvt_disp)  = resnameunits()
+
+    (Scene.resazmaxt_disp, Scene.resazmint_disp, Scene.resazavet_disp,
+     Scene.resazmaxhw_disp, Scene.resazminhw_disp, Scene.resazavehw_disp,
+     Scene.resazth_disp, Scene.resazthm_disp,
+     Scene.resazmaxcw_disp, Scene.resazmincw_disp, Scene.resazavecw_disp,
+     Scene.resaztc_disp, Scene.resaztcm_disp,
+     Scene.resazmaxco_disp, Scene.resazaveco_disp, Scene.resazminco_disp,
      Scene.resazlmaxf_disp, Scene.resazlminf_disp, Scene.resazlavef_disp,
      Scene.resazmaxshg_disp, Scene.resazminshg_disp, Scene.resazaveshg_disp,
-     Scene.resaztshg_disp, Scene.resaztshgm_disp)  = aresnameunits() 
+     Scene.resaztshg_disp, Scene.resaztshgm_disp)  = aresnameunits()
     Scene.envi_flink = bprop("", "Associate flow results with the nearest object", False)
 
     nodeitems_utils.register_node_categories("Vi Nodes", vinode_categories)
     nodeitems_utils.register_node_categories("EnVi Nodes", envinode_categories)
     nodeitems_utils.register_node_categories("EnVi Mat Nodes", envimatnode_categories)
-    
+
     if update_chart_node not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(update_chart_node)
-        
+
     if display_off not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(display_off)
-    
+
     if mesh_index not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(mesh_index)
-        
+
     if update_dir not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(update_dir)
-        
+
     path_update()
 
 def unregister():
@@ -773,7 +773,7 @@ def unregister():
 
     if mesh_index in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(mesh_index)
-        
+
     if update_dir in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(update_dir)
 #if __name__ == "__main__":
