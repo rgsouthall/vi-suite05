@@ -185,7 +185,7 @@ class WindroseAxes(PolarAxes):
         normed = kwargs.pop('normed', False)
         blowto = kwargs.pop('blowto', False)
 
-        #Set the global information dictionnary
+        #Set the global information dictionary
         self._info['dir'], self._info['bins'], self._info['table'] = histogram(dir, var, bins, nsector, normed, blowto)
 
         return bins, nbins, nsector, colors, angles, kwargs
@@ -195,7 +195,7 @@ class WindroseAxes(PolarAxes):
         """
         Plot a windrose in linear mode. For each var bins, a line will be
         draw on the axes, a segment between each sector (center to center).
-        Each line can be formated (color, width, ...) like with standard plot
+        Each line can be formatted (color, width, ...) like with standard plot
         pylab command.
 
         Mandatory:
@@ -211,7 +211,7 @@ class WindroseAxes(PolarAxes):
         bins variable. If not set, bins=6, then
             bins=linspace(min(var), max(var), 6)
         * blowto : bool. If True, the windrose will be pi rotated,
-        to show where the wind blow to (usefull for pollutant rose).
+        to show where the wind blows to (useful for pollutant rose).
         * colors : string or tuple - one string color ('k' or 'black'), in this
         case all bins will be plotted in this color; a tuple of matplotlib
         color args (string, float, rgb, etc), different levels will be plotted
@@ -247,7 +247,7 @@ class WindroseAxes(PolarAxes):
         """
         Plot a windrose in filled mode. For each var bins, a line will be
         draw on the axes, a segment between each sector (center to center).
-        Each line can be formated (color, width, ...) like with standard plot
+        Each line can be formatted (color, width, ...) like with standard plot
         pylab command.
 
         Mandatory:
@@ -263,7 +263,7 @@ class WindroseAxes(PolarAxes):
         bins variable. If not set, bins=6, then
             bins=linspace(min(var), max(var), 6)
         * blowto : bool. If True, the windrose will be pi rotated,
-        to show where the wind blow to (usefull for pollutant rose).
+        to show where the wind blows to (useful for pollutant rose).
         * colors : string or tuple - one string color ('k' or 'black'), in this
         case all bins will be plotted in this color; a tuple of matplotlib
         color args (string, float, rgb, etc), different levels will be plotted
@@ -313,7 +313,7 @@ class WindroseAxes(PolarAxes):
         * bins : 1D array or integer- number of bins, or a sequence of
         bins variable. If not set, bins=6 between min(var) and max(var).
         * blowto : bool. If True, the windrose will be pi rotated,
-        to show where the wind blow to (usefull for pollutant rose).
+        to show where the wind blows to (useful for pollutant rose).
         * colors : string or tuple - one string color ('k' or 'black'), in this
         case all bins will be plotted in this color; a tuple of matplotlib
         color args (string, float, rgb, etc), different levels will be plotted
@@ -373,7 +373,7 @@ class WindroseAxes(PolarAxes):
         * bins : 1D array or integer- number of bins, or a sequence of
         bins variable. If not set, bins=6 between min(var) and max(var).
         * blowto : bool. If True, the windrose will be pi rotated,
-        to show where the wind blow to (usefull for pollutant rose).
+        to show where the wind blows to (useful for pollutant rose).
         * colors : string or tuple - one string color ('k' or 'black'), in this
         case all bins will be plotted in this color; a tuple of matplotlib
         color args (string, float, rgb, etc), different levels will be plotted
@@ -420,9 +420,9 @@ def histogram(dir, var, bins, nsector, normed=False, blowto=False):
     * bins : list - list of var category against we're going to compute the table
     * nsector : integer - number of sectors
     * normed : boolean - The resulting table is normed in percent or not.
-    * blowto : boolean - Normaly a windrose is computed with directions
-    as wind blows from. If true, the table will be reversed (usefull for
-    pollutantrose)
+    * blowto : boolean - Normally a windrose is computed with directions
+    as wind blows from. If true, the table will be reversed (useful for
+    pollutant rose)
 
     """
 
@@ -454,10 +454,3 @@ def histogram(dir, var, bins, nsector, normed=False, blowto=False):
         table = table*100/table.sum()
 
     return dir_edges, var_bins, table
-
-
-
-
-
-
-

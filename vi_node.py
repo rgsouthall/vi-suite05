@@ -285,7 +285,7 @@ class LiViNode(Node, ViNodes):
     sourcemenu = EnumProperty(name="", description="Source type", items=sourcetype, default = '0', update = nodeupdate)
     sourcemenu2 = EnumProperty(name="", description="Source type", items=sourcetype2, default = '0', update = nodeupdate)
     hdrname = StringProperty(name="", description="Name of the composite HDR sky file", default="vi-suite.hdr", update = nodeupdate)
-    hdrmap = EnumProperty(items=[("0", "Polar", "Polar ot LatLong HDR mapping"),("1", "Angular", "Light probe or angular mapping")], name="", description="Type of HDR panorama mapping", default="0", update = nodeupdate)
+    hdrmap = EnumProperty(items=[("0", "Polar", "Polar to LatLong HDR mapping"),("1", "Angular", "Light probe or angular mapping")], name="", description="Type of HDR panorama mapping", default="0", update = nodeupdate)
     hdrangle = FloatProperty(name="", description="HDR rotation (deg)", min=0, max=360, default=0, update = nodeupdate)
     hdrradius = FloatProperty(name="", description="HDR radius (m)", min=0, max=5000, default=1000, update = nodeupdate)
     mtxname = StringProperty(name="", description="Name of the calculated vector sky file", default="", subtype="FILE_PATH", update = nodeupdate)
@@ -2527,7 +2527,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     bl_label = 'EnVi opaque layer'
     
 
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Class of layer", default = "0")
 
@@ -2655,7 +2655,7 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_tl_node'
     bl_label = 'EnVi transparent layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -2741,7 +2741,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_gl_node'
     bl_label = 'EnVi gas layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -2960,7 +2960,7 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_bl_node'
     bl_label = 'EnVi blind'
     
-    so = EnumProperty(items = [("0", "Horizontal", "Select from databse"), 
+    so = EnumProperty(items = [("0", "Horizontal", "Select from database"), 
                                 ("1", "Vertical", "Define custom material properties")],
                                 name = "", description = "Slat orientation", default = '0')
     sw = FloatProperty(name = "mm", description = "Slat width", min = 0.1, max = 1000, default = 25)
@@ -3058,7 +3058,7 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_sgl_node'
     bl_label = 'EnVi switchable glazing layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -3945,11 +3945,11 @@ class ViFVParaNode(Node, ViNodes):
         row.operator("node.fvsolve", text = "Calculate").nodeid = self['nodeid']
         
         
-####################### Vi Nodes Catagories ##############################
+####################### Vi Nodes Categories ##############################
 
 viexnodecat = [NodeItem("ViGExLiNode", label="LiVi Geometry"), NodeItem("LiViNode", label="LiVi Context"),
                 NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"),
-                NodeItem("ViEnELCDNode", label="EnVi Distrubution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
+                NodeItem("ViEnELCDNode", label="EnVi Distribution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
                 NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"), 
                 NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
                 
@@ -4766,7 +4766,7 @@ class EnViZone(Node, EnViNodes):
         'Indoor and Outdoor Temperature Diffeence Lower Limit for Maximum Venting Opening Factor (deltaC)',
         'Indoor and Outdoor Temperature Diffeence Upper Limit for Minimum Venting Opening Factor (deltaC)',
         'Indoor and Outdoor Enthalpy Difference Lower Limit For Maximum Venting Open Factor (deltaJ/kg)',
-        'Indoor and Outdoor Enthalpy Difference Upper Limit for Minimun Venting Open Factor (deltaJ/kg)',
+        'Indoor and Outdoor Enthalpy Difference Upper Limit for Minimum Venting Open Factor (deltaJ/kg)',
         'Venting Availability Schedule Name')
 
         paramvs = (self.zone, self.control, tempschedname, mvof, lowerlim, upperlim, '0.0', '300000.0', vaschedname)
@@ -5036,7 +5036,7 @@ class EnViSSFlowNode(Node, EnViNodes):
 
         elif self.linkmenu == 'HO':
             if not (self.inputs['Node 1'].is_linked or self.inputs['Node 2'].is_linked and self.outputs['Node 1'].is_linked or self.outputs['Node 2'].is_linked):
-                exp_op.report({'ERROR'}, 'All horizonal opening surfaces must sit on the boundary between two thermal zones')
+                exp_op.report({'ERROR'}, 'All horizontal opening surfaces must sit on the boundary between two thermal zones')
 
             cfparams = ('Name', 'Air Mass Flow Coefficient When Opening is Closed (kg/s-m)', 'Air Mass Flow Exponent When Opening is Closed (dimensionless)', 'Sloping Plane Angle (deg)', 'Discharge Coefficient (dimensionless)')
             cfparamsv = ('{}_{}'.format(self.name, self.linkmenu), self.amfcc, self.amfec, self.spa, self.dcof)

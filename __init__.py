@@ -409,14 +409,14 @@ def register():
 #    Material.envi_thermalmass = bprop("", "Flag to siginify whether the material represents thermal mass", False)
 #    Material.envi_aperture = eprop([("0", "External", "External facade airflow component", 0), ("1", "Internal", "Zone boundary airflow component", 1),], "", "Position of the airflow component", "0")
 #    Material.envi_con_makeup = eprop([("0", "Pre-set", "Construction pre-set"),("1", "Layers", "Custom layers"),("2", "Dummy", "Adiabatic")], "", "Pre-set construction of custom layers", "0")
-#    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")
+#    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from database"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")
 #    Material.envi_type_lo = bpy.props.EnumProperty(items = envi_layerotype, name = "", description = "Outer layer material type")
 #    Material.envi_type_l1 = bpy.props.EnumProperty(items = envi_layer1type, name = "", description = "Second layer material type")
 #    Material.envi_type_l2 = bpy.props.EnumProperty(items = envi_layer2type, name = "", description = "Third layer material type")
 #    Material.envi_type_l3 = bpy.props.EnumProperty(items = envi_layer3type, name = "", description = "Fourth layer material type")
 #    Material.envi_type_l4 = bpy.props.EnumProperty(items = envi_layer4type, name = "", description = "Fifth layer material type")
 #    (Material.envi_layer1, Material.envi_layer2, Material.envi_layer3, Material.envi_layer4) = \
-#    [eprop([("0", "None", "Not present"),("1", "Database", "Select from databse"), ("2", "Custom", "Define custom material properties")], "", "Composition of the next layer", "0")] * (conlayers - 1)
+#    [eprop([("0", "None", "Not present"),("1", "Database", "Select from database"), ("2", "Custom", "Define custom material properties")], "", "Composition of the next layer", "0")] * (conlayers - 1)
     Material.envi_export = bprop("Material Export", "Flag to tell EnVi to export this material", False)
 #    Material.envi_material_lo = bpy.props.EnumProperty(items = envi_layero, name = "", description = "Outer layer material")
 #    Material.envi_material_l1 = bpy.props.EnumProperty(items = envi_layer1, name = "", description = "Second layer material")
@@ -717,7 +717,7 @@ def register():
     Scene.li_disp_basic = EnumProperty(items = [("0", "Illuminance", "Display Illuminance values"), ("1", "Visible Irradiance", "Display Irradiance values"), ("2", "Full Irradiance", "Display Irradiance values"), ("3", "DF", "Display Daylight factor values")], name = "", description = "Basic metric selection", default = "0", update = liviresupdate)
     Scene.li_disp_da = EnumProperty(items = [("0", "DA", "Daylight Autonomy"), ("1", "sDA", "Spatial Daylight Autonomy"), ("2", "UDILow", "Spatial Daylight Autonomy"), ("3", "UDISup", "Spatial Daylight Autonomy"), 
                                              ("4", "UDIAuto", "Spatial Daylight Autonomy"), ("5", "UDIHigh", "Spatial Daylight Autonomy"), ("6", "ASE", "Annual sunlight exposure"), ("7", "Max lux", "Maximum lux level"), 
-                                             ("8", "Ave Lux", "Average lux level"), ("9", "Min lux", "Minimum lux level")], name = "", description = "Result selection", default = "0", update = liviresupdate)
+                                             ("8", "Avg Lux", "Average lux level"), ("9", "Min lux", "Minimum lux level")], name = "", description = "Result selection", default = "0", update = liviresupdate)
     Scene.li_disp_exp = EnumProperty(items = [("0", "LuxHours", "Display LuhHours values"), ("1", "Full Irradiance", "Display full spectrum radiation exposure values"), ("2", "Visible Irradiance", "Display visible spectrum radiation exposure values"),
                                               ("3", "Full Irradiance Density", "Display full spectrum radiation exposure values"), ("4", "Visible Irradiance Density", "Display visible spectrum radiation exposure values")], name = "", description = "Result selection", default = "0", update = liviresupdate)
     Scene.li_disp_irrad = EnumProperty(items = [("0", "kWh", "Display kWh values"), ("1", "kWh/m2", "Display kWh/m2 values")], name = "", description = "Result selection", default = "0", update = liviresupdate)

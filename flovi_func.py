@@ -330,7 +330,7 @@ def fvmat(self, mn, bound):
     
 def fvvarwrite(scene, obs, node):
     '''Turbulence modelling: k and epsilon required for kEpsilon, k and omega required for kOmega, nutilda required for SpalartAllmaras, nut required for all
-        Bouyancy modelling: T''' 
+        Buoyancy modelling: T''' 
     if node.solver in ('icoFoam', 'simpleFoam', 'buoyantBuosssinesqSimpleFoam'):
         pentry = "dimensions [{} {} {} {} 0 0 0];\ninternalField   uniform {};\n\nboundaryField\n{{\n".format('0', '2', '-2', '0', '{}'.format(node.pnormval))
     else:

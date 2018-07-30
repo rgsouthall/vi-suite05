@@ -65,8 +65,8 @@ envi_cons = envi_constructions()
 rvuerrdict = {'view up parallel to view direction': "Camera cannot point directly upwards", 
               ' x11': "No X11 display server found. You may need to install XQuartz", 
               'source center': "A light source has concave faces. Use mesh - cleanup - split concave faces"}
-pmerrdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have ocurred. Make sure light sources can see your geometry",
-             'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have ocurred. Turn off caustic photons and encompass the scene",
+pmerrdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have occurred. Make sure light sources can see your geometry",
+             'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have occurred. Turn off caustic photons and encompass the scene",
                'fatal - zero flux from light sources\n': "No light flux, make sure there is a light source and that photon port normals point inwards",
                'fatal - no light sources in distribPhotons\n': "No light sources. Photon mapping does not work with HDR skies",
                'fatal - no valid photon ports found\n': 'Make sure photon ports are valid', 
@@ -2009,13 +2009,13 @@ class VIEW3D_OT_EnPDisplay(bpy.types.Operator):
 
         if scene.resazmaxt_disp and 'Max temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MaxTemp')
-        if scene.resazavet_disp and 'Ave temp (C)' in zmetrics:
+        if scene.resazavet_disp and 'Avg temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'AveTemp')
         if scene.resazmint_disp and 'Min temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MinTemp')
         if scene.resazmaxhw_disp and 'Max heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MaxHeat')
-        if scene.resazavehw_disp and 'Ave heating (W)' in zmetrics:
+        if scene.resazavehw_disp and 'Avg heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'AveHeat')
         if scene.resazminhw_disp and 'Min heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MinHeat')
@@ -3304,7 +3304,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                     self.tablecomp.hl = (1, 1, 1, 1)
                     redraw = 1
                 
-            if context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2'):
+            if context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2'):
                 if self.dhscatter.frame != context.scene.frame_current:
                     self.dhscatter.update(context)
                     redraw = 1
@@ -3317,7 +3317,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                 if self.dhscatter.col != context.scene.vi_leg_col:
                     self.dhscatter.update(context)
                     redraw = 1
-                if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2'):
+                if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2'):
                     if (self.dhscatter.vmin, self.dhscatter.vmax) != (context.scene.vi_scatter_min, context.scene.vi_scatter_max):
                        self.dhscatter.update(context) 
                        redraw = 1
@@ -3389,7 +3389,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                         self.tablecomp.resize = 0
                     return {'RUNNING_MODAL'}
 
-            elif context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-f (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2') and abs(self.dhscatter.lepos[0] - mx) < 20 and abs(self.dhscatter.lspos[1] - my) < 20:
+            elif context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-f (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2') and abs(self.dhscatter.lepos[0] - mx) < 20 and abs(self.dhscatter.lspos[1] - my) < 20:
                 self.dhscatter.hl = (0, 1, 1, 1) 
                 if event.type == 'LEFTMOUSE':
                     if event.value == 'PRESS':

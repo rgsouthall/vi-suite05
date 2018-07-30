@@ -559,10 +559,10 @@ class leed_scatter(Base_Display):
 class cbdm_scatter(Base_Display):
     def __init__(self, pos, width, height, iname, xdiff, ydiff):
         Base_Display.__init__(self, pos, width, height, iname, xdiff, ydiff)
-        self.unitdict = {'ASE (hrs)': 'asearea', 'sDA (%)': 'sdaarea', 'DA (%)': 'daarea', 'UDI-f (%)': 'udilarea', 'UDI-s (%)': 'udisarea', 'UDI-a (%)': 'udiaarea', 'UDI-e (%)': 'udiharea', 'Max lux': 'dhillumax', 'Ave lux': 'dhilluave', 'Min lux': 'dhillumin', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
-        self.titledict = {'ASE (hrs)': 'ASE Area', 'sDA (%)': 'sDa Area', 'DA (%)': 'DA Area', 'UDI-f (%)': 'UDI-f Area', 'UDI-s (%)': 'UDI-s Area', 'UDI-a (%)': 'UDI-a Area', 'UDI-e (%)': 'UDI-e Area', 'Max lux': 'Maximum Object Illuminance', 'Ave lux': 'Average Object Illuminance', 
+        self.unitdict = {'ASE (hrs)': 'asearea', 'sDA (%)': 'sdaarea', 'DA (%)': 'daarea', 'UDI-f (%)': 'udilarea', 'UDI-s (%)': 'udisarea', 'UDI-a (%)': 'udiaarea', 'UDI-e (%)': 'udiharea', 'Max lux': 'dhillumax', 'Avg lux': 'dhilluave', 'Min lux': 'dhillumin', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
+        self.titledict = {'ASE (hrs)': 'ASE Area', 'sDA (%)': 'sDa Area', 'DA (%)': 'DA Area', 'UDI-f (%)': 'UDI-f Area', 'UDI-s (%)': 'UDI-s Area', 'UDI-a (%)': 'UDI-a Area', 'UDI-e (%)': 'UDI-e Area', 'Max lux': 'Maximum Object Illuminance', 'Avg lux': 'Average Object Illuminance', 
         'Min lux': 'Minimum Object Illuminance', 'kWh': 'Object Irradiance', 'kWh/m2': 'Object Irradiance Density'}
-        self.cbtitledict = {'ASE (hrs)': 'Area (%)', 'sDA (%)': 'Area (%)', 'DA (%)': 'Area (%)', 'UDI-f (%)': 'Area (%)', 'UDI-s (%)': 'Area (%)', 'UDI-a (%)': 'Area (%)', 'UDI-e (%)': 'Area (%)', 'Max lux': 'Lux', 'Ave lux': 'Lux', 
+        self.cbtitledict = {'ASE (hrs)': 'Area (%)', 'sDA (%)': 'Area (%)', 'DA (%)': 'Area (%)', 'UDI-f (%)': 'Area (%)', 'UDI-s (%)': 'Area (%)', 'UDI-a (%)': 'Area (%)', 'UDI-e (%)': 'Area (%)', 'Max lux': 'Lux', 'Avg lux': 'Lux', 
         'Min lux': 'Lux', 'kWh': 'kW', 'kWh/m2': u'kW/m\u00b2'}
 
     def update(self, context):
@@ -572,7 +572,7 @@ class cbdm_scatter(Base_Display):
 
         if self.cao and self.cao.get('livires') and self.cao['livires'].get('{}{}'.format(self.unitdict[context.scene['liparams']['unit']], context.scene.frame_current)):
             zdata = array(self.cao['livires']['{}{}'.format(self.unitdict[context.scene['liparams']['unit']], context.scene.frame_current)])
-            (self.vmax, self.vmin) = (context.scene.vi_scatter_max, context.scene.vi_scatter_min) if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2') else (100, 0)
+            (self.vmax, self.vmin) = (context.scene.vi_scatter_max, context.scene.vi_scatter_min) if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2') else (100, 0)
             (title, cbtitle) = (self.titledict[context.scene['liparams']['unit']], self.cbtitledict[context.scene['liparams']['unit']])
             self.plt = plt
             draw_dhscatter(self, context.scene, self.cao['livires']['cbdm_days'], self.cao['livires']['cbdm_hours'], zdata, title, 'Days', 'Hours', cbtitle, self.vmin, self.vmax)  
@@ -689,7 +689,7 @@ class basic_table(Base_Display):
         self.fontdpi = int(0.15 * ydiff)
         self.unitdict = {'Lux': 'illu', 'DF (%)': 'df', u'W/m\u00b2 (v)': 'vi', u'W/m\u00b2 (f)': 'fi', 'Sky View': 'sv', 'sDA (%)': 'sda', 'ASE (hrs)': 'ase',
                          'Mlxh': 'mlxh','kWh (f)': 'fi', u'kWh/m\u00b2 (f)': 'fim2', 'kWh (v)': 'vi', u'kWh/m\u00b2 (v)': 'vim2', 'DA (%)': 'da', 'UDI-f (%)': 'udil', 'UDI-s (%)': 'udis', 
-                         'UDI-a (%)': 'udia', 'UDI-e (%)': 'udie', 'Max lux': 'illu', 'Ave lux': 'illu', 'Min lux': 'illu', 'kWh': 'kwh', 'kWh/m2': 'kwhm2'}
+                         'UDI-a (%)': 'udia', 'UDI-e (%)': 'udie', 'Max lux': 'illu', 'Avg lux': 'illu', 'Min lux': 'illu', 'kWh': 'kwh', 'kWh/m2': 'kwhm2'}
         
     def update(self, context):
         self.unit = context.scene['liparams']['unit']
@@ -833,7 +833,7 @@ def cbdm_disp(self, context, simnode):
     except:
         pass
 
-    if context.scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Ave lux', 'Min lux', 'kWh', 'kWh/m2'):
+    if context.scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Avg lux', 'Min lux', 'kWh', 'kWh/m2'):
         self.dhscatter.draw(context, width, height)
         
 def en_disp(self, context, simnode):
