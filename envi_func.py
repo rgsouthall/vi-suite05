@@ -2,6 +2,7 @@ import bpy, mathutils, colorsys, os
 from collections import OrderedDict
 from numpy import arange, array
 from numpy import sum as nsum
+from vi_func.py import logentry 
 
 def get_mat(node, ee):
     for material in bpy.data.materials:
@@ -22,6 +23,48 @@ def get_con_node(mat):
             return ecanodes[0]
     else:
         return None
+    
+def boundpoly(obj, emnode, poly, enng):
+    mat = obj.data.materials[poly.material_index]
+    
+    if emnode.envi_boundary:
+        nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
+        
+        for node in nodes:
+            insock = node.inputs['{}_{}_b'.format(mat.name, poly.index)]
+            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]
+              
+            if insock.links:
+                bobj = bpy.data.objects[insock.links[0].from_node.zone]
+                bpoly = bobj.data.polygons[int(insock.links[0].from_socket.name.split('_')[-2])]
+                bmat = bobj.data.materials[bpoly.material_index]
+                
+                if emnode.resist != get_con_node(bmat).resist:
+                    logentry('U-values of the paired boundary surfaces {0} and {1} do not match. {1} construction takes precedence'.format(mat.name+'_'+str(poly.index), insock.links[0].to_node.zone+'_'+str(bpoly.index)))
+                    return(('', '', '', ''))
+                else:
+                    return(("Surface", insock.links[0].from_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
+                
+            elif outsock.links:
+                bobj = outsock.links[0].to_node.zone
+                bpoly = bobj.data.polygons[int(outsock.links[0].to_socket.name.split('_')[-2])]
+                bmat = bobj.data.materials[bpoly.material_index]
+                
+                if emnode.resist != get_con_node(bmat).resist: 
+                    logentry('U-values of the paired boundary surfaces {0} and {1} do not match. {0} construction takes precedence'.format(mat.name+'_'+str(poly.index), outsock.links[0].to_node.zone+'_'+str(bpoly.index)))
+                    return(("Zone", bobj, "NoSun", "NoWind"))
+                else:
+                    return(("Surface", outsock.links[0].to_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
+                
+            else:
+                return(("Adiabatic", "", "NoSun", "NoWind"))
+
+    elif emnode.envi_thermalmass:
+        return(("Adiabatic", "", "NoSun", "NoWind"))
+    elif poly.calc_center_bounds()[2] <= 0:
+        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
+    else:
+        return(("Outdoors", "", "SunExposed", "WindExposed"))
 
 def retenresdict(scene):
     return {'Temp': ('Temperature (degC)', scene.en_temp_max, scene.en_temp_min, u"\u00b0C"), 'Hum': ('Humidity (%)', scene.en_hum_max, scene.en_hum_min, '%'),

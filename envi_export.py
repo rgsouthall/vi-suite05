@@ -17,8 +17,8 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import bpy, os, itertools, subprocess, datetime, shutil, mathutils, bmesh
-from .vi_func import selobj, facearea, boundpoly, selmesh
-from .envi_func import epentry, epschedwrite, get_con_node
+from .vi_func import selobj, facearea, selmesh
+from .envi_func import epentry, epschedwrite, get_con_node, boundpoly
 from .envi_mat import retuval
 
 dtdf = datetime.date.fromordinal
@@ -107,6 +107,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         zonenodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in zonenames]
         tcnodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in tcnames]
         gens = []
+        
         for obj in [obj for obj in bpy.data.objects if obj.layers[1] and obj.type == 'MESH' and obj.vi_type == '1']:
             me = obj.to_mesh(scene, True, 'PREVIEW')
             bm = bmesh.new()
@@ -143,6 +144,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 obound = ('win-', 'door-')[emnode.envi_con_type == 'Door']+obco if obco else obco
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
+                                
                                 if emnode.fclass in ('0', '2'):
                                     paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
@@ -458,7 +460,7 @@ def pregeo(op):
                 elif any([n.use_custom_color for n in mat.envi_nodes.nodes]):
                     op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
                 else:
-                    mct = 'Partition' if emnode.envi_con_type == 'Wall' and emnode.envi_boundary else emnode.envi_con_type
+                    mct = 'Partition' if emnode.envi_boundary else emnode.envi_con_type
 #                    mat.envi_nodes['enmatparams']['boundary'] = emnode.envi_boundary
 #                    mat.envi_nodes['enmatparams']['airflow'] = emnode.af_surface
 #                    mat.envi_nodes['enmatparams']['tm'] = emnode.envi_thermalmass

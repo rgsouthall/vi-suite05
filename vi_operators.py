@@ -1346,6 +1346,10 @@ class MAT_EnVi_Node(bpy.types.Operator):
             context.material.envi_nodes['envi_con_type'] = 'None'
             context.material.envi_nodes.nodes[0].active = True
             context.material.envi_nodes['enmatparams'] = {'airflow': 0, 'boundary': 0, 'tm': 0}
+
+        elif context.material.name != context.material.envi_nodes.name and context.material.envi_nodes.name in [m.name for m in bpy.data.materials]:
+            context.material.envi_nodes = context.material.envi_nodes.copy()
+            context.material.envi_nodes.name = context.material.name
         return {'FINISHED'}
     
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):

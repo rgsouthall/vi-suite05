@@ -2032,7 +2032,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
                                             ("Roof", "Roof", "Roof construction"),
-                                            ("Ceiling", "Ceiling", "Ceiling construction"),
+ #                                           ("Ceiling", "Ceiling", "Ceiling construction"),
                                             ("Window", "Window", "Window construction"), 
                                             ("Door", "Door", "Door construction"),
                                             ("Shading", "Shading", "Shading material"),
@@ -2195,8 +2195,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                         if self.pv:
                             newrow(layout, "Heat transfer:", self, "hti")
                             newrow(layout, "Photovoltaic:", self, "pp")
-                            
-                            
+                                                        
                             if self.pp == '0':
                                 newrow(layout, "PV area ratio:", self, "pvsa")
                                 newrow(layout, "Efficiency:", self, "eff")
@@ -2331,10 +2330,12 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         
     def update(self):
 #        socklink2(self.inputs['Outer layer'], self.id_data)
-        self.valid()
+        if len(self.inputs) == 2:
+            self.valid()
     
     def valid(self):
-        if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+        if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or \
+        (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
             nodecolour(self, 1)
         else:
             nodecolour(self, 0)
@@ -2349,9 +2350,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         paramvs = ['{}-pv'.format(sn), sn, 
                    ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
                    self.hti, self.ssp, self.mis]
-        
-        
-        
+                
         ep_text = epentry('Generator:Photovoltaic', params, paramvs)
         
         if self.pp == '0':
@@ -2443,7 +2442,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             paramvs = [self['matname']]
             ep_text = ''
             self.resist = 0
-            get_mat(self, 1).envi_shading = 0
+#            get_mat(self, 1).envi_shading = 0
 
             while in_sock.links:
                 node = in_sock.links[0].from_node
@@ -2632,8 +2631,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             
             if self.materialtype != '6':
                 paramvs = [self['layer_name'], matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]  
-                self.resist = self.thi * 0.001/matlist[1]
-                print('uv')
+                self.resist = self.thi * 0.001/float(matlist[1])
             else:
                 paramvs = [self['layer_name'], matlist[2]]
                 self.resist = matlist[2]

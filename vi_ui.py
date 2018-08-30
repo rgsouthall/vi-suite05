@@ -250,7 +250,7 @@ class VIMatPanel(bpy.types.Panel):
         newrow(layout, 'Material type', cm, "mattype")
         if cm.mattype == '0':
             rmmenu(layout, cm)
-            if not context.material.envi_nodes:# in bpy.data.node_groups:
+            if not cm.envi_nodes or (cm.envi_nodes.name != cm.name and cm.envi_nodes.name in [m.name for m in bpy.data.materials]):# in bpy.data.node_groups:
                 row = layout.row()
                 row.operator("material.envi_node", text = "Create EnVi Nodes")
 #                newrow(layout, "EnVi Construction Type:", cm, "envi_con_type")
