@@ -408,7 +408,7 @@ def processh(lines, znlist):
                 hdict[linesplit[0]] = ['Time'] 
             elif linesplit[3] in envdict:
                 hdict[linesplit[0]] = ['Climate',  '', envdict[linesplit[3]]]  
-            elif linesplit[3] in zresdict and linesplit[2] in znlist:
+            elif linesplit[3] in zresdict and retzonename(linesplit[2]) in znlist:
                 hdict[linesplit[0]] = ['Zone',  retzonename(linesplit[2]),  zresdict[linesplit[3]]]
             elif linesplit[3] in enresdict and 'ExtNode' in linesplit[2]:
                 hdict[linesplit[0]] = ['External',  linesplit[2],  enresdict[linesplit[3]]]

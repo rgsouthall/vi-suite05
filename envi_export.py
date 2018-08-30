@@ -87,6 +87,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         em.thickdict = {}
     
         en_idf.write("!-   ===========  ALL OBJECTS IN CLASS: ZONES ===========\n\n")
+        
         for obj in [obj for obj in bpy.context.scene.objects if obj.layers[1] == True and obj.envi_type in ('0', '2')]:
             if obj.type == 'MESH':
                 params = ('Name', 'Direction of Relative North (deg)', 'X Origin (m)', 'Y Origin (m)', 'Z Origin (m)', 'Type', 'Multiplier', 'Ceiling Height (m)', 'Volume (m3)',
@@ -105,8 +106,11 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         tcnames = [o.name for o in bpy.context.scene.objects if o.layers[1] == True and o.envi_type == '2']
         bpy.context.scene['viparams']['hvactemplate'] = 0
         zonenodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in zonenames]
+        for zn in zonenodes:
+            zn.update()
         tcnodes = [n for n in enng.nodes if hasattr(n, 'zone') and n.zone in tcnames]
         gens = []
+        
         for obj in [obj for obj in bpy.data.objects if obj.layers[1] and obj.type == 'MESH' and obj.vi_type == '1']:
             me = obj.to_mesh(scene, True, 'PREVIEW')
             bm = bmesh.new()
@@ -144,7 +148,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
                                 if emnode.fclass in ('0', '2'):
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[emnode.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
                                 else:
                                     paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '{}-fad'.format(mat.name), '1', len(face.verts)] + \
@@ -245,9 +249,9 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
             en_idf.write(epentry("ElectricLoadCenter:Inverter:Simple", params, paramvs))
             
             
-            params = ["Name"] + [item for i, pv in enumerate(pvs) for item in ['Generator {} Name'.format(i), 'Generator {} Object Type'.format(i), 
+            params = ["Name"] + [item for i, pv in enumerate(gens) for item in ['Generator {} Name'.format(i), 'Generator {} Object Type'.format(i), 
                      'Generator {} Rated Electric Power Output (W)'.format(i), 'Generator {} Availability Schedule Name'.format(i),
-                     'Generator {} Rated Thermal to Electrical Power Ratio'.format(i)] for i, pv in enumerate(pvs)] 
+                     'Generator {} Rated Thermal to Electrical Power Ratio'.format(i)]] 
 
             paramvs = ['PVs'] + [item for pv in gens for item in [pv, 'Generator:Photovoltaic', '20000', '', '']] 
             en_idf.write(epentry("ElectricLoadCenter:Generators", params, paramvs))

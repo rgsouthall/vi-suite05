@@ -1895,7 +1895,8 @@ def nfvprop(fvname, fvattr, fvdef, fvsub):
 
 def boundpoly(obj, emnode, poly, enng):
     mat = obj.data.materials[poly.material_index]
-    if emnode.envi_boundary:
+    
+    if emnode.envi_con_con == 'Boundary':
         nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
         
         for node in nodes:
@@ -1913,10 +1914,12 @@ def boundpoly(obj, emnode, poly, enng):
             else:
                 return(("Adiabatic", "", "NoSun", "NoWind"))
 
-    elif emnode.envi_thermalmass:
+    elif emnode.envi_con_con == 'Thermal mass':
         return(("Adiabatic", "", "NoSun", "NoWind"))
+        
     elif poly.calc_center_bounds()[2] <= 0:
         return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
+        
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))
 
@@ -2709,8 +2712,8 @@ def socklink2(sock, ng):
         
         for link in sock.links:
             valid2 = link.to_socket.ret_valid(link.to_socket.node)
-            print(valid1, valid2)
             valset = set(valid1)&set(valid2) 
+
             if not valset or len(valset) < min((len(valid1), len(valid2))):# or sock.node.use_custom_color:
                 ng.links.remove(link)
     except:

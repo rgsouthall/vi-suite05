@@ -397,7 +397,7 @@ def register():
     Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_type = sprop("", "EnVi Material type", 64, "None")
     
-#    Material.envi_shading = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
+    Material.envi_shading = bprop("", "Flag to siginify whether the material contains shading elements", False)
 #    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
 #                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
 #    Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
