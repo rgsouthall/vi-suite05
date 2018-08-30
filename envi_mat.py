@@ -158,19 +158,17 @@ class envi_constructions(object):
         'Party Wall 1': ('Plaster board', 'Standard Brick', 'Plaster board'), 'SIP': ('OSB', 'EPS', 'OSB')}
         self.wall_con = OrderedDict(sorted(self.wall_cond.items()))
         
-        self.ceil_cond = {'Floor/Ceil 1': ('Chipboard', 'EPS', 'Plaster board')}
+        self.ceil_cond = {'Ceiling 1': ('Chipboard', 'EPS', 'Plaster board')}
         self.ceil_con = OrderedDict(sorted(self.ceil_cond.items()))
         
-        self.ifloor_cond = {'Floor/Ceil 1': ('Plaster board', 'EPS', 'Chipboard')}
-        self.ifloor_con = OrderedDict(sorted(self.ceil_cond.items()))
+        self.ifloor_cond = {'Internal floor 1': ('Plaster board', 'EPS', 'Chipboard')}
+        self.ifloor_con = OrderedDict(sorted(self.ifloor_cond.items()))
         
         self.floor_cond = {'Ground Floor 1': ('Common earth', 'Gravel', 'Heavy mix concrete', 'Horizontal Air 20-50mm Heat Down', 'Chipboard'),
                            'Kingston PH 1': ('Common earth', 'Gravel', 'EPS', 'Heavy mix concrete')}
-        self.floor_cond.update(self.ifloor_cond)
         self.floor_con = OrderedDict(sorted(self.floor_cond.items()))
         
-        self.roof_cond = {'Roof 1': ('Clay tile', 'Roofing felt', 'Plywood'), 'Roof/Ceil 1': ('Clay tile', 'Roofing felt', 'Plywood')}
-        self.roof_cond.update(self.ceil_cond)
+        self.roof_cond = {'Roof 1': ('Clay tile', 'Roofing felt', 'Plywood')}
         self.roof_con = OrderedDict(sorted(self.roof_cond.items()))
 
         self.door_cond = {'Internal Door 1': ('Chipboard', 'Hardwood', 'Chipboard')}
@@ -185,7 +183,7 @@ class envi_constructions(object):
         self.glaze_con = OrderedDict(sorted(self.glaze_cond.items()))
         
         self.p = 0
-        self.propdict = {'Wall': self.wall_con, 'Floor': self.floor_con, 'Roof': self.roof_con, 'Ceiling': self.floor_con, 'Door': self.door_con, 
+        self.propdict = {'Wall': self.wall_con, 'Floor': self.floor_con, 'Roof': self.roof_con, 'Ceiling': self.ceil_con, 'Door': self.door_con, 
                                 'Window': self.glaze_con, 'PV': self.pv_con} 
 
     def con_write(self, idf_file, contype, name, nl, mn, cln):
@@ -271,8 +269,8 @@ def envi_layer4(self, context):
     return [((mat, mat, 'Layer material')) for mat in list(retmatdict(self, 0, 4)[self.envi_type_l4])]
     
 def envi_con_list(self, context):
-    ec = envi_constructions()
-    return [(mat, mat, 'Construction') for mat in (ec.wall_con, ec.roof_con, ec.floor_con, ec.ceil_con, ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Ceiling", "Door", "Window", "PV").index(self.envi_con_type)]]
+    ec = envi_constructions()    
+    return [(mat, mat, 'Construction') for mat in (ec.wall_con, (ec.roof_con, ec.ceil_con)[self.envi_boundary], (ec.floor_con, ec.ifloor_con)[self.envi_boundary], ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Door", "Window", "PV").index(self.envi_con_type)]]
     
 def retuval(mat):
     if mat.envi_con_type not in ('None', 'Shading', 'Aperture', 'Window'):

@@ -46,8 +46,8 @@ def li_calc(calc_op, simnode, simacc, **kwargs):
                 pmappfile.close()
                 pfile = progressfile(scene['viparams']['newdir'], datetime.datetime.now(), 100)
                 kivyrun = progressbar(os.path.join(scene['viparams']['newdir'], 'viprogress'), 'Photon map')
-                errdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have ocurred. Make sure light sources can see your geometry",
-                'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have ocurred. Turn off caustic photons and encompass the scene",
+                errdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have occurred. Make sure light sources can see your geometry",
+                'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have occurred. Turn off caustic photons and encompass the scene",
                'fatal - zero flux from light sources\n': "No light flux, make sure there is a light source and that photon port normals point inwards",
                'fatal - no light sources\n': "No light sources. Photon mapping does not work with HDR skies",
                'fatal - no valid photon ports found\n': 'Re-export the geometry'}

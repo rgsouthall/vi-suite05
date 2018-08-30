@@ -55,7 +55,7 @@ def ret_mcm():
 dtdf = datetime.date.fromordinal
 unitdict = {'Lux': 'illu', u'W/m\u00b2 (f)': 'firrad', u'W/m\u00b2 (v)': 'virrad', 'DF (%)': 'df', 'DA (%)': 'da', 'UDI-f (%)': 'udilow', 'UDI-s (%)': 'udisup', 'UDI-a (%)': 'udiauto', 'UDI-e (%)': 'udihi',
             'Sky View': 'sv', 'Mlxh': 'illu', 'kWh (f)': 'firrad', 'kWh (v)': 'virrad', u'kWh/m\u00b2 (f)': 'firradm2', u'kWh/m\u00b2 (v)': 'virradm2', '% Sunlit': 'res', 'sDA (%)': 'sda', 'ASE (hrs)': 'ase', 'kW': 'watts', 'Max lux': 'illu', 
-            'Ave lux': 'illu', 'Min lux': 'illu', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
+            'Avg lux': 'illu', 'Min lux': 'illu', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
 
 coldict = {'0': 'rainbow', '1': 'gray', '2': 'hot', '3': 'CMRmap', '4': 'jet', '5': 'plasma'}
 
@@ -496,7 +496,7 @@ def retpmap(node, frame, scene):
 
 def setscenelivivals(scene):
     scene['liparams']['maxres'], scene['liparams']['minres'], scene['liparams']['avres'] = {}, {}, {}
-    cbdmunits = ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux' , 'Ave lux', 'Min lux')
+    cbdmunits = ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux' , 'Avg lux', 'Min lux')
     expunits = ('Mlxh', "kWh (f)", "kWh (v)",  u'kWh/m\u00b2 (f)', u'kWh/m\u00b2 (v)', )
     irradunits = ('kWh', 'kWh/m2')
 
@@ -1893,6 +1893,7 @@ def nfprop(fname, fdesc, fmin, fmax, fdef):
 def nfvprop(fvname, fvattr, fvdef, fvsub):
     return(FloatVectorProperty(name=fvname, attr = fvattr, default = fvdef, subtype = fvsub, update = nodeexported))
 
+<<<<<<< HEAD
 def boundpoly(obj, emnode, poly, enng):
     mat = obj.data.materials[poly.material_index]
     
@@ -1923,6 +1924,8 @@ def boundpoly(obj, emnode, poly, enng):
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))
 
+=======
+>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
 def vertarea(mesh, vert):
     area = 0
     faces = [face for face in vert.link_faces] 

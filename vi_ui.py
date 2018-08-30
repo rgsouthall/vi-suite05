@@ -84,7 +84,7 @@ class Vi3DPanel(bpy.types.Panel):
 
                 if not scene.ss_disp_panel:
                     if scene['viparams']['visimcontext'] == 'LiVi CBDM':
-                        if scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Min lux', 'Max lux', 'Ave lux'):
+                        if scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Min lux', 'Max lux', 'Avg lux'):
                             newrow(layout, 'Result type:', scene, "li_disp_da")
                         elif scene['liparams']['unit'] in ('Mlxh', u'kWh/m\u00b2 (f)', u'kWh/m\u00b2 (v)', 'kWh (f)', 'kWh (v)'):
                             newrow(layout, 'Result type:', scene, "li_disp_exp")
@@ -116,7 +116,7 @@ class Vi3DPanel(bpy.types.Panel):
                     if scene.vi_disp_mat:
                         newrow(layout, 'Emitter strength:', scene, "vi_disp_ems")
                     
-                    if scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Ave lux', 'Min lux', 'kWh', 'kWh/m2'):
+                    if scene['liparams']['unit'] in ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux', 'Avg lux', 'Min lux', 'kWh', 'kWh/m2'):
                         newrow(layout, 'Scatter max:', scene, "vi_scatter_max")
                         newrow(layout, 'Scatter min:', scene, "vi_scatter_min")
                         
@@ -145,7 +145,7 @@ class Vi3DPanel(bpy.types.Panel):
                 if sedt == '1':
                     zresdict = {}
                     lmetrics = []
-                    vresdict = {"Max Flow in": "resazlmaxf_disp", "Min Flow in": "resazlminf_disp", "Ave Flow in": "resazlavef_disp"} 
+                    vresdict = {"Max Flow in": "resazlmaxf_disp", "Min Flow in": "resazlminf_disp", "Avg Flow in": "resazlavef_disp"} 
                 else: 
                     lmetrics, zmetrics = scene['enparams']['lmetrics'], scene['enparams']['zmetrics']
                     zresdict = {"Temperature (degC)": "reszt_disp", 'Humidity (%)': 'reszh_disp', 'Heating (W)': 'reszhw_disp', 'Cooling (W)': 'reszcw_disp', 
@@ -250,7 +250,7 @@ class VIMatPanel(bpy.types.Panel):
         newrow(layout, 'Material type', cm, "mattype")
         if cm.mattype == '0':
             rmmenu(layout, cm)
-            if not context.material.envi_nodes:# in bpy.data.node_groups:
+            if not cm.envi_nodes or (cm.envi_nodes.name != cm.name and cm.envi_nodes.name in [m.name for m in bpy.data.materials]):# in bpy.data.node_groups:
                 row = layout.row()
                 row.operator("material.envi_node", text = "Create EnVi Nodes")
 #                newrow(layout, "EnVi Construction Type:", cm, "envi_con_type")
