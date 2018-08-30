@@ -1893,39 +1893,6 @@ def nfprop(fname, fdesc, fmin, fmax, fdef):
 def nfvprop(fvname, fvattr, fvdef, fvsub):
     return(FloatVectorProperty(name=fvname, attr = fvattr, default = fvdef, subtype = fvsub, update = nodeexported))
 
-<<<<<<< HEAD
-def boundpoly(obj, emnode, poly, enng):
-    mat = obj.data.materials[poly.material_index]
-    
-    if emnode.envi_con_con == 'Boundary':
-        nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
-        
-        for node in nodes:
-            insock = node.inputs['{}_{}_b'.format(mat.name, poly.index)]
-            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]
-              
-            if insock.links:
-                bobj = bpy.data.objects[insock.links[0].from_node.zone]
-                return(('', '', '', ''))
-                
-            elif outsock.links:
-                bobj = outsock.links[0].to_node.zone
-                return(("Zone", bobj, "NoSun", "NoWind"))
-                
-            else:
-                return(("Adiabatic", "", "NoSun", "NoWind"))
-
-    elif emnode.envi_con_con == 'Thermal mass':
-        return(("Adiabatic", "", "NoSun", "NoWind"))
-        
-    elif poly.calc_center_bounds()[2] <= 0:
-        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
-        
-    else:
-        return(("Outdoors", "", "SunExposed", "WindExposed"))
-
-=======
->>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
 def vertarea(mesh, vert):
     area = 0
     faces = [face for face in vert.link_faces] 
