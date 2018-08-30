@@ -2212,29 +2212,29 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
-<<<<<<< HEAD
-            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
-                newrow(layout, 'Context:', self, "envi_con_con")
-#                newrow(layout, 'Intrazone:', self, "envi_boundary")
-                if self.envi_con_con in ('External', 'Boundary'):
-                    newrow(layout, 'Air-flow:', self, "envi_afsurface")
-                if self.envi_con_con == 'External' and self.envi_con_type in ("Wall", "Roof"):
-                    newrow(layout, 'PV:', self, "pv")
-#                if self.envi_con_type in ("Wall", "Floor", "Roof", "Ceiling"):
-#                    newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
-                    
-#                    if self.envi_con_type in ("Wall", "Roof"):
-#                        newrow(layout, 'PV:', self, "pv")
-                    
-                    if self.pv:
-                        newrow(layout, "Heat transfer:", self, "hti")
-                        newrow(layout, "Photovoltaic:", self, "pp")  
-
-                        if self.pp == '0':
-                            newrow(layout, "PV area ratio:", self, "pvsa")
-                            
-                            if not self.inputs['PV Schedule'].links:
-=======
+#<<<<<<< HEAD
+#            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
+#                newrow(layout, 'Context:', self, "envi_con_con")
+##                newrow(layout, 'Intrazone:', self, "envi_boundary")
+#                if self.envi_con_con in ('External', 'Boundary'):
+#                    newrow(layout, 'Air-flow:', self, "envi_afsurface")
+#                if self.envi_con_con == 'External' and self.envi_con_type in ("Wall", "Roof"):
+#                    newrow(layout, 'PV:', self, "pv")
+##                if self.envi_con_type in ("Wall", "Floor", "Roof", "Ceiling"):
+##                    newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
+#                    
+##                    if self.envi_con_type in ("Wall", "Roof"):
+##                        newrow(layout, 'PV:', self, "pv")
+#                    
+#                    if self.pv:
+#                        newrow(layout, "Heat transfer:", self, "hti")
+#                        newrow(layout, "Photovoltaic:", self, "pp")  
+#
+#                        if self.pp == '0':
+#                            newrow(layout, "PV area ratio:", self, "pvsa")
+#                            
+#                            if not self.inputs['PV Schedule'].links:
+#=======
             if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
                     if self.envi_con_type in ("Wall", "Floor", "Roof"):
                         newrow(layout, 'PV:', self, "pv")
@@ -2245,7 +2245,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                                         
                             if self.pp == '0':
                                 newrow(layout, "PV area ratio:", self, "pvsa")
->>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
                                 newrow(layout, "Efficiency:", self, "eff")
                                 
                         elif self.pp == '1':
@@ -2369,17 +2369,17 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Efficiency:", self, "eff")
         
     def update(self):
-<<<<<<< HEAD
-        self.valid()
-    
-    def valid(self):
-        try:
-            if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type not in ('None', 'Shading')) or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
-                nodecolour(self, 1)
-            else:
-                nodecolour(self, 0)
-        except:
-=======
+#<<<<<<< HEAD
+#        self.valid()
+#    
+#    def valid(self):
+#        try:
+#            if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type not in ('None', 'Shading')) or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+#                nodecolour(self, 1)
+#            else:
+#                nodecolour(self, 0)
+#        except:
+#=======
 #        socklink2(self.inputs['Outer layer'], self.id_data)
         if len(self.inputs) == 2:
             self.valid()
@@ -2387,7 +2387,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     def valid(self):
         if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or \
         (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
->>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             nodecolour(self, 1)
             
     def pv_ep_write(self, sn):
@@ -2400,11 +2400,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         paramvs = ['{}-pv'.format(sn), sn, 
                    ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
                    self.hti, self.ssp, self.mis]
-<<<<<<< HEAD
-        
-=======
-                
->>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+#<<<<<<< HEAD
+#        
+#=======
+#                
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
         ep_text = epentry('Generator:Photovoltaic', params, paramvs)
         
         if self.pp == '0':
@@ -2498,7 +2498,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             paramvs = [self['matname']]
             ep_text = ''
             self.resist = 0
-#            get_mat(self, 1).envi_shading = 0
+            get_mat(self, 1).envi_shading = 0
 
             while in_sock.links:
                 node = in_sock.links[0].from_node
@@ -2688,10 +2688,10 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             if self.materialtype != '6':
                 paramvs = [self['layer_name'], matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]  
                 self.resist = self.thi * 0.001/float(matlist[1])
-<<<<<<< HEAD
-                
-=======
->>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+#<<<<<<< HEAD
+#                
+#=======
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             else:
                 paramvs = [self['layer_name'], matlist[2]]
                 self.resist = matlist[2]
