@@ -270,7 +270,7 @@ def envi_layer4(self, context):
     
 def envi_con_list(self, context):
     ec = envi_constructions()    
-    return [(mat, mat, 'Construction') for mat in (ec.wall_con, (ec.roof_con, ec.ceil_con)[self.envi_boundary], (ec.floor_con, ec.ifloor_con)[self.envi_boundary], ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Door", "Window", "PV").index(self.envi_con_type)]]
+    return [(mat, mat, 'Construction') for mat in (ec.wall_con, (ec.roof_con, ec.ceil_con)[self.envi_con_con in ("Boundary", "Thermal mass")], (ec.floor_con, ec.ifloor_con)[self.envi_con_con in ("Boundary", "Thermal mass")], ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Door", "Window", "PV").index(self.envi_con_type)]]
     
 def retuval(mat):
     if mat.envi_con_type not in ('None', 'Shading', 'Aperture', 'Window'):

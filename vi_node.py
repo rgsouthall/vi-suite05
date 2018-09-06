@@ -2037,17 +2037,17 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             for node in [n for n in self.id_data.nodes if n.bl_idname == 'EnViCon' and n != self]:
                 node.active = False
                 
-    def c_update(self, context):
+    def bc_update(self, context):
         ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling")
         if self.envi_con_type in ("Wall", "Floor", "Roof"):
-            return [("External", "External", "Construction pre-set"),
-             ("Boundary", "Boundary", "Custom layers"),
+            return [("External", "External", "External boundary"),
+             ("Zone", "Zone", "Zone boundary"),
              ("Thermal mass", "Thermal mass", "Adiabatic")]
         elif self.envi_con_type in ("Window", "Door"):
-            return [("External", "External", "Construction pre-set"),
-             ("Boundary", "Boundary", "Custom layers")]
+            return [("External", "External", "External boundary"),
+             ("Zone", "Zone", "Zone boundary")]
         elif self.envi_con_type == 'Ceiling':
-            return [("Boundary", "Boundary", "Custom layers"),
+            return [("Boundary", "Boundary", "Zone boundary"),
                     ("Thermal mass", "Thermal mass", "Adiabatic")]
         
                         
@@ -2069,14 +2069,14 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                             name = "", 
                                             description = "Pre-set construction of custom layers", 
                                             default = "0", update = con_update)
-    envi_con_con = EnumProperty(items = c_update, 
+    envi_con_con = EnumProperty(items = bc_update, 
                                             name = "", 
                                             description = "Construction context", update = con_update)
     envi_simple_glazing = BoolProperty(name = "", description = "Flag to siginify whether to use a EP simple glazing representation", default = False)
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
-#    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
+    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
     envi_afsurface = BoolProperty(name = "", description = "Flag to siginify whether the material represents an airflow surface", default = False)
 #    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
@@ -2236,55 +2236,58 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 #                            if not self.inputs['PV Schedule'].links:
 #=======
             if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
-                    if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                        newrow(layout, 'PV:', self, "pv")
-                        
-                        if self.pv:
-                            newrow(layout, "Heat transfer:", self, "hti")
-                            newrow(layout, "Photovoltaic:", self, "pp")
-                                                        
-                            if self.pp == '0':
-                                newrow(layout, "PV area ratio:", self, "pvsa")
+                
+                if self.envi_con_type in ("Wall", "Roof"):
+                    newrow(layout, 'PV:', self, "pv")
+                    
+                    if self.pv:
+                        newrow(layout, "Heat transfer:", self, "hti")
+                        newrow(layout, "Photovoltaic:", self, "pp")
+                                                    
+                        if self.pp == '0':
+                            newrow(layout, "PV area ratio:", self, "pvsa")
 #>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
-                                newrow(layout, "Efficiency:", self, "eff")
-                                
-                        elif self.pp == '1':
-                            newrow(layout, "Model:", self, "e1menu")
-                            newrow(layout, "Series in parallel:", self, "ssp")
-                            newrow(layout, "Modules in series:", self, "mis")
+                            newrow(layout, "Efficiency:", self, "eff")
                             
-                            if self.e1menu == 'Custom':
-                                newrow(layout, "Cell type:", self, "ct")
-                                newrow(layout, "Silicon:", self, "mis")
-                                newrow(layout, "Area:", self, "pvsa")
-                                newrow(layout, "Trans*absorp:", self, "tap")
-                                newrow(layout, "Band gap:", self, "sbg")
-                                newrow(layout, "Shunt:", self, "sr")    
-                                newrow(layout, "Short:", self, "scc") 
-                                newrow(layout, "Open:", self, "ocv")
-                                newrow(layout, "Ref. temp.:", self, "rt")
-                                newrow(layout, "Ref. insol.:", self, "ri")
-                                newrow(layout, "Max current:", self, "mc")
-                                newrow(layout, "Max voltage:", self, "mv")
-                                newrow(layout, "Max current:", self, "tcscc")
-                                newrow(layout, "Max voltage:", self, "tcocv")
-                                newrow(layout, "Ambient temp.:", self, "atnoct")
-                                newrow(layout, "Cell temp.:", self, "ctnoct")
-                                newrow(layout, "Insolation:", self, "inoct")
-                            else:
-                                newrow(layout, "Trans*absorp:", self, "tap")
-                                newrow(layout, "Band gap:", self, "sbg")
-                                newrow(layout, "Shunt:", self, "sr")    
-                                newrow(layout, "Ref. temp.:", self, "rt")
-                                newrow(layout, "Ref. insol.:", self, "ri")
-                                newrow(layout, "Test ambient:", self, "atnoct")
-                                newrow(layout, "Test Insolation:", self, "inoct")
-                                newrow(layout, "Heat loss coeff.:", self, "hlc")
-                                newrow(layout, "Heat capacity:", self, "thc")
-                                
+                    elif self.pp == '1':
+                        newrow(layout, "Model:", self, "e1menu")
+                        newrow(layout, "Series in parallel:", self, "ssp")
+                        newrow(layout, "Modules in series:", self, "mis")
+                        
+                        if self.e1menu == 'Custom':
+                            newrow(layout, "Cell type:", self, "ct")
+                            newrow(layout, "Silicon:", self, "mis")
+                            newrow(layout, "Area:", self, "pvsa")
+                            newrow(layout, "Trans*absorp:", self, "tap")
+                            newrow(layout, "Band gap:", self, "sbg")
+                            newrow(layout, "Shunt:", self, "sr")    
+                            newrow(layout, "Short:", self, "scc") 
+                            newrow(layout, "Open:", self, "ocv")
+                            newrow(layout, "Ref. temp.:", self, "rt")
+                            newrow(layout, "Ref. insol.:", self, "ri")
+                            newrow(layout, "Max current:", self, "mc")
+                            newrow(layout, "Max voltage:", self, "mv")
+                            newrow(layout, "Max current:", self, "tcscc")
+                            newrow(layout, "Max voltage:", self, "tcocv")
+                            newrow(layout, "Ambient temp.:", self, "atnoct")
+                            newrow(layout, "Cell temp.:", self, "ctnoct")
+                            newrow(layout, "Insolation:", self, "inoct")
+                        else:
+                            newrow(layout, "Trans*absorp:", self, "tap")
+                            newrow(layout, "Band gap:", self, "sbg")
+                            newrow(layout, "Shunt:", self, "sr")    
+                            newrow(layout, "Ref. temp.:", self, "rt")
+                            newrow(layout, "Ref. insol.:", self, "ri")
+                            newrow(layout, "Test ambient:", self, "atnoct")
+                            newrow(layout, "Test Insolation:", self, "inoct")
+                            newrow(layout, "Heat loss coeff.:", self, "hlc")
+                            newrow(layout, "Heat capacity:", self, "thc")
+                            
             if self.envi_con_type != "Shading" and not self.pv:
+                newrow(layout, 'Boundary:', self, "envi_con_con")
                 newrow(layout, 'Specification:', self, "envi_con_makeup")
- 
+#                newrow(layout, 'Boundary:', self, "envi_bc")
+                
                 if self.envi_con_makeup == '0':                    
                     if self.envi_con_type == 'Window':
                         newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")

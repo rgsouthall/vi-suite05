@@ -2,7 +2,7 @@ import bpy, mathutils, colorsys, os
 from collections import OrderedDict
 from numpy import arange, array
 from numpy import sum as nsum
-from vi_func.py import logentry 
+from .vi_func import logentry 
 
 def get_mat(node, ee):
     for material in bpy.data.materials:
