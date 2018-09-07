@@ -155,8 +155,11 @@ class envi_materials(object):
 class envi_constructions(object):    
     def __init__(self):
         self.wall_cond = {'External Wall 1': ('Standard Brick', 'Thermawall TW50', 'Inner concrete block'), 'Kingston PH 1': ('Plywood', 'EPS', 'Plywood'),
-        'Party Wall 1': ('Plaster board', 'Standard Brick', 'Plaster board'), 'SIP': ('OSB', 'EPS', 'OSB')}
+        'SIP': ('OSB', 'EPS', 'OSB')}
         self.wall_con = OrderedDict(sorted(self.wall_cond.items()))
+        
+        self.iwall_cond = {'Party Wall 1': ('Plaster board', 'Standard Brick', 'Plaster board')}
+        self.iwall_con = OrderedDict(sorted(self.iwall_cond.items()))
         
         self.ceil_cond = {'Ceiling 1': ('Chipboard', 'EPS', 'Plaster board')}
         self.ceil_con = OrderedDict(sorted(self.ceil_cond.items()))
@@ -184,7 +187,7 @@ class envi_constructions(object):
         
         self.p = 0
         self.propdict = {'Wall': self.wall_con, 'Floor': self.floor_con, 'Roof': self.roof_con, 'Ceiling': self.ceil_con, 'Door': self.door_con, 
-                                'Window': self.glaze_con, 'PV': self.pv_con} 
+                                'Window': self.glaze_con, 'PV': self.pv_con, 'Internal floor': self.ifloor_con, 'Internal wall': self.iwall_con} 
 
     def con_write(self, idf_file, contype, name, nl, mn, cln):
         params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(cln) - 1)]        
@@ -270,7 +273,7 @@ def envi_layer4(self, context):
     
 def envi_con_list(self, context):
     ec = envi_constructions()    
-    return [(mat, mat, 'Construction') for mat in (ec.wall_con, (ec.roof_con, ec.ceil_con)[self.envi_con_con in ("Boundary", "Thermal mass")], (ec.floor_con, ec.ifloor_con)[self.envi_con_con in ("Boundary", "Thermal mass")], ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Door", "Window", "PV").index(self.envi_con_type)]]
+    return [(mat, mat, 'Construction') for mat in ((ec.wall_con, ec.iwall_con)[self.envi_con_con in ("Zone", "Thermal mass")], (ec.roof_con, ec.ceil_con)[self.envi_con_con in ("Zone", "Thermal mass")], (ec.floor_con, ec.ifloor_con)[self.envi_con_con in ("Zone", "Thermal mass")], ec.door_con, ec.glaze_con, ec.pv_con)[("Wall", "Roof", "Floor", "Door", "Window", "PV").index(self.envi_con_type)]]
     
 def retuval(mat):
     if mat.envi_con_type not in ('None', 'Shading', 'Aperture', 'Window'):

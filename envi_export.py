@@ -463,7 +463,7 @@ def pregeo(op):
                 elif any([n.use_custom_color for n in mat.envi_nodes.nodes]):
                     op.report({'ERROR'}, 'There is a red node in the {} material node tree. This material has not been exported.'.format(mat.name))
                 else:
-                    mct = 'Partition' if emnode.envi_boundary else emnode.envi_con_type
+                    mct = 'Partition' if emnode.envi_con_con == 'Zone' else emnode.envi_con_type
 #                    mat.envi_nodes['enmatparams']['boundary'] = emnode.envi_boundary
 #                    mat.envi_nodes['enmatparams']['airflow'] = emnode.af_surface
 #                    mat.envi_nodes['enmatparams']['tm'] = emnode.envi_thermalmass
@@ -517,7 +517,7 @@ def pregeo(op):
             bmesh.ops.split_edges(bm, edges = bm.edges)
             bmesh.ops.dissolve_limit(bm, angle_limit = 0.01, verts = bm.verts)
             bm.faces.ensure_lookup_table()
-            regfaces = [face for face in bm.faces if not any((get_con_node(obj.data.materials[face.material_index]).envi_boundary, get_con_node(obj.data.materials[face.material_index]).envi_afsurface))]
+            regfaces = [face for face in bm.faces if not any((get_con_node(obj.data.materials[face.material_index]).envi_con_con == 'Zone', get_con_node(obj.data.materials[face.material_index]).envi_afsurface))]
             bmesh.ops.connect_verts_nonplanar(bm, angle_limit = 0.01, faces = regfaces)
             bmesh.ops.connect_verts_concave(bm, faces = regfaces)
             bmesh.ops.triangulate(bm, faces = [face for face in bm.faces if get_con_node(obj.data.materials[face.material_index]).envi_con_type in ('Window', 'Door') and ['{:.4f}'.format(fl.calc_angle()) for fl in face.loops] != ['1.5708'] * 4])

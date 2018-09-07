@@ -1413,10 +1413,16 @@ class NODE_OT_EnSim(bpy.types.Operator):
             if len(self.esimruns) > 1:
                 self.percent = 100 * sum([esim.poll() is not None for esim in self.esimruns])/self.lenframes 
             else:
-                with open(os.path.join(self.nd, '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
-                    for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
-                        self.percent = 100 * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy)
-                        break
+                try:
+                    with open(os.path.join(self.nd, '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
+                        for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
+                            self.percent = 100 * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy)
+                            break
+                except:
+                    pass
+#                    logentry('There was an error in the EnVi simulation. Check the error log in the text editor')
+#                    return {self.terminate('CANCELLED', context)}
+                
             if all([esim.poll() is not None for esim in self.esimruns]) and self.e == self.lenframes:
                 for fname in [fname for fname in os.listdir('.') if fname.split(".")[0] == self.simnode.resname]:
                     os.remove(os.path.join(self.nd, fname))

@@ -2000,27 +2000,27 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     bl_icon = 'FORCE_WIND'
     
     def con_update(self, context):
-
-        if not self.pv:
-            remlink(self, self.inputs['PV Schedule'].links)
-            self.inputs['PV Schedule'].hide = True
-            if self.envi_con_makeup != "1" or self.envi_con_type in ('Shading', 'None'):
-                for link in self.inputs['Outer layer'].links:
-                    self.id_data.links.remove(link)
-                self.inputs['Outer layer'].hide = True
-            else:
-                self.inputs['Outer layer'].hide = False
-        else:
-            self.inputs['Outer layer'].hide = False
-            if self.pp != '0':
+        if len(self.inputs) == 3:
+            if not self.pv:
                 remlink(self, self.inputs['PV Schedule'].links)
                 self.inputs['PV Schedule'].hide = True
+                if self.envi_con_makeup != "1" or self.envi_con_type in ('Shading', 'None'):
+                    for link in self.inputs['Outer layer'].links:
+                        self.id_data.links.remove(link)
+                    self.inputs['Outer layer'].hide = True
+                else:
+                    self.inputs['Outer layer'].hide = False
             else:
-                self.inputs['PV Schedule'].hide = False
-            
-        [link.from_node.update() for link in self.inputs['Outer layer'].links]
-        get_mat(self, 0).envi_type = self.envi_con_type        
-        self.update()
+                self.inputs['Outer layer'].hide = False
+                if self.pp != '0':
+                    remlink(self, self.inputs['PV Schedule'].links)
+                    self.inputs['PV Schedule'].hide = True
+                else:
+                    self.inputs['PV Schedule'].hide = False
+                
+            [link.from_node.update() for link in self.inputs['Outer layer'].links]
+            get_mat(self, 0).envi_type = self.envi_con_type        
+            self.update()
     
     def frame_update(self, context):
         if self.fclass in ("0", "1"):
@@ -2047,7 +2047,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             return [("External", "External", "External boundary"),
              ("Zone", "Zone", "Zone boundary")]
         elif self.envi_con_type == 'Ceiling':
-            return [("Boundary", "Boundary", "Zone boundary"),
+            return [("Zone", "Zone", "Zone boundary"),
                     ("Thermal mass", "Thermal mass", "Adiabatic")]
         
                         
@@ -2076,7 +2076,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
-    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
+#    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
     envi_afsurface = BoolProperty(name = "", description = "Flag to siginify whether the material represents an airflow surface", default = False)
 #    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
@@ -2209,15 +2209,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         
     def draw_buttons(self, context, layout):
         newrow(layout, 'Active:', self, 'active')
+        newrow(layout, 'Boundary:', self, "envi_con_con")
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
-#<<<<<<< HEAD
+
 #            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
 #                newrow(layout, 'Context:', self, "envi_con_con")
 ##                newrow(layout, 'Intrazone:', self, "envi_boundary")
-#                if self.envi_con_con in ('External', 'Boundary'):
-#                    newrow(layout, 'Air-flow:', self, "envi_afsurface")
+
 #                if self.envi_con_con == 'External' and self.envi_con_type in ("Wall", "Roof"):
 #                    newrow(layout, 'PV:', self, "pv")
 ##                if self.envi_con_type in ("Wall", "Floor", "Roof", "Ceiling"):
@@ -2237,7 +2237,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 #=======
             if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
                 
-                if self.envi_con_type in ("Wall", "Roof"):
+                if self.envi_con_type in ("Wall", "Roof") and self.envi_con_con == 'External':
                     newrow(layout, 'PV:', self, "pv")
                     
                     if self.pv:
@@ -2284,7 +2284,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             newrow(layout, "Heat capacity:", self, "thc")
                             
             if self.envi_con_type != "Shading" and not self.pv:
-                newrow(layout, 'Boundary:', self, "envi_con_con")
+                if self.envi_con_con in ('External', 'Zone'):
+                    newrow(layout, 'Air-flow:', self, "envi_afsurface")
                 newrow(layout, 'Specification:', self, "envi_con_makeup")
 #                newrow(layout, 'Boundary:', self, "envi_bc")
                 
@@ -2300,8 +2301,10 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     if self.envi_con_type != 'Window' or not self.envi_simple_glazing:
                         row = layout.row()                
                         row.prop(self, 'envi_con_list')
+                        
+                        con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
         
-                        for l, layername in enumerate(envi_cons.propdict[self.envi_con_type][self.envi_con_list]):    
+                        for l, layername in enumerate(envi_cons.propdict[con_type][self.envi_con_list]):    
                             row = layout.row()
                             
                             if layername in envi_mats.wgas_dat:
@@ -2437,10 +2440,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
      
     def ep_write(self):
         self['matname'] = get_mat(self, 1).name
-            
+        con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
+   
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
-            mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
+            mats = envi_cons.propdict[con_type][self.envi_con_list]
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
             paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
@@ -2478,8 +2482,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 
                 elif presetmat in envi_mats.gas_dat:
                     params = ('Name', 'Resistance')
-                    paramvs = ('{}-layer-{}'.format(self['matname'], pm), matlist[0])
-                    ep_text += epentry("Material", params, paramvs)
+                    paramvs = ('{}-layer-{}'.format(self['matname'], pm), matlist[2])
+                    ep_text += epentry("Material:AirGap", params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Glazing':
                     params = ('Name', 'Optical Data Type', 'Window Glass Spectral Data Set Name', 'Thickness (m)', 'Solar Transmittance at Normal Incidence', 'Front Side Solar Reflectance at Normal Incidence',
@@ -4690,7 +4694,7 @@ class EnViZone(Node, EnViNodes):
         self.afs = 0
         obj = bpy.data.objects[self.zone]
         odm = obj.data.materials
-        bfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_boundary == 1], key=lambda face: -face.center[2])
+        bfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_con_con == 'Zone'], key=lambda face: -face.center[2])
 #        buvals = [retuval(odm[face.material_index]) for face in bfacelist]
         bsocklist = ['{}_{}_b'.format(odm[face.material_index].name, face.index) for face in bfacelist]
         sfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_afsurface == 1 and get_con_node(odm[face.material_index]).envi_con_type not in ('Window', 'Door')], key=lambda face: -face.center[2])

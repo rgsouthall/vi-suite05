@@ -27,7 +27,7 @@ def get_con_node(mat):
 def boundpoly(obj, emnode, poly, enng):
     mat = obj.data.materials[poly.material_index]
     
-    if emnode.envi_boundary:
+    if emnode.envi_con_con == 'Zone':
         nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
         
         for node in nodes:
@@ -46,7 +46,7 @@ def boundpoly(obj, emnode, poly, enng):
                     return(("Surface", insock.links[0].from_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
                 
             elif outsock.links:
-                bobj = outsock.links[0].to_node.zone
+                bobj = bpy.data.objects[outsock.links[0].to_node.zone]
                 bpoly = bobj.data.polygons[int(outsock.links[0].to_socket.name.split('_')[-2])]
                 bmat = bobj.data.materials[bpoly.material_index]
                 
@@ -59,10 +59,10 @@ def boundpoly(obj, emnode, poly, enng):
             else:
                 return(("Adiabatic", "", "NoSun", "NoWind"))
 
-    elif emnode.envi_thermalmass:
+    elif emnode.envi_con_con == 'Thermal mass':
         return(("Adiabatic", "", "NoSun", "NoWind"))
-    elif poly.calc_center_bounds()[2] <= 0:
-        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
+#    elif poly.calc_center_bounds()[2] <= 0:
+#        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))
 
