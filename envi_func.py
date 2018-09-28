@@ -2,6 +2,7 @@ import bpy, mathutils, colorsys, os
 from collections import OrderedDict
 from numpy import arange, array
 from numpy import sum as nsum
+from .vi_func import logentry 
 
 def get_mat(node, ee):
     for material in bpy.data.materials:
@@ -22,6 +23,48 @@ def get_con_node(mat):
             return ecanodes[0]
     else:
         return None
+    
+def boundpoly(obj, emnode, poly, enng):
+    mat = obj.data.materials[poly.material_index]
+    
+    if emnode.envi_con_con == 'Zone':
+        nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
+        
+        for node in nodes:
+            insock = node.inputs['{}_{}_b'.format(mat.name, poly.index)]
+            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]
+              
+            if insock.links:
+                bobj = bpy.data.objects[insock.links[0].from_node.zone]
+                bpoly = bobj.data.polygons[int(insock.links[0].from_socket.name.split('_')[-2])]
+                bmat = bobj.data.materials[bpoly.material_index]
+                
+                if emnode.resist != get_con_node(bmat).resist:
+                    logentry('U-values of the paired boundary surfaces {0} and {1} do not match. {1} construction takes precedence'.format(mat.name+'_'+str(poly.index), insock.links[0].to_node.zone+'_'+str(bpoly.index)))
+                    return(('', '', '', ''))
+                else:
+                    return(("Surface", insock.links[0].from_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
+                
+            elif outsock.links:
+                bobj = bpy.data.objects[outsock.links[0].to_node.zone]
+                bpoly = bobj.data.polygons[int(outsock.links[0].to_socket.name.split('_')[-2])]
+                bmat = bobj.data.materials[bpoly.material_index]
+                
+                if emnode.resist != get_con_node(bmat).resist: 
+                    logentry('U-values of the paired boundary surfaces {0} and {1} do not match. {0} construction takes precedence'.format(mat.name+'_'+str(poly.index), outsock.links[0].to_node.zone+'_'+str(bpoly.index)))
+                    return(("Zone", bobj, "NoSun", "NoWind"))
+                else:
+                    return(("Surface", outsock.links[0].to_node.zone+'_'+str(bpoly.index), "NoSun", "NoWind"))
+                
+            else:
+                return(("Adiabatic", "", "NoSun", "NoWind"))
+
+    elif emnode.envi_con_con == 'Thermal mass':
+        return(("Adiabatic", "", "NoSun", "NoWind"))
+#    elif poly.calc_center_bounds()[2] <= 0:
+#        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
+    else:
+        return(("Outdoors", "", "SunExposed", "WindExposed"))
 
 def retenresdict(scene):
     return {'Temp': ('Temperature (degC)', scene.en_temp_max, scene.en_temp_min, u"\u00b0C"), 'Hum': ('Humidity (%)', scene.en_hum_max, scene.en_hum_min, '%'),
@@ -49,14 +92,14 @@ def resnameunits():
     return [bpy.props.BoolProperty(name = rnu[str(rnum)][0], description = rnu[str(rnum)][1], default = False) for rnum in range(len(rnu))]
 
 def aresnameunits():
-    rnu = {'0': (u"Max temp (\u2103)", "Maximum zone temperature"), '1': (u"Min temp (\u2103)", "Minimum zone temperature"), '2': (u"Ave temp (\u2103)", "Average zone temperature"), 
-                '3': ("Max heating (W)", "Max Zone heating"), '4': ("Min heating (W)", "Min Zone heating"), '5': ("Ave heating (W)", "Ave Zone heating"), 
+    rnu = {'0': (u"Max temp (\u2103)", "Maximum zone temperature"), '1': (u"Min temp (\u2103)", "Minimum zone temperature"), '2': (u"Avg temp (\u2103)", "Average zone temperature"), 
+                '3': ("Max heating (W)", "Max Zone heating"), '4': ("Min heating (W)", "Min Zone heating"), '5': ("Avg heating (W)", "Avg Zone heating"), 
                 '6': ("Total heating (kWh)", "Total zone heating"), '7': (u"Total heating (kWh/m\u00b2)", "Total zone heating per floor area"),
-                '8': ("Max cooling (W)", "Max Zone cooling"), '9': ("Min cooling (W)", "Min Zone cooling"), '10': ("Ave cooling (W)", "Ave Zone colling"), 
+                '8': ("Max cooling (W)", "Max Zone cooling"), '9': ("Min cooling (W)", "Min Zone cooling"), '10': ("Avg cooling (W)", "Avg Zone colling"), 
                 '11': ("Total cooling (kWh)", "Total zone cooling"), '12': (u"Total cooling (kWh/m\u00b2)", "Total zone cooling per floor area"), 
-                '13': ("Max CO2 (ppm)", u"Maximum zone CO\u2082 level"), '14': ("Ave CO2 (ppm)", u"Average zone CO\u2082 level"), '15': ("Min CO2 (ppm)", u"Minimum zone CO\u2082 level"),
-                '16': (u"Max flow in (m\u00b3/s)", u"Maximum linkage flow level"), '17': (u"Min flow in (m\u00b3/s)", u"Minimum linkage flow level"), '18': (u"Ave flow in (m\u00b3/s)", u"Average linkage flow level"),
-                '19': ('Max SHG (W)', 'Maximum Solar Heat Gain'), '20': ('Min SHG (W)', 'Minimum Solar Heat Gain'), '21': ('Ave SHG (W)', 'Average Solar Heat Gain'),
+                '13': ("Max CO2 (ppm)", u"Maximum zone CO\u2082 level"), '14': ("Avg CO2 (ppm)", u"Average zone CO\u2082 level"), '15': ("Min CO2 (ppm)", u"Minimum zone CO\u2082 level"),
+                '16': (u"Max flow in (m\u00b3/s)", u"Maximum linkage flow level"), '17': (u"Min flow in (m\u00b3/s)", u"Minimum linkage flow level"), '18': (u"Avg flow in (m\u00b3/s)", u"Average linkage flow level"),
+                '19': ('Max SHG (W)', 'Maximum Solar Heat Gain'), '20': ('Min SHG (W)', 'Minimum Solar Heat Gain'), '21': ('Avg SHG (W)', 'Average Solar Heat Gain'),
                 '22': ('Total SHG (kWh)', 'Total solar heat gain'),'23': ('Total SHG (kWh/m2)', 'Total Ssolar heat gain per floor area')}
     return [bpy.props.BoolProperty(name = rnu[str(rnum)][0], description = rnu[str(rnum)][1], default = False) for rnum in range(len(rnu))]
 
@@ -408,7 +451,7 @@ def processh(lines, znlist):
                 hdict[linesplit[0]] = ['Time'] 
             elif linesplit[3] in envdict:
                 hdict[linesplit[0]] = ['Climate',  '', envdict[linesplit[3]]]  
-            elif linesplit[3] in zresdict and linesplit[2] in znlist:
+            elif linesplit[3] in zresdict and retzonename(linesplit[2]) in znlist:
                 hdict[linesplit[0]] = ['Zone',  retzonename(linesplit[2]),  zresdict[linesplit[3]]]
             elif linesplit[3] in enresdict and 'ExtNode' in linesplit[2]:
                 hdict[linesplit[0]] = ['External',  linesplit[2],  enresdict[linesplit[3]]]
@@ -504,51 +547,51 @@ def processf(pro_op, node):
             if temps:
                 areslists.append(['All', 'Zone', zn, 'Max temp (C)', ' '.join([str(max(t[1])) for t in temps if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min temp (C)', ' '.join([str(min(t[1])) for t in temps if t[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave temp (C)', ' '.join([str(sum(t[1])/len(t[1])) for t in temps if t[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg temp (C)', ' '.join([str(sum(t[1])/len(t[1])) for t in temps if t[0] == zn])])
             if hums:
                 areslists.append(['All', 'Zone', zn, 'Max humidity (C)', ' '.join([str(max(h[1])) for h in hums if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min humidity (C)', ' '.join([str(min(h[1])) for h in hums if h[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave humidity (C)', ' '.join([str(sum(h[1])/len(h[1])) for h in hums if h[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg humidity (C)', ' '.join([str(sum(h[1])/len(h[1])) for h in hums if h[0] == zn])])
             if heats:
                 areslists.append(['All', 'Zone', zn, 'Max heating (W)', ' '.join([str(max(h[1])) for h in heats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min heating (W)', ' '.join([str(min(h[1])) for h in heats if h[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave heating (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in heats if h[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg heating (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in heats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total heating (kWh)', ' '.join([str(sum(h[1])*0.001) for h in heats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total heating (kWh/m2)', ' '.join([str(sum(h[1])*0.001/[o for o in bpy.data.objects if o.name.upper() == zn][0]['floorarea']) for h in heats if h[0] == zn])])
             if cools:
                 areslists.append(['All', 'Zone', zn, 'Max cooling (W)', ' '.join([str(max(h[1])) for h in cools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min cooling (W)', ' '.join([str(min(h[1])) for h in cools if h[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave cooling (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in cools if h[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg cooling (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in cools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total cooling (kWh)', ' '.join([str(sum(h[1])*0.001) for h in cools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total cooling (kWh/m2)', ' '.join([str(sum(h[1])*0.001/[o for o in bpy.data.objects if o.name.upper() == zn][0]['floorarea']) for h in cools if h[0] == zn])])
             if aheats:
                 areslists.append(['All', 'Zone', zn, 'Max air heating (W)', ' '.join([str(max(h[1])) for h in aheats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min air heating (W)', ' '.join([str(min(h[1])) for h in aheats if h[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave air heating (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in aheats if h[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg air heating (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in aheats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total air heating (kWh)', ' '.join([str(sum(h[1])*0.001) for h in aheats if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total air heating (kWh/m2)', ' '.join([str(sum(h[1])*0.001/[o for o in bpy.data.objects if o.name.upper() == zn][0]['floorarea']) for h in aheats if h[0] == zn])])
             if acools:
                 areslists.append(['All', 'Zone', zn, 'Max air cool (W)', ' '.join([str(max(h[1])) for h in acools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min air cool (W)', ' '.join([str(min(h[1])) for h in acools if h[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave air cool (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in acools if h[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg air cool (W)', ' '.join([str(sum(h[1])/len(h[1])) for h in acools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Air cooling (kWh)', ' '.join([str(sum(h[1])*0.001) for h in acools if h[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Air cooling (kWh/m2)', ' '.join([str(sum(h[1])*0.001/[o for o in bpy.data.objects if o.name.upper() == zn][0]['floorarea']) for h in acools if h[0] == zn])])
             if co2s:
                 areslists.append(['All', 'Zone', zn, 'Max CO2 (ppm)', ' '.join([str(max(t[1])) for t in co2s if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min CO2 (ppm)', ' '.join([str(min(t[1])) for t in co2s if t[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave CO2 (ppm)', ' '.join([str(sum(t[1])/len(t[1])) for t in co2s if t[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg CO2 (ppm)', ' '.join([str(sum(t[1])/len(t[1])) for t in co2s if t[0] == zn])])
             if comfppds:
                 areslists.append(['All', 'Zone', zn, 'Max PPD', ' '.join([str(max(t[1])) for t in comfppds if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min PPD', ' '.join([str(min(t[1])) for t in comfppds if t[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave PPD', ' '.join([str(sum(t[1])/len(t[1])) for t in comfppds if t[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg PPD', ' '.join([str(sum(t[1])/len(t[1])) for t in comfppds if t[0] == zn])])
             if comfpmvs:
                 areslists.append(['All', 'Zone', zn, 'Max PMV', ' '.join([str(max(t[1])) for t in comfpmvs if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min PMV', ' '.join([str(min(t[1])) for t in comfpmvs if t[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave PMV', ' '.join([str(sum(t[1])/len(t[1])) for t in comfpmvs if t[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg PMV', ' '.join([str(sum(t[1])/len(t[1])) for t in comfpmvs if t[0] == zn])])
             if shgs:
                 areslists.append(['All', 'Zone', zn, 'Max SHG (W)', ' '.join([str(max(t[1])) for t in shgs if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Min SHG (W)', ' '.join([str(min(t[1])) for t in shgs if t[0] == zn])])
-                areslists.append(['All', 'Zone', zn, 'Ave SHG (W)', ' '.join([str(sum(t[1])/len(t[1])) for t in shgs if t[0] == zn])])
+                areslists.append(['All', 'Zone', zn, 'Avg SHG (W)', ' '.join([str(sum(t[1])/len(t[1])) for t in shgs if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total SHG (kWh)', ' '.join([str(sum(t[1])*0.001) for t in shgs if t[0] == zn])])
                 areslists.append(['All', 'Zone', zn, 'Total SHG (kWh/m2)', ' '.join([str(sum(t[1])*0.001/[o for o in bpy.data.objects if o.name.upper() == zn][0]['floorarea']) for t in shgs if t[0] == zn])])
             if heats and cools:

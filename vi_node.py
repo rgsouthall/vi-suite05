@@ -285,7 +285,7 @@ class LiViNode(Node, ViNodes):
     sourcemenu = EnumProperty(name="", description="Source type", items=sourcetype, default = '0', update = nodeupdate)
     sourcemenu2 = EnumProperty(name="", description="Source type", items=sourcetype2, default = '0', update = nodeupdate)
     hdrname = StringProperty(name="", description="Name of the composite HDR sky file", default="vi-suite.hdr", update = nodeupdate)
-    hdrmap = EnumProperty(items=[("0", "Polar", "Polar ot LatLong HDR mapping"),("1", "Angular", "Light probe or angular mapping")], name="", description="Type of HDR panorama mapping", default="0", update = nodeupdate)
+    hdrmap = EnumProperty(items=[("0", "Polar", "Polar to LatLong HDR mapping"),("1", "Angular", "Light probe or angular mapping")], name="", description="Type of HDR panorama mapping", default="0", update = nodeupdate)
     hdrangle = FloatProperty(name="", description="HDR rotation (deg)", min=0, max=360, default=0, update = nodeupdate)
     hdrradius = FloatProperty(name="", description="HDR radius (m)", min=0, max=5000, default=1000, update = nodeupdate)
     mtxname = StringProperty(name="", description="Name of the calculated vector sky file", default="", subtype="FILE_PATH", update = nodeupdate)
@@ -984,6 +984,9 @@ class ViSPNode(Node, ViNodes):
     def export(self):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.suns)]
+        
+    def update(self):
+        pass
 
 
 class ViSVFNode(Node, ViNodes):
@@ -1997,20 +2000,27 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     bl_icon = 'FORCE_WIND'
     
     def con_update(self, context):
-#        self.id_data['envi_con_type'] = self.envi_con_type
-        if not self.pv:
-            if self.envi_con_makeup != "1" or self.envi_con_type == 'Shading':
-                for link in self.inputs['Outer layer'].links:
-                    self.id_data.links.remove(link)
-                self.inputs['Outer layer'].hide = True
+        if len(self.inputs) == 3:
+            if not self.pv:
+                remlink(self, self.inputs['PV Schedule'].links)
+                self.inputs['PV Schedule'].hide = True
+                if self.envi_con_makeup != "1" or self.envi_con_type in ('Shading', 'None'):
+                    for link in self.inputs['Outer layer'].links:
+                        self.id_data.links.remove(link)
+                    self.inputs['Outer layer'].hide = True
+                else:
+                    self.inputs['Outer layer'].hide = False
             else:
                 self.inputs['Outer layer'].hide = False
-        else:
-            self.inputs['Outer layer'].hide = False
-            
-        [link.from_node.update() for link in self.inputs['Outer layer'].links]
-        get_mat(self, 0).envi_type = self.envi_con_type        
-        self.update()
+                if self.pp != '0':
+                    remlink(self, self.inputs['PV Schedule'].links)
+                    self.inputs['PV Schedule'].hide = True
+                else:
+                    self.inputs['PV Schedule'].hide = False
+                
+            [link.from_node.update() for link in self.inputs['Outer layer'].links]
+            get_mat(self, 0).envi_type = self.envi_con_type        
+            self.update()
     
     def frame_update(self, context):
         if self.fclass in ("0", "1"):
@@ -2026,13 +2036,26 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         if self.active:
             for node in [n for n in self.id_data.nodes if n.bl_idname == 'EnViCon' and n != self]:
                 node.active = False
-
-    
+                
+    def bc_update(self, context):
+        ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling")
+        if self.envi_con_type in ("Wall", "Floor", "Roof"):
+            return [("External", "External", "External boundary"),
+             ("Zone", "Zone", "Zone boundary"),
+             ("Thermal mass", "Thermal mass", "Adiabatic")]
+        elif self.envi_con_type in ("Window", "Door"):
+            return [("External", "External", "External boundary"),
+             ("Zone", "Zone", "Zone boundary")]
+        elif self.envi_con_type == 'Ceiling':
+            return [("Zone", "Zone", "Zone boundary"),
+                    ("Thermal mass", "Thermal mass", "Adiabatic")]
+        
+                        
     matname = StringProperty(name = "", description = "", default = '')
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
                                             ("Roof", "Roof", "Roof construction"),
-                                            ("Ceiling", "Ceiling", "Ceiling construction"),
+ #                                           ("Ceiling", "Ceiling", "Ceiling construction"),
                                             ("Window", "Window", "Window construction"), 
                                             ("Door", "Door", "Door construction"),
                                             ("Shading", "Shading", "Shading material"),
@@ -2046,14 +2069,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                             name = "", 
                                             description = "Pre-set construction of custom layers", 
                                             default = "0", update = con_update)
-    
+    envi_con_con = EnumProperty(items = bc_update, 
+                                            name = "", 
+                                            description = "Construction context", update = con_update)
     envi_simple_glazing = BoolProperty(name = "", description = "Flag to siginify whether to use a EP simple glazing representation", default = False)
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
-    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
+#    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
     envi_afsurface = BoolProperty(name = "", description = "Flag to siginify whether the material represents an airflow surface", default = False)
-    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
+#    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
     
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
@@ -2111,16 +2136,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     pp = EnumProperty(items = [("0", "Simple", "Do not model reflected beam component"), 
                                ("1", "One-Diode", "Model reflectred beam as beam"),
                                ("2", "Sandia", "Model reflected beam as diffuse")], 
-                                name = "", description = "Photovoltaic Performance Object Type", default = "0")
+                                name = "", description = "Photovoltaic Performance Object Type", default = "0", update = con_update)
     ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
                                ("1", "Amorphous", "Model reflectred beam as beam")], 
                                 name = "", description = "Photovoltaic Type", default = "0")
     hti = EnumProperty(items = [("Decoupled", "Decoupled", "Decoupled"), 
-                               ("Ulleberg", "Ulleberg", "DecoupledUllebergDynamic"),
-                               ("SurfaceOutside", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
-                               ("Transpired", "Transpired", "IntegratedTranspiredCollector"),
-                               ("ExteriorVented", "ExteriorVented", "IntegratedExteriorVentedCavity"),
-                               ("PVThermal", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
+                               ("DecoupledUllebergDynamic", "Ulleberg", "DecoupledUllebergDynamic"),
+                               ("IntegratedSurfaceOutsideFace", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
+                               ("IntegratedTranspiredCollector", "Transpired", "IntegratedTranspiredCollector"),
+                               ("IntegratedExteriorVentedCavity", "ExteriorVented", "IntegratedExteriorVentedCavity"),
+                               ("PhotovoltaicThermalSolarCollector", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
                                 name = "", description = "Conversion Efficiency Input Mode'", default = "Decoupled")
 
     e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
@@ -2174,79 +2199,97 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     thc = FloatProperty(name = " J/m2.K", description = " Total Heat Capacity", min = 10000, max = 100000, default = 50000)
     
     def init(self, context):
-        self['nodeid'] = nodeid(self)
+        self.inputs.new('EnViSchedSocket', 'PV Schedule')
+        self.inputs['PV Schedule'].hide = True
         self.inputs.new('envi_ol_sock', 'Outer layer')
         self.inputs['Outer layer'].hide = True
         self.inputs.new('envi_f_sock', 'Outer frame layer')
-#        self.inputs[0].hide = True
-#        self.inputs[1].hide = True
         self.inputs['Outer frame layer'].hide = True
-#        self.active = True
+        self['nodeid'] = nodeid(self)
         
     def draw_buttons(self, context, layout):
         newrow(layout, 'Active:', self, 'active')
+        newrow(layout, 'Boundary:', self, "envi_con_con")
         newrow(layout, 'Type:', self, "envi_con_type")
         
         if self.envi_con_type != "None":
+
+#            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
+#                newrow(layout, 'Context:', self, "envi_con_con")
+##                newrow(layout, 'Intrazone:', self, "envi_boundary")
+
+#                if self.envi_con_con == 'External' and self.envi_con_type in ("Wall", "Roof"):
+#                    newrow(layout, 'PV:', self, "pv")
+##                if self.envi_con_type in ("Wall", "Floor", "Roof", "Ceiling"):
+##                    newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
+#                    
+##                    if self.envi_con_type in ("Wall", "Roof"):
+##                        newrow(layout, 'PV:', self, "pv")
+#                    
+#                    if self.pv:
+#                        newrow(layout, "Heat transfer:", self, "hti")
+#                        newrow(layout, "Photovoltaic:", self, "pp")  
+#
+#                        if self.pp == '0':
+#                            newrow(layout, "PV area ratio:", self, "pvsa")
+#                            
+#                            if not self.inputs['PV Schedule'].links:
+#=======
             if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
-                    if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                        newrow(layout, 'PV:', self, "pv")
-                        
-                        if self.pv:
-                            newrow(layout, "Heat transfer:", self, "hti")
-                            newrow(layout, "Photovoltaic:", self, "pp")
-                            
-                            
-                            if self.pp == '0':
-                                newrow(layout, "PV area ratio:", self, "pvsa")
-                                newrow(layout, "Efficiency:", self, "eff")
-                            elif self.pp == '1':
-                                newrow(layout, "Model:", self, "e1menu")
-                                newrow(layout, "Series in parallel:", self, "ssp")
-                                newrow(layout, "Modules in series:", self, "mis")
-                                
-                                if self.e1menu == 'Custom':
-                                    newrow(layout, "Cell type:", self, "ct")
-                                    newrow(layout, "Silicon:", self, "mis")
-                                    newrow(layout, "Area:", self, "pvsa")
-                                    newrow(layout, "Trans*absorp:", self, "tap")
-                                    newrow(layout, "Band gap:", self, "sbg")
-                                    newrow(layout, "Shunt:", self, "sr")    
-                                    newrow(layout, "Short:", self, "scc") 
-                                    newrow(layout, "Open:", self, "ocv")
-                                    newrow(layout, "Ref. temp.:", self, "rt")
-                                    newrow(layout, "Ref. insol.:", self, "ri")
-                                    newrow(layout, "Max current:", self, "mc")
-                                    newrow(layout, "Max voltage:", self, "mv")
-                                    newrow(layout, "Max current:", self, "tcscc")
-                                    newrow(layout, "Max voltage:", self, "tcocv")
-                                    newrow(layout, "Ambient temp.:", self, "atnoct")
-                                    newrow(layout, "Cell temp.:", self, "ctnoct")
-                                    newrow(layout, "Insolation:", self, "inoct")
-                                else:
-                                    newrow(layout, "Trans*absorp:", self, "tap")
-                                    newrow(layout, "Band gap:", self, "sbg")
-                                    newrow(layout, "Shunt:", self, "sr")    
-                                    newrow(layout, "Ref. temp.:", self, "rt")
-                                    newrow(layout, "Ref. insol.:", self, "ri")
-                                    newrow(layout, "Test ambient:", self, "atnoct")
-                                    newrow(layout, "Test Insolation:", self, "inoct")
-                                    newrow(layout, "Heat loss coeff.:", self, "hlc")
-                                    newrow(layout, "Heat capacity:", self, "thc")
-                                    
-            if self.envi_con_type != "Shading" and not self.pv:
-                newrow(layout, 'Specification:', self, "envi_con_makeup")
-    
-                if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
-                    if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                        newrow(layout, 'Intrazone:', self, "envi_boundary")
-                        newrow(layout, 'Air-flow:', self, "envi_afsurface")
-
-                        if self.envi_con_type in ("Wall", "Floor", "Roof"):
-                            newrow(layout, 'Thermal mass:', self, "envi_thermalmass")
-
-                if self.envi_con_makeup == '0':
+                
+                if self.envi_con_type in ("Wall", "Roof") and self.envi_con_con == 'External':
+                    newrow(layout, 'PV:', self, "pv")
                     
+                    if self.pv:
+                        newrow(layout, "Heat transfer:", self, "hti")
+                        newrow(layout, "Photovoltaic:", self, "pp")
+                                                    
+                        if self.pp == '0':
+                            newrow(layout, "PV area ratio:", self, "pvsa")
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+                            newrow(layout, "Efficiency:", self, "eff")
+                            
+                    elif self.pp == '1':
+                        newrow(layout, "Model:", self, "e1menu")
+                        newrow(layout, "Series in parallel:", self, "ssp")
+                        newrow(layout, "Modules in series:", self, "mis")
+                        
+                        if self.e1menu == 'Custom':
+                            newrow(layout, "Cell type:", self, "ct")
+                            newrow(layout, "Silicon:", self, "mis")
+                            newrow(layout, "Area:", self, "pvsa")
+                            newrow(layout, "Trans*absorp:", self, "tap")
+                            newrow(layout, "Band gap:", self, "sbg")
+                            newrow(layout, "Shunt:", self, "sr")    
+                            newrow(layout, "Short:", self, "scc") 
+                            newrow(layout, "Open:", self, "ocv")
+                            newrow(layout, "Ref. temp.:", self, "rt")
+                            newrow(layout, "Ref. insol.:", self, "ri")
+                            newrow(layout, "Max current:", self, "mc")
+                            newrow(layout, "Max voltage:", self, "mv")
+                            newrow(layout, "Max current:", self, "tcscc")
+                            newrow(layout, "Max voltage:", self, "tcocv")
+                            newrow(layout, "Ambient temp.:", self, "atnoct")
+                            newrow(layout, "Cell temp.:", self, "ctnoct")
+                            newrow(layout, "Insolation:", self, "inoct")
+                        else:
+                            newrow(layout, "Trans*absorp:", self, "tap")
+                            newrow(layout, "Band gap:", self, "sbg")
+                            newrow(layout, "Shunt:", self, "sr")    
+                            newrow(layout, "Ref. temp.:", self, "rt")
+                            newrow(layout, "Ref. insol.:", self, "ri")
+                            newrow(layout, "Test ambient:", self, "atnoct")
+                            newrow(layout, "Test Insolation:", self, "inoct")
+                            newrow(layout, "Heat loss coeff.:", self, "hlc")
+                            newrow(layout, "Heat capacity:", self, "thc")
+                            
+            if self.envi_con_type != "Shading" and not self.pv:
+                if self.envi_con_con in ('External', 'Zone'):
+                    newrow(layout, 'Air-flow:', self, "envi_afsurface")
+                newrow(layout, 'Specification:', self, "envi_con_makeup")
+#                newrow(layout, 'Boundary:', self, "envi_bc")
+                
+                if self.envi_con_makeup == '0':                    
                     if self.envi_con_type == 'Window':
                         newrow(layout, 'Simple glazing:', self, "envi_simple_glazing")
     
@@ -2258,9 +2301,12 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                     if self.envi_con_type != 'Window' or not self.envi_simple_glazing:
                         row = layout.row()                
                         row.prop(self, 'envi_con_list')
+                        
+                        con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
         
-                        for l, layername in enumerate(envi_cons.propdict[self.envi_con_type][self.envi_con_list]):    
+                        for l, layername in enumerate(envi_cons.propdict[con_type][self.envi_con_list]):    
                             row = layout.row()
+                            
                             if layername in envi_mats.wgas_dat:
                                 row.label(text = '{} ({})'.format(layername, "14mm"))
                                 row.prop(self, "lt{}".format(l))
@@ -2276,8 +2322,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                             else:
                                 row.label(text = '{} ({})'.format(layername, "{}mm".format(envi_mats.matdat[layername][7])))
                                 row.prop(self, "lt{}".format(l))
-
-                    
+                   
             if self.envi_con_type == 'Window':
                 newrow(layout, 'Frame:', self, "fclass")
                 if self.fclass == '0':
@@ -2316,7 +2361,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 else:
                     newrow(layout, '% area:', self, "farea")
             
-            elif self.envi_con_type in ('Wall', 'Floor', 'Roof'):
+            elif self.envi_con_type in ('Wall', 'Floor', 'Roof') and not self.pv:
                 row = layout.row()
                 try:
                     row.label(text = 'U-value  = {:.3f} W/m2.K'.format(1/self.resist)) 
@@ -2330,14 +2375,26 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Efficiency:", self, "eff")
         
     def update(self):
+#<<<<<<< HEAD
+#        self.valid()
+#    
+#    def valid(self):
+#        try:
+#            if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type not in ('None', 'Shading')) or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+#                nodecolour(self, 1)
+#            else:
+#                nodecolour(self, 0)
+#        except:
+#=======
 #        socklink2(self.inputs['Outer layer'], self.id_data)
-        self.valid()
+        if len(self.inputs) == 2:
+            self.valid()
     
     def valid(self):
-        if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+        if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or \
+        (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             nodecolour(self, 1)
-        else:
-            nodecolour(self, 0)
             
     def pv_ep_write(self, sn):
         self['matname'] = get_mat(self, 1).name
@@ -2349,15 +2406,20 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         paramvs = ['{}-pv'.format(sn), sn, 
                    ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
                    self.hti, self.ssp, self.mis]
-        
-        
-        
+#<<<<<<< HEAD
+#        
+#=======
+#                
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
         ep_text = epentry('Generator:Photovoltaic', params, paramvs)
         
         if self.pp == '0':
-            params = ('Name', 'Fraction of Surface Area with Active Solar Cell', 'Conversion Efficiency Input Mode', 'Value for Cell Efficiency if Fixed')
-            paramvs = ('{}-pv-performance'.format(sn), self.pvsa * 0.01, 'Fixed', self.eff * 0.01)
+            params = ('Name', 'Fraction of Surface Area with Active Solar Cell', 'Conversion Efficiency Input Mode', 'Value for Cell Efficiency if Fixed', 'Efficiency Schedule Name')
+            paramvs = ('{}-pv-performance'.format(sn), self.pvsa * 0.01, ('Fixed', 'Scheduled')[len(self.inputs['PV Schedule'].links)], self.eff * 0.01, ('', '{}-pv-performance-schedule'.format(sn))[len(self.inputs['PV Schedule'].links)])
             ep_text += epentry('PhotovoltaicPerformance:Simple', params, paramvs)
+            
+            if self.inputs['PV Schedule'].links:
+                ep_text += self.inputs['PV Schedule'].links[0].from_node.epwrite('{}-pv-performance-schedule'.format(sn), 'Fraction')
             
         elif self.pp == '1':
             params = ('Name', 'Cell type', 'Number of Cells in Series', 'Active Area (m2)', 'Transmittance Absorptance Product',
@@ -2378,11 +2440,11 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
      
     def ep_write(self):
         self['matname'] = get_mat(self, 1).name
-        print(self['matname'])
-            
+        con_type = {'Roof': 'Ceiling', 'Floor': 'Internal floor', 'Wall': 'Internal wall'}[self.envi_con_type] if self.envi_con_con in ('Thermal mass', 'Zone') and self.envi_con_type in ('Roof', 'Wall', 'Floor') else self.envi_con_type
+   
         if self.envi_con_makeup == '0':
             self.thicklist = [self.lt0, self.lt1, self.lt2, self.lt3, self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9]
-            mats = envi_cons.propdict[self.envi_con_type][self.envi_con_list]
+            mats = envi_cons.propdict[con_type][self.envi_con_list]
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
             paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
@@ -2420,8 +2482,8 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 
                 elif presetmat in envi_mats.gas_dat:
                     params = ('Name', 'Resistance')
-                    paramvs = ('{}-layer-{}'.format(self['matname'], pm), matlist[0])
-                    ep_text += epentry("Material", params, paramvs)
+                    paramvs = ('{}-layer-{}'.format(self['matname'], pm), matlist[2])
+                    ep_text += epentry("Material:AirGap", params, paramvs)
                 
                 elif self.envi_con_type =='Window' and envi_mats.matdat[presetmat][0] == 'Glazing':
                     params = ('Name', 'Optical Data Type', 'Window Glass Spectral Data Set Name', 'Thickness (m)', 'Solar Transmittance at Normal Incidence', 'Front Side Solar Reflectance at Normal Incidence',
@@ -2527,7 +2589,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
     bl_label = 'EnVi opaque layer'
     
 
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Class of layer", default = "0")
 
@@ -2617,8 +2679,8 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
         for material in bpy.data.materials:
             if self.id_data == material.envi_nodes:
                 break
-
-        self['layer_name'] = '{}-layer-{}'.format(material.name, ln) if self.envi_con_type != 'Frame' else '{}-frame-layer-{}'.format(material.name, ln)
+        self['matname'] = get_mat(self, 1).name
+        self['layer_name'] = '{}-layer-{}'.format(self['matname'], ln) if self.envi_con_type != 'Frame' else '{}-frame-layer-{}'.format(self['matname'], ln)
         
         if self.materialtype != '6':
             params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat Capacity (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance')
@@ -2632,8 +2694,11 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             
             if self.materialtype != '6':
                 paramvs = [self['layer_name'], matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]  
-                self.resist = self.thi * 0.001/matlist[1]
-                print('uv')
+                self.resist = self.thi * 0.001/float(matlist[1])
+#<<<<<<< HEAD
+#                
+#=======
+#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             else:
                 paramvs = [self['layer_name'], matlist[2]]
                 self.resist = matlist[2]
@@ -2655,7 +2720,7 @@ class ENVI_TLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_tl_node'
     bl_label = 'EnVi transparent layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -2741,7 +2806,7 @@ class ENVI_GLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_gl_node'
     bl_label = 'EnVi gas layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -2960,7 +3025,7 @@ class ENVI_Blind_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_bl_node'
     bl_label = 'EnVi blind'
     
-    so = EnumProperty(items = [("0", "Horizontal", "Select from databse"), 
+    so = EnumProperty(items = [("0", "Horizontal", "Select from database"), 
                                 ("1", "Vertical", "Define custom material properties")],
                                 name = "", description = "Slat orientation", default = '0')
     sw = FloatProperty(name = "mm", description = "Slat width", min = 0.1, max = 1000, default = 25)
@@ -3058,7 +3123,7 @@ class ENVI_SGLayer_Node(Node, ENVI_Material_Nodes):
     bl_idname = 'envi_sgl_node'
     bl_label = 'EnVi switchable glazing layer'
     
-    layer = EnumProperty(items = [("0", "Database", "Select from databse"), 
+    layer = EnumProperty(items = [("0", "Database", "Select from database"), 
                                         ("1", "Custom", "Define custom material properties")], 
                                         name = "", description = "Composition of the layer", default = "0")
     materialtype = EnumProperty(items = envi_layertype, name = "", description = "Layer material type")
@@ -3266,13 +3331,13 @@ class ENVI_PV_Node(Node, ENVI_Material_Nodes):
     ct = EnumProperty(items = [("0", "Crystalline", "Do not model reflected beam component"), 
                                ("1", "Amorphous", "Model reflectred beam as beam")], 
                                 name = "", description = "Photovoltaic Type", default = "0")
-    hti = EnumProperty(items = [("0", "Decoupled", "Decoupled"), 
+    hti = EnumProperty(items = [("Decoupled", "Decoupled", "Decoupled"), 
                                ("1", "Ulleberg", "DecoupledUllebergDynamic"),
                                ("2", "SurfaceOutside", "IntegratedSurfaceOutsideFace"),
                                ("3", "Transpired", "IntegratedTranspiredCollector"),
                                ("5", "ExteriorVented", "IntegratedExteriorVentedCavity"),
                                ("6", "PVThermal", "PhotovoltaicThermalSolarCollector")], 
-                                name = "", description = "Conversion Efficiency Input Mode'", default = "0")
+                                name = "", description = "Conversion Efficiency Input Mode'", default = "Decoupled")
 
     e1ddict = {'ASE 300-DFG/50': (6.2, 60, 50.5, 5.6, 0.001, -0.0038, 216, 318, 2.43), 
                'BPsolar 275': (4.75,  21.4, 17, 4.45, 0.00065, -0.08, 36, 320, 0.63),
@@ -3945,11 +4010,11 @@ class ViFVParaNode(Node, ViNodes):
         row.operator("node.fvsolve", text = "Calculate").nodeid = self['nodeid']
         
         
-####################### Vi Nodes Catagories ##############################
+####################### Vi Nodes Categories ##############################
 
 viexnodecat = [NodeItem("ViGExLiNode", label="LiVi Geometry"), NodeItem("LiViNode", label="LiVi Context"),
                 NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"),
-                NodeItem("ViEnELCDNode", label="EnVi Distrubution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
+                NodeItem("ViEnELCDNode", label="EnVi Distribution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
                 NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"), 
                 NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
                 
@@ -4629,7 +4694,7 @@ class EnViZone(Node, EnViNodes):
         self.afs = 0
         obj = bpy.data.objects[self.zone]
         odm = obj.data.materials
-        bfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_boundary == 1], key=lambda face: -face.center[2])
+        bfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_con_con == 'Zone'], key=lambda face: -face.center[2])
 #        buvals = [retuval(odm[face.material_index]) for face in bfacelist]
         bsocklist = ['{}_{}_b'.format(odm[face.material_index].name, face.index) for face in bfacelist]
         sfacelist = sorted([face for face in obj.data.polygons if get_con_node(odm[face.material_index]).envi_afsurface == 1 and get_con_node(odm[face.material_index]).envi_con_type not in ('Window', 'Door')], key=lambda face: -face.center[2])
@@ -4766,7 +4831,7 @@ class EnViZone(Node, EnViNodes):
         'Indoor and Outdoor Temperature Diffeence Lower Limit for Maximum Venting Opening Factor (deltaC)',
         'Indoor and Outdoor Temperature Diffeence Upper Limit for Minimum Venting Opening Factor (deltaC)',
         'Indoor and Outdoor Enthalpy Difference Lower Limit For Maximum Venting Open Factor (deltaJ/kg)',
-        'Indoor and Outdoor Enthalpy Difference Upper Limit for Minimun Venting Open Factor (deltaJ/kg)',
+        'Indoor and Outdoor Enthalpy Difference Upper Limit for Minimum Venting Open Factor (deltaJ/kg)',
         'Venting Availability Schedule Name')
 
         paramvs = (self.zone, self.control, tempschedname, mvof, lowerlim, upperlim, '0.0', '300000.0', vaschedname)
@@ -5036,7 +5101,7 @@ class EnViSSFlowNode(Node, EnViNodes):
 
         elif self.linkmenu == 'HO':
             if not (self.inputs['Node 1'].is_linked or self.inputs['Node 2'].is_linked and self.outputs['Node 1'].is_linked or self.outputs['Node 2'].is_linked):
-                exp_op.report({'ERROR'}, 'All horizonal opening surfaces must sit on the boundary between two thermal zones')
+                exp_op.report({'ERROR'}, 'All horizontal opening surfaces must sit on the boundary between two thermal zones')
 
             cfparams = ('Name', 'Air Mass Flow Coefficient When Opening is Closed (kg/s-m)', 'Air Mass Flow Exponent When Opening is Closed (dimensionless)', 'Sloping Plane Angle (deg)', 'Discharge Coefficient (dimensionless)')
             cfparamsv = ('{}_{}'.format(self.name, self.linkmenu), self.amfcc, self.amfec, self.spa, self.dcof)

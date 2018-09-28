@@ -65,8 +65,8 @@ envi_cons = envi_constructions()
 rvuerrdict = {'view up parallel to view direction': "Camera cannot point directly upwards", 
               ' x11': "No X11 display server found. You may need to install XQuartz", 
               'source center': "A light source has concave faces. Use mesh - cleanup - split concave faces"}
-pmerrdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have ocurred. Make sure light sources can see your geometry",
-             'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have ocurred. Turn off caustic photons and encompass the scene",
+pmerrdict = {'fatal - too many prepasses, no global photons stored\n': "Too many prepasses have occurred. Make sure light sources can see your geometry",
+             'fatal - too many prepasses, no global photons stored, no caustic photons stored\n': "Too many prepasses have occurred. Turn off caustic photons and encompass the scene",
                'fatal - zero flux from light sources\n': "No light flux, make sure there is a light source and that photon port normals point inwards",
                'fatal - no light sources in distribPhotons\n': "No light sources. Photon mapping does not work with HDR skies",
                'fatal - no valid photon ports found\n': 'Make sure photon ports are valid', 
@@ -1346,6 +1346,10 @@ class MAT_EnVi_Node(bpy.types.Operator):
             context.material.envi_nodes['envi_con_type'] = 'None'
             context.material.envi_nodes.nodes[0].active = True
             context.material.envi_nodes['enmatparams'] = {'airflow': 0, 'boundary': 0, 'tm': 0}
+
+        elif context.material.name != context.material.envi_nodes.name and context.material.envi_nodes.name in [m.name for m in bpy.data.materials]:
+            context.material.envi_nodes = context.material.envi_nodes.copy()
+            context.material.envi_nodes.name = context.material.name
         return {'FINISHED'}
     
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
@@ -1358,26 +1362,27 @@ class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
 
     def invoke(self, context, event):
         scene = context.scene
+        
         if viparams(self, scene):
             return {'CANCELLED'}
+        
         scene['viparams']['vidisp'] = ''
         node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
         (scene['enparams']['fs'], scene['enparams']['fe']) = (node.fs, node.fe) if node.animated else (scene.frame_current, scene.frame_current)
         locnode = node.inputs['Location in'].links[0].from_node
+        
         if not os.path.isfile(locnode.weather):
             self.report({'ERROR'}, 'Location node weather file is not valid')
             node.use_custom_color = 1
             return {'CANCELLED'}
+        
         node.preexport(scene)
         
         for frame in range(node.fs, node.fe + 1):
             scene.frame_set(frame)
             shutil.copyfile(locnode.weather, os.path.join(scene['viparams']['newdir'], "in{}.epw".format(frame)))
         scene.frame_set(node.fs)
-        addonfolder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-        vi_prefs = bpy.context.user_preferences.addons['{}'.format(addonfolder)].preferences
-        try:    shutil.copyfile(os.path.join(vi_prefs.epbin, "Energy+.idd"), os.path.join(scene['viparams']['newdir'], "Energy+.idd"))
-        except: pass
+
         if bpy.context.active_object and not bpy.context.active_object.hide:
             if bpy.context.active_object.type == 'MESH':
                 bpy.ops.object.mode_set(mode = 'OBJECT')
@@ -1387,109 +1392,8 @@ class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
         node.exported, node.outputs['Context out'].hide = True, False
         node.postexport()
         return {'FINISHED'}
-
-#class NODE_OT_EnSim(bpy.types.Operator):
-#    bl_idname = "node.ensim"
-#    bl_label = "Simulate"
-#    bl_description = "Run EnergyPlus"
-#    bl_register = True
-#    bl_undo = False
-#    nodeid = bpy.props.StringProperty()
-#
-#    def modal(self, context, event):
-#        if event.type == 'TIMER':
-#            scene = context.scene
-#            if self.esimrun.poll() is None:
-#                nodecolour(self.simnode, 1)
-#                try:                    
-#                    with open(os.path.join(scene['viparams']['newdir'], '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
-#                        for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
-#                            if self.pfile.check(int((100/self.lenframes) * (self.frame - scene['enparams']['fs'])) + int((100/self.lenframes) * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy))) == 'CANCELLED':
-#                                self.simnode.run = -1
-#                                return {'CANCELLED'}
-#                            self.simnode.run = int((100/self.lenframes) * (self.frame - scene['enparams']['fs'])) + int((100/self.lenframes) * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy))
-#                            break
-#                    return {'PASS_THROUGH'}
-#                except Exception as e:
-#                    logentry('EnergyPlus simulation error: {}'.format(e))
-#                    return {'PASS_THROUGH'}
-#                
-#            elif self.frame < scene['enparams']['fe']:
-#                self.frame += 1
-#                esimcmd = "energyplus {0} -w in{1}.epw -i {2} -p {3} in{1}.idf".format(self.expand, self.frame, self.eidd, ('{}{}'.format(self.resname, self.frame))) 
-#                self.esimrun = Popen(esimcmd.split(), stderr = PIPE)
-#                return {'PASS_THROUGH'}
-#            else:
-#                print('hello')
-#                self.simnode.run = -1
-#                for fname in [fname for fname in os.listdir('.') if fname.split(".")[0] == self.simnode.resname]:
-#                    os.remove(os.path.join(scene['viparams']['newdir'], fname))
-#
-#                nfns = [fname for fname in os.listdir('.') if fname.split(".")[0] == "{}{}out".format(self.resname, self.frame)]
-#                for fname in nfns:
-#                    os.rename(os.path.join(scene['viparams']['newdir'], fname), os.path.join(scene['viparams']['newdir'],fname.replace("eplusout", self.simnode.resname)))
-#                
-#                efilename = "{}{}out.err".format(self.resname, self.frame)
-#                print(efilename)
-#                
-#                if efilename not in [im.name for im in bpy.data.texts]:
-#                    bpy.data.texts.load(os.path.join(scene['viparams']['newdir'], efilename))
-#                else:
-#                    bpy.data.texts[efilename].filepath = os.path.join(scene['viparams']['newdir'], efilename)
-#
-#                if '** Severe  **' in bpy.data.texts[efilename]:
-#                    self.report({'ERROR'}, "Fatal error reported in the {} file. Check the file in Blender's text editor".format(efilename))
-#                    return {'CANCELLED'}
-#
-#                if 'EnergyPlus Terminated--Error(s) Detected' in self.esimrun.stderr.read().decode() or not [f for f in nfns if f.split(".")[1] == "eso"] or self.simnode.run == 0:
-#                    errtext = "There is no results file. Check you have selected results outputs and that there are no errors in the .err file in the Blender text editor." if not [f for f in nfns if f.split(".")[1] == "eso"] else "There was an error in the input IDF file. Check the *.err file in Blender's text editor."
-#                    self.report({'ERROR'}, errtext)
-#                    self.simnode.run = -1
-#                    return {'CANCELLED'}
-#                else:
-#                    nodecolour(self.simnode, 0)
-#                    processf(self, scene, self.simnode)
-#                    self.report({'INFO'}, "Calculation is finished.")
-#                    scene['viparams']['resnode'], scene['viparams']['connode'], scene['viparams']['vidisp'] = self.nodeid, '{}@{}'.format(self.connode.name, self.nodeid.split('@')[1]), 'en'
-#                    self.simnode.run = -1
-#                    if self.kivyrun.poll() is None:
-#                        self.kivyrun.kill()
-#                    return {'FINISHED'}
-#        else:
-#            return {'PASS_THROUGH'}
-#
-#    def invoke(self, context, event):
-#        scene = context.scene
-#         
-#        if viparams(self, scene):
-#            return {'CANCELLED'}
-#        
-#        if shutil.which('energyplus') is None:
-#            self.report({'ERROR'}, "Energyplus binary is not executable")
-#            return {'CANCELLED'}
-#        
-#        self.frame = scene['enparams']['fs']
-#        self.lenframes = len(range(scene['enparams']['fs'], scene['enparams']['fe'] + 1))             
-#        context.scene['viparams']['visimcontext'] = 'EnVi'
-#        self.pfile = progressfile(scene['viparams']['newdir'], datetime.datetime.now(), 100)
-#        self.kivyrun = progressbar(os.path.join(scene['viparams']['newdir'], 'viprogress'), 'EnergyPlus Results')
-#        wm = context.window_manager
-#        self._timer = wm.event_timer_add(1, context.window)
-#        wm.modal_handler_add(self)
-#        self.simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
-#        self.simnode.presim(context)
-#        self.connode = self.simnode.inputs['Context in'].links[0].from_node
-#        self.simnode.resfilename = os.path.join(scene['viparams']['newdir'], self.simnode.resname+'.eso')
-#        self.expand = "-x" if scene['viparams'].get('hvactemplate') else ""
-#        self.eidd = os.path.join(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))), "EPFiles", "Energy+.idd")  
-#        self.resname = (self.simnode.resname, 'eplus')[self.simnode.resname == '']
-#        os.chdir(scene['viparams']['newdir'])
-#        esimcmd = "energyplus {0} -w in{1}.epw -i {2} -p {3} in{1}.idf".format(self.expand, self.frame, self.eidd, ('{}{}'.format(self.resname, self.frame))) 
-#        self.esimrun = Popen(esimcmd.split(), stderr = PIPE)
-#        self.simnode.run = 0
-#        return {'RUNNING_MODAL'}
     
-class NODE_OT_EnSim2(bpy.types.Operator):
+class NODE_OT_EnSim(bpy.types.Operator):
     bl_idname = "node.ensim"
     bl_label = "Simulate"
     bl_description = "Run EnergyPlus"
@@ -1509,10 +1413,16 @@ class NODE_OT_EnSim2(bpy.types.Operator):
             if len(self.esimruns) > 1:
                 self.percent = 100 * sum([esim.poll() is not None for esim in self.esimruns])/self.lenframes 
             else:
-                with open(os.path.join(self.nd, '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
-                    for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
-                        self.percent = 100 * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy)
-                        break
+                try:
+                    with open(os.path.join(self.nd, '{}{}out.eso'.format(self.resname, self.frame)), 'r') as resfile:
+                        for resline in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:
+                            self.percent = 100 * int(resline.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy)
+                            break
+                except:
+                    pass
+#                    logentry('There was an error in the EnVi simulation. Check the error log in the text editor')
+#                    return {self.terminate('CANCELLED', context)}
+                
             if all([esim.poll() is not None for esim in self.esimruns]) and self.e == self.lenframes:
                 for fname in [fname for fname in os.listdir('.') if fname.split(".")[0] == self.simnode.resname]:
                     os.remove(os.path.join(self.nd, fname))
@@ -1569,10 +1479,9 @@ class NODE_OT_EnSim2(bpy.types.Operator):
         self.connode = self.simnode.inputs[0].links[0].from_node.name
         self.simnode.presim(context)        
         self.expand = "-x" if scene['viparams'].get('hvactemplate') else ""
-        self.eidd = os.path.join(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))), "EPFiles", "Energy+.idd")  
         self.resname = (self.simnode.resname, 'eplus')[self.simnode.resname == '']
         os.chdir(scene['viparams']['newdir'])
-        self.esimcmds = ["energyplus {0} -w in{1}.epw -i {2} -p {3} in{1}.idf".format(self.expand, frame, self.eidd, ('{}{}'.format(self.resname, frame))) for frame in self.frames] 
+        self.esimcmds = ["energyplus {0} -w in{1}.epw -p {2} in{1}.idf".format(self.expand, frame, ('{}{}'.format(self.resname, frame))) for frame in self.frames] 
         self.esimruns = []
         self.simnode.run = 1
         self.processors = self.simnode.processors if self.simnode.mp else 1
@@ -2009,13 +1918,13 @@ class VIEW3D_OT_EnPDisplay(bpy.types.Operator):
 
         if scene.resazmaxt_disp and 'Max temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MaxTemp')
-        if scene.resazavet_disp and 'Ave temp (C)' in zmetrics:
+        if scene.resazavet_disp and 'Avg temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'AveTemp')
         if scene.resazmint_disp and 'Min temp (C)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MinTemp')
         if scene.resazmaxhw_disp and 'Max heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MaxHeat')
-        if scene.resazavehw_disp and 'Ave heating (W)' in zmetrics:
+        if scene.resazavehw_disp and 'Avg heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'AveHeat')
         if scene.resazminhw_disp and 'Min heating (W)' in zmetrics:
             envizres(scene, eresobs, resnode, 'MinHeat')
@@ -2059,7 +1968,7 @@ class NODE_OT_Chart(bpy.types.Operator, io_utils.ExportHelper):
         if not mp:
             self.report({'ERROR'},"Matplotlib cannot be found by the Python installation used by Blender")
             return {'CANCELLED'}
-
+        plt.clf()
         Sdate = dt.fromordinal(dt(year, 1, 1).toordinal() + node['Start'] - 1)# + datetime.timedelta(hours = node.dsh - 1)
         Edate = dt.fromordinal(dt(year, 1, 1).toordinal() + node['End'] - 1)# + datetime.timedelta(hours = node.deh - 1)
         chart_disp(self, plt, node, innodes, Sdate, Edate)
@@ -3303,7 +3212,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                     self.tablecomp.hl = (1, 1, 1, 1)
                     redraw = 1
                 
-            if context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2'):
+            if context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2'):
                 if self.dhscatter.frame != context.scene.frame_current:
                     self.dhscatter.update(context)
                     redraw = 1
@@ -3316,7 +3225,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                 if self.dhscatter.col != context.scene.vi_leg_col:
                     self.dhscatter.update(context)
                     redraw = 1
-                if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2'):
+                if context.scene['liparams']['unit'] in ('Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2'):
                     if (self.dhscatter.vmin, self.dhscatter.vmax) != (context.scene.vi_scatter_min, context.scene.vi_scatter_max):
                        self.dhscatter.update(context) 
                        redraw = 1
@@ -3388,7 +3297,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
                         self.tablecomp.resize = 0
                     return {'RUNNING_MODAL'}
 
-            elif context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-f (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Ave lux', 'kWh', 'kWh/m2') and abs(self.dhscatter.lepos[0] - mx) < 20 and abs(self.dhscatter.lspos[1] - my) < 20:
+            elif context.scene['liparams']['unit'] in ('ASE (hrs)', 'sDA (%)', 'DA (%)', 'UDI-s (%)', 'UDI-e (%)', 'UDI-f (%)', 'UDI-a (%)', 'Max lux', 'Min lux', 'Avg lux', 'kWh', 'kWh/m2') and abs(self.dhscatter.lepos[0] - mx) < 20 and abs(self.dhscatter.lspos[1] - my) < 20:
                 self.dhscatter.hl = (0, 1, 1, 1) 
                 if event.type == 'LEFTMOUSE':
                     if event.value == 'PRESS':

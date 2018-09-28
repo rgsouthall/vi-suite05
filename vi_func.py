@@ -55,7 +55,7 @@ def ret_mcm():
 dtdf = datetime.date.fromordinal
 unitdict = {'Lux': 'illu', u'W/m\u00b2 (f)': 'firrad', u'W/m\u00b2 (v)': 'virrad', 'DF (%)': 'df', 'DA (%)': 'da', 'UDI-f (%)': 'udilow', 'UDI-s (%)': 'udisup', 'UDI-a (%)': 'udiauto', 'UDI-e (%)': 'udihi',
             'Sky View': 'sv', 'Mlxh': 'illu', 'kWh (f)': 'firrad', 'kWh (v)': 'virrad', u'kWh/m\u00b2 (f)': 'firradm2', u'kWh/m\u00b2 (v)': 'virradm2', '% Sunlit': 'res', 'sDA (%)': 'sda', 'ASE (hrs)': 'ase', 'kW': 'watts', 'Max lux': 'illu', 
-            'Ave lux': 'illu', 'Min lux': 'illu', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
+            'Avg lux': 'illu', 'Min lux': 'illu', 'kWh': 'kW', 'kWh/m2': 'kW/m2'}
 
 coldict = {'0': 'rainbow', '1': 'gray', '2': 'hot', '3': 'CMRmap', '4': 'jet', '5': 'plasma'}
 
@@ -496,7 +496,7 @@ def retpmap(node, frame, scene):
 
 def setscenelivivals(scene):
     scene['liparams']['maxres'], scene['liparams']['minres'], scene['liparams']['avres'] = {}, {}, {}
-    cbdmunits = ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux' , 'Ave lux', 'Min lux')
+    cbdmunits = ('DA (%)', 'sDA (%)', 'UDI-f (%)', 'UDI-s (%)', 'UDI-a (%)', 'UDI-e (%)', 'ASE (hrs)', 'Max lux' , 'Avg lux', 'Min lux')
     expunits = ('Mlxh', "kWh (f)", "kWh (v)",  u'kWh/m\u00b2 (f)', u'kWh/m\u00b2 (v)', )
     irradunits = ('kWh', 'kWh/m2')
 
@@ -1893,33 +1893,6 @@ def nfprop(fname, fdesc, fmin, fmax, fdef):
 def nfvprop(fvname, fvattr, fvdef, fvsub):
     return(FloatVectorProperty(name=fvname, attr = fvattr, default = fvdef, subtype = fvsub, update = nodeexported))
 
-def boundpoly(obj, emnode, poly, enng):
-    mat = obj.data.materials[poly.material_index]
-    if emnode.envi_boundary:
-        nodes = [node for node in enng.nodes if hasattr(node, 'zone') and node.zone == obj.name]
-        
-        for node in nodes:
-            insock = node.inputs['{}_{}_b'.format(mat.name, poly.index)]
-            outsock = node.outputs['{}_{}_b'.format(mat.name, poly.index)]
-              
-            if insock.links:
-                bobj = bpy.data.objects[insock.links[0].from_node.zone]
-                return(('', '', '', ''))
-                
-            elif outsock.links:
-                bobj = outsock.links[0].to_node.zone
-                return(("Zone", bobj, "NoSun", "NoWind"))
-                
-            else:
-                return(("Adiabatic", "", "NoSun", "NoWind"))
-
-    elif emnode.envi_thermalmass:
-        return(("Adiabatic", "", "NoSun", "NoWind"))
-    elif poly.calc_center_bounds()[2] <= 0:
-        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
-    else:
-        return(("Outdoors", "", "SunExposed", "WindExposed"))
-
 def vertarea(mesh, vert):
     area = 0
     faces = [face for face in vert.link_faces] 
@@ -2709,8 +2682,8 @@ def socklink2(sock, ng):
         
         for link in sock.links:
             valid2 = link.to_socket.ret_valid(link.to_socket.node)
-            print(valid1, valid2)
             valset = set(valid1)&set(valid2) 
+
             if not valset or len(valset) < min((len(valid1), len(valid2))):# or sock.node.use_custom_color:
                 ng.links.remove(link)
     except:
