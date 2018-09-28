@@ -2598,8 +2598,7 @@ class NODE_OT_SVF(bpy.types.Operator):
            
         scene['liparams']['cp'], scene['liparams']['unit'], scene['liparams']['type'] = simnode.cpoint, '% Sunlit', 'VI Shadow'
         simnode.preexport()
-        (scene['liparams']['fs'], scene['liparams']['fe']) = (scene.frame_current, scene.frame_current) if simnode.animmenu == 'Static' else (simnode.startframe, simnode.endframe)
-        cmap('grey')        
+        (scene['liparams']['fs'], scene['liparams']['fe']) = (scene.frame_current, scene.frame_current) if simnode.animmenu == 'Static' else (simnode.startframe, simnode.endframe)      
         scene['viparams']['resnode'], simnode['Animation'] = simnode.name, simnode.animmenu
         (scmaxres, scminres, scavres) = [[x] * (scene['liparams']['fe'] - scene['liparams']['fs'] + 1) for x in (0, 1, 0)]        
         frange = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
