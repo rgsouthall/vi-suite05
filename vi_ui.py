@@ -8,10 +8,11 @@ envi_cons = envi_constructions()
 
 class Vi3DPanel(bpy.types.Panel):
     '''VI-Suite 3D view panel'''
-    bl_label = "VI-Suite Display"
+    bl_label = "Display"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-        
+    bl_region_type = "TOOLS"
+    bl_category = "VI-Suite"
+    
     def draw(self, context):
         scene = context.scene
         cao = context.active_object
@@ -708,17 +709,17 @@ def rmmenu(layout, cm):
     row.label("-----------------------------------------")
     
 class MESH_Gridify_Panel(bpy.types.Panel):
-     bl_label = "Gridify Panel"
-     bl_space_type = "VIEW_3D"
-     bl_region_type = "TOOLS"
-     bl_context = "objectmode"
-     bl_category = "VI-Suite"
- 
-     def draw(self, context):         
-         scene = context.scene
-         layout = self.layout
-         newrow(layout, 'Up vector:', scene, 'gridifyup')
-         newrow(layout, 'Up size:', scene, 'gridifyus')
-         newrow(layout, 'Across size:', scene, 'gridifyas')
-         row = layout.row()
-         row.operator("view3d.gridify", text="Grid the object")
+    bl_label = "Gridify"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+    bl_category = "VI-Suite"
+      
+    def draw(self, context):         
+        scene = context.scene
+        layout = self.layout
+        newrow(layout, 'Rotation:', scene, 'vi_gridify_rot')
+        newrow(layout, 'Size 1:', scene, 'vi_gridify_us')
+        newrow(layout, 'Size 2:', scene, 'vi_gridify_as')
+        row = layout.row()
+        row.operator("view3d.vi_gridify", text="Grid the object")

@@ -23,8 +23,9 @@ import bpy_extras.io_utils as io_utils
 from subprocess import Popen, PIPE, call
 from collections import OrderedDict
 from datetime import datetime as dt
-from math import cos, sin, pi, ceil, tan
+from math import cos, sin, pi, ceil, tan, radians
 from time import sleep
+from mathutils import Euler, Vector
 #from multiprocessing import Pool
 from .livi_export import radgexport, spfc, createoconv, createradfile
 from .livi_calc  import li_calc
@@ -2667,9 +2668,11 @@ class NODE_OT_Shadow(bpy.types.Operator):
         
         times = [time + interval*t for t in range(int((endtime - time)/interval) + simnode.interval) if simnode.starthour - 1 <= (time + interval*t).hour <= simnode.endhour  - 1]
         sps = [solarPosition(t.timetuple().tm_yday, t.hour+t.minute/60, scene.latitude, scene.longitude)[2:] for t in times]
-        direcs = [mathutils.Vector((-sin(sp[1]), -cos(sp[1]), tan(sp[0]))) for sp in sps]# if sp[0] > 0]   
+        valmask = array([sp[0] > 0 for sp in sps], dtype = int8)
+        direcs = [mathutils.Vector((-sin(sp[1]), -cos(sp[1]), tan(sp[0]))) for sp in sps]  
         valdirecs = [mathutils.Vector((-sin(sp[1]), -cos(sp[1]), tan(sp[0]))) for sp in sps if sp[0] > 0]  
         lvaldirecs = len(valdirecs)
+        ilvaldirecs = 1/lvaldirecs
         calcsteps = len(frange) * sum(len([f for f in o.data.polygons if o.data.materials[f.material_index].mattype == '1']) for o in [scene.objects[on] for on in scene['liparams']['shadc']])
         curres, reslists = 0, []
         pfile = progressfile(scene['viparams']['newdir'], datetime.datetime.now(), calcsteps)
@@ -2721,9 +2724,9 @@ class NODE_OT_Shadow(bpy.types.Operator):
 #                           Attempt to multi-process but Pool does not work with class instances
 #                            p = Pool(4) 
 #                            pointres = array(p.starmap(shadtree.ray_cast, [(posis[g], direc) for direc in direcs]), dtype = int8)
-                            pointres = array([(0, 1)[shadtree.ray_cast(posis[g], direc)[3] == None and direc[2] > 0] for direc in direcs], dtype = int8)
-                            numpy.putmask(allpoints[g], pointres == 1, pointres)
-                            gp[shadres] = (100 * (numpy.sum(pointres)/lvaldirecs)).astype(float16)
+                            pointres = array([(0, 1)[shadtree.ray_cast(posis[g], direc)[3] == None] for direc in valdirecs], dtype = int8)
+                            numpy.place(allpoints[g], valmask == 1, pointres)
+                            gp[shadres] = (100 * (numpy.sum(pointres) * ilvaldirecs)).astype(float16)
                             g += 1
 
                         curres += len(chunk)
@@ -3599,66 +3602,68 @@ class NODE_OT_FVSolve(bpy.types.Operator):
     def terminate(self, scene):
         self.run.kill()
 
-class Gridify(bpy.types.Operator):
+class VIGridify(bpy.types.Operator):
     ''''''
-    bl_idname = "view3d.gridify"
-    bl_label = "Gridify"
+    bl_idname = "view3d.vi_gridify"
+    bl_label = "VI Gridify"
      
     def modal(self, context, event):
         scene = context.scene
-        if self.upv != scene.gridifyup or self.us != scene.gridifyus or self.acs != context.scene.gridifyas or self.ft:
+        if self.rotate != scene.vi_gridify_rot or self.us != scene.vi_gridify_us or self.acs != context.scene.vi_gridify_as or self.ft:
             self.bmnew = self.bm.copy()
             self.bmnew.transform(self.o.matrix_world)
             self.ft = 0
-            self.upv = mathutils.Vector([x for x in context.scene.gridifyup])
-            self.us = context.scene.gridifyus
-            self.acs = context.scene.gridifyas
+            self.us = context.scene.vi_gridify_us
+            self.acs = context.scene.vi_gridify_as
+            self.rotate = context.scene.vi_gridify_rot
             self.bmnew.faces.ensure_lookup_table()
             self.bmnew.verts.ensure_lookup_table()
-            norm = context.scene.gridifyup.normalized()
-            norm2 = context.scene.gridifyup.normalized()
-            vs = self.bmnew.verts[:]
-            es = self.bmnew.edges[:]
-            fs = [f for f in self.bmnew.faces[:] if self.o.data.materials[f.material_index] and self.o.data.materials[f.material_index].mattype == '1']
-            if not fs:
-                self.report({'ERROR'}, 'Object has no sensor material attached')
-                return {'CANCELLED'}
-            gs = vs + es + fs 
-            eul = mathutils.Euler(math.radians(-90) * fs[0].normal, 'XYZ')
-            norm2.rotate(eul)         
-            vertdots = [mathutils.Vector.dot(norm, vert.co) for vert in self.bmnew.verts]
-            vertdots2 = [mathutils.Vector.dot(norm2, vert.co) for vert in self.bmnew.verts]
+            self.upv = self.bmnew.faces[0].calc_tangent_edge_pair().copy().normalized()
+            self.norm = self.bmnew.faces[0].normal.copy()
+            self.acv = self.upv.copy()
+            eul = Euler(radians(-90) * self.norm, 'XYZ')
+            self.acv.rotate(eul)
+            rotation = Euler(radians(self.rotate) * self.norm, 'XYZ')
+            self.upv.rotate(rotation)
+            self.acv.rotate(rotation)
+            vertdots = [Vector.dot(self.upv, vert.co) for vert in self.bmnew.verts]
+            vertdots2 = [Vector.dot(self.acv, vert.co) for vert in self.bmnew.verts]
             svpos = self.bmnew.verts[vertdots.index(min(vertdots))].co
             svpos2 = self.bmnew.verts[vertdots2.index(min(vertdots2))].co
-            res1, res2, ngs1, ngs2, gs1, gs2 = 1, 1, context.scene.gridifyus, context.scene.gridifyas, context.scene.gridifyus, context.scene.gridifyas
+            res1, res2, ngs1, ngs2, gs1, gs2 = 1, 1, self.us, self.acs, self.us, self.acs
+            vs = self.bmnew.verts[:]
+            es = self.bmnew.edges[:]
+            fs = [f for f in self.bmnew.faces[:]]
+            gs = vs + es + fs
               
             while res1:
-                res = bmesh.ops.bisect_plane(self.bmnew, geom = gs, dist = 0.001, plane_co = svpos + ngs1 * norm, plane_no = norm, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
+                res = bmesh.ops.bisect_plane(self.bmnew, geom = gs, dist = 0.001, plane_co = svpos + ngs1 * self.upv, plane_no = self.upv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
                 res1 = res['geom_cut']
                 gs = self.bmnew.verts[:] + self.bmnew.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
                 ngs1 += gs1
         
             while res2:
-                res = bmesh.ops.bisect_plane(self.bmnew, geom = gs, dist = 0.001, plane_co = svpos2 + ngs2 * norm2, plane_no = norm2, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
+                res = bmesh.ops.bisect_plane(self.bmnew, geom = gs, dist = 0.001, plane_co = svpos2 + ngs2 * self.acv, plane_no = self.acv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
                 res2 = res['geom_cut']
                 gs = self.bmnew.verts[:] + self.bmnew.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
                 ngs2 += gs2
-             
+            
             self.bmnew.transform(self.o.matrix_world.inverted())
             self.bmnew.to_mesh(self.o.data)
-#            bmesh.update_edit_mesh(self.o.data)
-            self.o.data.update()
             self.bmnew.free()
             context.area.tag_redraw()
             return {'RUNNING_MODAL'}
 
         elif event.type == 'ESC':  
             self.bm.to_mesh(self.o.data)
-#            bmesh.update_edit_mesh(self.o.data, tessface=False, destructive=True)
+            self.bm.free()
+            self.bmnew.free()
             context.area.tag_redraw()
             return {'CANCELLED'}
 
         elif event.ctrl and event.type == 'RET':
+            self.bmnew.free()
+            self.bm.free()
             return {'FINISHED'}
             
         else:
@@ -3667,45 +3672,14 @@ class Gridify(bpy.types.Operator):
     def invoke(self, context, event):
         scene = context.scene
         self.o = bpy.context.active_object
-        if self.o.data.materials:
-            self.bm = bmesh.new()
-            tm = self.o.to_mesh(scene = scene, apply_modifiers = True, settings = 'PREVIEW')
-            self.bm.from_mesh(tm)
-#            self.bm = bmesh.from_edit_mesh(self.o.data)
-            bpy.data.meshes.remove(tm)
-            self.ft = 1
-            self.upv = mathutils.Vector([x for x in scene.gridifyup])
-            self.us = scene.gridifyus
-            self.acs = scene.gridifyas
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'ERROR'}, "No materials associated with object")
-            return {'CANCELLED'}
- 
+        self.bm = bmesh.new()
+        tm = self.o.to_mesh(scene = scene, apply_modifiers = True, settings = 'PREVIEW')
+        self.bm.from_mesh(tm)
+        bpy.data.meshes.remove(tm)
+        self.ft = 1
+        self.rotate = scene.vi_gridify_rot
+        self.us = scene.vi_gridify_us
+        self.acs = scene.vi_gridify_as
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
 
-#class VIEW3D_OT_SPTime(bpy.types.Operator):
-#    '''Display results legend and stats in the 3D View'''
-#    bl_idname = "view3d.sptimeisplay"
-#    bl_label = "Point numbers"
-#    bl_description = "Display the current solar time on the sunpath"
-#    bl_register = True
-#    bl_undo = True
-#
-#    def modal(self, context, event):
-#        scene = context.scene
-#        if context.area:
-#            context.area.tag_redraw()
-#        if scene.vi_display == 0 or scene['viparams']['vidisp'] != 'sp':
-#            bpy.types.SpaceView3D.draw_handler_remove(self._handle_sptime, 'WINDOW')
-#            [scene.objects.unlink(o) for o in scene.objects if o.get('VIType') and o['VIType'] in ('SunMesh', 'SkyMesh')]
-#            return {'CANCELLED'}
-#        return {'PASS_THROUGH'}
-#
-#    def invoke(self, context, event):
-#        scene = context.scene
-#        simnode = bpy.data.node_groups[scene['viparams']['restree']].nodes[scene['viparams']['resnode']]
-#        self._handle_sptime = bpy.types.SpaceView3D.draw_handler_add(sptimedisplay, (self, context, simnode), 'WINDOW', 'POST_PIXEL')
-#        context.window_manager.modal_handler_add(self)
-#        scene.vi_display = 1
-#        return {'RUNNING_MODAL'}

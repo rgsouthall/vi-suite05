@@ -615,9 +615,9 @@ def register():
     Scene.vi_bsdfleg_max = bpy.props.FloatProperty(name = "", description = "Legend maximum", min = 0, max = 1000000, default = 100)
     Scene.vi_bsdfleg_min = bpy.props.FloatProperty(name = "", description = "Legend minimum", min = 0, max = 1000000, default = 0)
     Scene.vi_bsdfleg_scale = EnumProperty(items = [('0', 'Linear', 'Linear scale'), ('1', 'Log', 'Logarithmic scale')], name = "", description = "Legend scale", default = '0')    
-    Scene.gridifyup = fvprop(3, '', 'Grid up vector', [1, 0, 0], 'VELOCITY', -1, 1)
-    Scene.gridifyus = fprop("", "Up direction size", 0.01, 10, 0.6)
-    Scene.gridifyas = fprop("", "Side direction size", 0.01, 10, 0.6)
+    Scene.vi_gridify_rot = fprop("deg", "Rotation around face normal", 0.0, 360, 0.0)
+    Scene.vi_gridify_us = fprop("m", "Up direction size", 0.01, 10, 0.6)
+    Scene.vi_gridify_as = fprop("m", "Side direction size", 0.01, 10, 0.6)
 
 #    Scene.vi_lbsdf_direc = EnumProperty(items = bsdfdirec, name = "", description = "Legend scale")
     
