@@ -8,9 +8,9 @@ envi_cons = envi_constructions()
 
 class Vi3DPanel(bpy.types.Panel):
     '''VI-Suite 3D view panel'''
-    bl_label = "Display"
+    bl_label = "VI Display"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
     bl_category = "VI-Suite"
     
     def draw(self, context):
@@ -709,9 +709,9 @@ def rmmenu(layout, cm):
     row.label("-----------------------------------------")
     
 class MESH_Gridify_Panel(bpy.types.Panel):
-    bl_label = "Gridify"
+    bl_label = "VI Gridify"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "VI-Suite"
       
