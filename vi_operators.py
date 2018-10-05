@@ -2577,8 +2577,8 @@ class NODE_OT_SVF(bpy.types.Operator):
 #                           Attempt to multi-process but Pool does not work with class instances
 #                            p = Pool(4) 
 #                            pointres = array(p.starmap(shadtree.ray_cast, [(posis[g], direc) for direc in direcs]), dtype = int8)
-                            pointres = array([(0, 1)[shadtree.ray_cast(posis[g], direc)[3] == None and direc[2] > 0] for direc in valdirecs], dtype = int8)
-                            numpy.putmask(allpoints[g], pointres == 1, pointres)
+                            pointres = array([(0, 1)[shadtree.ray_cast(posis[g], direc)[3] == None] for direc in valdirecs], dtype = int8)
+                            numpy.place(allpoints[g], pointres == 1, pointres)
                             gp[shadres] = ((numpy.sum(pointres)/lvaldirecs)).astype(float16)
                             g += 1
 
@@ -3407,6 +3407,7 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
         if len(bmos) != 1:
             self.report({'ERROR'},"One and only one object with the CFD Domain property is allowed")
             return {'CANCELLED'}
+        print(os.path.join(scene['flparams']['ofsfilebase'], 'controlDict'))
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'controlDict'), 'w') as cdfile:
             cdfile.write(fvcdwrite("simpleFoam", 0.005, 5))
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'fvSolution'), 'w') as fvsolfile:

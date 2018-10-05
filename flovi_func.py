@@ -159,9 +159,9 @@ def fvbmwrite(o, expnode):
     o['flovi_translate'] = (-min(xs), -min(ys), -min(zs))
     lengths = [mathutils.Vector(v.co).length for v in bm.verts]
     vert0 = bm.verts[lengths.index(min(lengths))]
-    angles = [mathutils.Vector(v.co).angle(mathutils.Vector((0, 0, 1))) for v in bm.verts]
+    angles = [mathutils.Vector(v.co).angle(mathutils.Vector((0, 0, 1))) for v in bm.verts if v != vert0]
 #    vert0 = [v for v in bm.verts if v.co[:] == (min(xs), min(ys), min(zs))][0]
-    vert4 = bm.verts[angles.index(min(angles))]
+    vert4 = bm.verts[angles.index(min(angles)) + 1]
 #    print(vert0.index, vert4.index)
 #    vert4 = [v for v in bm.verts if (v.co[0], v.co[1]) == (vert0.co[0], vert0.co[1]) and v.co[2] != vert0.co[2]][0]
 
@@ -614,7 +614,7 @@ def fvdcpwrite(p):
 
 def fvmqwrite():
     ofheader = 'FoamFile\n{\n  version     2.0;\n  format      ascii;\n  class       dictionary;\n  object      meshQualityDict;\n}\n\n'
-    ofheader += '#include "$WM_PROJECT_DIR/etc/caseDicts/meshQualityDict"'
+    ofheader += '#include "$WM_PROJECT_DIR/etc/caseDicts/mesh/generation/meshQualityDict"'
     return ofheader
     
 def fvsfewrite(fvos):

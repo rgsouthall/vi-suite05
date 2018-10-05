@@ -70,6 +70,8 @@ def abspath(self, context):
         self.ofbin = bpy.path.abspath(self.ofbin)
     if self.oflib != bpy.path.abspath(self.oflib):
         self.oflib = bpy.path.abspath(self.oflib)  
+    if self.ofetc != bpy.path.abspath(self.ofetc):
+        self.ofetc = bpy.path.abspath(self.ofetc)
         
 class VIPreferences(AddonPreferences):
     bl_idname = __name__
@@ -80,8 +82,9 @@ class VIPreferences(AddonPreferences):
     epweath = StringProperty(name = '', description = 'EnergyPlus weather directory location', default = '', subtype='DIR_PATH', update=abspath)
     ofbin = StringProperty(name = '', description = 'OpenFOAM binary directory location', default = '', subtype='DIR_PATH', update=abspath)
     oflib = StringProperty(name = '', description = 'OpenFOAM library directory location', default = '', subtype='DIR_PATH', update=abspath)
+    ofetc = StringProperty(name = '', description = 'OpenFOAM letc directory location', default = '', subtype='DIR_PATH', update=abspath)
     ui_dict = {"Radiance bin directory:": 'radbin', "Radiance lib directory:": 'radlib', "EnergyPlus bin directory:": 'epbin',
-               "EnergyPlus weather directory:": 'epweath', 'OpenFOAM bin directory': 'ofbin', 'OpenFOAM lib directory': 'oflib'}
+               "EnergyPlus weather directory:": 'epweath', 'OpenFOAM bin directory': 'ofbin', 'OpenFOAM lib directory': 'oflib', 'OpenFOAM etc directory': 'ofetc'}
 
     def draw(self, context):
         layout = self.layout 
@@ -184,7 +187,7 @@ def path_update():
     radbdir = vi_prefs.radbin if vi_prefs and os.path.isdir(vi_prefs.radbin) else os.path.join('{}'.format(addonpath), 'Radfiles', 'bin') 
     ofbdir = vi_prefs.ofbin if vi_prefs and os.path.isdir(vi_prefs.ofbin) else os.path.join('{}'.format(addonpath), 'OFFiles', 'bin') 
     ofldir = vi_prefs.oflib if vi_prefs and os.path.isdir(vi_prefs.oflib) else os.path.join('{}'.format(addonpath), 'OFFiles', 'lib')
-
+    ofedir = vi_prefs.ofetc if vi_prefs and os.path.isdir(vi_prefs.ofetc) else os.path.join('{}'.format(addonpath), 'OFFiles')
     os.environ["PATH"] += "{0}{1}".format(evsep[str(sys.platform)], os.path.dirname(bpy.app.binary_path))
     
     if not os.environ.get('RAYPATH'):# or radldir not in os.environ['RAYPATH'] or radbdir not in os.environ['PATH']  or epdir not in os.environ['PATH']:
@@ -195,7 +198,8 @@ def path_update():
            
         os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}{0}{3}".format(evsep[str(sys.platform)], radbdir, epdir, ofbdir)    
         os.environ["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"] + "{0}{1}".format(evsep[str(sys.platform)], ofldir) if os.environ.get("LD_LIBRARY_PATH") else "{0}{1}".format(evsep[str(sys.platform)], ofldir)
-
+        os.environ["WM_PROJECT_DIR"] = ofedir
+        
 def colupdate(self, context):
     cmap(self)
 

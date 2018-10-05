@@ -3743,7 +3743,11 @@ class ViFloCdNode(Node, ViNodes):
         newrow(layout, 'Solver', self, 'solver')
 
 def location(self, context):
-    return [(o.name, o.name, 'Name of empty') for o in bpy.data.objects if o.type == 'EMPTY']
+    eos = [o for o in bpy.data.objects if o.type == 'EMPTY']
+    if eos:
+        return [(o.name, o.name, 'Name of empty') for o in bpy.data.objects if o.type == 'EMPTY']
+    else:
+        return [('', '', '')]
     
 class ViBMExNode(Node, ViNodes):
     '''Openfoam blockmesh export node'''
