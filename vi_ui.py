@@ -712,7 +712,7 @@ class MESH_Gridify_Panel(bpy.types.Panel):
     bl_label = "VI Gridify"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_context = "objectmode"
+    bl_context = "mesh_edit"
     bl_category = "VI-Suite"
       
     def draw(self, context):         
@@ -722,4 +722,4 @@ class MESH_Gridify_Panel(bpy.types.Panel):
         newrow(layout, 'Size 1:', scene, 'vi_gridify_us')
         newrow(layout, 'Size 2:', scene, 'vi_gridify_as')
         row = layout.row()
-        row.operator("view3d.vi_gridify", text="Grid the object")
+        row.operator("object.vi_gridify2", text="Grid the object")
