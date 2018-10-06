@@ -383,8 +383,8 @@ def register():
     Material.radfile = sprop("", "Radiance file material description", 1024, "")
     Material.vi_shadow = bprop("VI Shadow", "Flag to signify whether the material represents a VI Shadow sensing surface", False)
     Material.livi_sense = bprop("LiVi Sensor", "Flag to signify whether the material represents a LiVi sensing surface", False)
-    Material.livi_compliance = bprop("LiVi Compliance Surface", "Flag to siginify whether the material represents a LiVi compliance surface", False)
-    Material.gl_roof = bprop("Glazed Roof", "Flag to siginify whether the communal area has a glazed roof", False)
+    Material.livi_compliance = bprop("LiVi Compliance Surface", "Flag to signify whether the material represents a LiVi compliance surface", False)
+    Material.gl_roof = bprop("Glazed Roof", "Flag to signify whether the communal area has a glazed roof", False)
     hspacetype = [('0', 'Public/Staff', 'Public/Staff area'), ('1', 'Patient', 'Patient area')]
     rspacetype = [('0', "Kitchen", "Kitchen space"), ('1', "Living/Dining/Study", "Living/Dining/Study area"), ('2', "Communal", "Non-residential or communal area")]
     respacetype = [('0', "Sales", "Sales space"), ('1', "Occupied", "Occupied space")]
@@ -400,17 +400,17 @@ def register():
 # EnVi material definitions
     Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_type = sprop("", "EnVi Material type", 64, "None")
-    
-    Material.envi_shading = bprop("", "Flag to siginify whether the material contains shading elements", False)
+
+    Material.envi_shading = bprop("", "Flag to signify whether the material contains shading elements", False)
 #    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
 #                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
-#    Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
+#    Material.envi_simple_glazing = bprop("", "Flag to signify whether to use a EP simple glazing representation", False)
 #    Material.envi_sg_uv = fprop("", "Window U-Value", 0, 10, 2.4)
 #    Material.envi_sg_shgc = fprop("", "Window Solar Heat Gain Coefficient", 0, 1, 0.7)
 #    Material.envi_sg_vt = fprop("", "Window Visible Transmittance", 0, 1, 0.8)
-    Material.envi_boundary = bprop("", "Flag to siginify whether the material represents a zone boundary", False)
-#    Material.envi_afsurface = bprop("", "Flag to siginify whether the material represents an airflow surface", False)
-#    Material.envi_thermalmass = bprop("", "Flag to siginify whether the material represents thermal mass", False)
+    Material.envi_boundary = bprop("", "Flag to signify whether the material represents a zone boundary", False)
+#    Material.envi_afsurface = bprop("", "Flag to signify whether the material represents an airflow surface", False)
+#    Material.envi_thermalmass = bprop("", "Flag to signify whether the material represents thermal mass", False)
 #    Material.envi_aperture = eprop([("0", "External", "External facade airflow component", 0), ("1", "Internal", "Zone boundary airflow component", 1),], "", "Position of the airflow component", "0")
 #    Material.envi_con_makeup = eprop([("0", "Pre-set", "Construction pre-set"),("1", "Layers", "Custom layers"),("2", "Dummy", "Adiabatic")], "", "Pre-set construction of custom layers", "0")
 #    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from database"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")

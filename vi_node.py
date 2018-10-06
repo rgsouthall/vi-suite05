@@ -2072,13 +2072,13 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_con_con = EnumProperty(items = bc_update, 
                                             name = "", 
                                             description = "Construction context", update = con_update)
-    envi_simple_glazing = BoolProperty(name = "", description = "Flag to siginify whether to use a EP simple glazing representation", default = False)
+    envi_simple_glazing = BoolProperty(name = "", description = "Flag to signify whether to use a EP simple glazing representation", default = False)
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
-#    envi_boundary = BoolProperty(name = "", description = "Flag to siginify whether the material represents a zone boundary", default = False)
-    envi_afsurface = BoolProperty(name = "", description = "Flag to siginify whether the material represents an airflow surface", default = False)
-#    envi_thermalmass = BoolProperty(name = "", description = "Flag to siginify whether the material represents thermal mass", default = False)
+#    envi_boundary = BoolProperty(name = "", description = "Flag to signify whether the material represents a zone boundary", default = False)
+    envi_afsurface = BoolProperty(name = "", description = "Flag to signify whether the material represents an airflow surface", default = False)
+#    envi_thermalmass = BoolProperty(name = "", description = "Flag to signify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
     
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
