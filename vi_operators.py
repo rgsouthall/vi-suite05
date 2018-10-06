@@ -3407,7 +3407,6 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
         if len(bmos) != 1:
             self.report({'ERROR'},"One and only one object with the CFD Domain property is allowed")
             return {'CANCELLED'}
-        print(os.path.join(scene['flparams']['ofsfilebase'], 'controlDict'))
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'controlDict'), 'w') as cdfile:
             cdfile.write(fvcdwrite("simpleFoam", 0.005, 5))
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'fvSolution'), 'w') as fvsolfile:
@@ -3603,12 +3602,11 @@ class NODE_OT_FVSolve(bpy.types.Operator):
     def terminate(self, scene):
         self.run.kill()
 
-class OBJECT_OT_VIGridify(bpy.types.Operator):
+class VIGridify(bpy.types.Operator):
     ''''''
-    bl_idname = "object.vi_gridify"
+    bl_idname = "view3d.vi_gridify"
     bl_label = "VI Gridify"
-    bl_options = {"REGISTER"}
-            
+     
     def modal(self, context, event):
         scene = context.scene
         if self.rotate != scene.vi_gridify_rot or self.us != scene.vi_gridify_us or self.acs != context.scene.vi_gridify_as or self.ft:
@@ -3671,7 +3669,7 @@ class OBJECT_OT_VIGridify(bpy.types.Operator):
         else:
             return {'PASS_THROUGH'}
      
-    def execute(self, context):
+    def invoke(self, context, event):
         scene = context.scene
         self.o = bpy.context.active_object
         self.bm = bmesh.new()
@@ -3685,66 +3683,3 @@ class OBJECT_OT_VIGridify(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
-class VIGridify(bpy.types.Operator):
-    ''''''
-    bl_idname = "view3d.vi_gridify_accept"
-    bl_label = "Accept"
-    
-class VIGridify(bpy.types.Operator):
-    ''''''
-    bl_idname = "view3d.vi_gridify_cancel"
-    bl_label = "Cancel"
-    
-    
-class OBJECT_OT_VIGridify2(bpy.types.Operator):
-    ''''''
-    bl_idname = "object.vi_gridify2"
-    bl_label = "VI Gridify"
-    bl_options = {"REGISTER", 'UNDO'}
-    
-    rotate =  bpy.props.FloatProperty(name = 'Rotation', default = 0, min = 0, max = 360) 
-    us =  bpy.props.FloatProperty(default = 0.6, min = 0.01) 
-    acs =  bpy.props.FloatProperty(default = 0.6, min = 0.01) 
-    
-    @classmethod
-    def poll(cls, context):
-        obj = context.active_object
-        return (obj and obj.type == 'MESH')
-    
-    def execute(self, context):
-        self.o = bpy.context.active_object
-        mesh = bmesh.from_edit_mesh(self.o.data)
-        mesh.faces.ensure_lookup_table()
-        mesh.verts.ensure_lookup_table()
-        self.upv = mesh.faces[0].calc_tangent_edge_pair().copy().normalized()
-        self.norm = mesh.faces[0].normal.copy()
-        self.acv = self.upv.copy()
-        eul = Euler(radians(-90) * self.norm, 'XYZ')
-        self.acv.rotate(eul)
-        rotation = Euler(radians(self.rotate) * self.norm, 'XYZ')
-        self.upv.rotate(rotation)
-        self.acv.rotate(rotation)
-        vertdots = [Vector.dot(self.upv, vert.co) for vert in mesh.verts]
-        vertdots2 = [Vector.dot(self.acv, vert.co) for vert in mesh.verts]
-        svpos = mesh.verts[vertdots.index(min(vertdots))].co
-        svpos2 = mesh.verts[vertdots2.index(min(vertdots2))].co
-        res1, res2, ngs1, ngs2, gs1, gs2 = 1, 1, self.us, self.acs, self.us, self.acs
-        vs = mesh.verts[:]
-        es = mesh.edges[:]
-        fs = [f for f in mesh.faces[:] if f.select]
-        gs = vs + es + fs
-          
-        while res1:
-            res = bmesh.ops.bisect_plane(mesh, geom = gs, dist = 0.001, plane_co = svpos + ngs1 * self.upv, plane_no = self.upv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
-            res1 = res['geom_cut']
-            gs = mesh.verts[:] + mesh.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
-            ngs1 += gs1
-    
-        while res2:
-            res = bmesh.ops.bisect_plane(mesh, geom = gs, dist = 0.001, plane_co = svpos2 + ngs2 * self.acv, plane_no = self.acv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
-            res2 = res['geom_cut']
-            gs = mesh.verts[:] + mesh.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
-            ngs2 += gs2
-        bmesh.update_edit_mesh(self.o.data)
-        return {'FINISHED'}
-    
