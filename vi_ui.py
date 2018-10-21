@@ -482,7 +482,7 @@ class VIMatPanel(bpy.types.Panel):
             rmmenu(layout, cm)
         
         elif cm.mattype == '2':
-            fvsimnode = bpy.data.node_groups[scene['viparams']['fvsimnode'].split('@')[1]].nodes[scene['viparams']['fvsimnode'].split('@')[0]] if 'fvsimnode' in scene['viparams'] else 0
+            fvsimnode = bpy.data.node_groups[scene['viparams']['fvsimnode'].split('@')[1]].nodes[scene['viparams']['fvsimnode'].split('@')[0]] if scene.get('viparams') and 'fvsimnode' in scene['viparams'] else 0
             newrow(layout, "Type:", cm, "flovi_bmb_type")
             if fvsimnode:
                 context.scene['flparams']['solver'] = fvsimnode.solver
@@ -716,10 +716,10 @@ class MESH_Gridify_Panel(bpy.types.Panel):
     bl_category = "VI-Suite"
       
     def draw(self, context):         
-        scene = context.scene
+#        scene = context.scene
         layout = self.layout
-        newrow(layout, 'Rotation:', scene, 'vi_gridify_rot')
-        newrow(layout, 'Size 1:', scene, 'vi_gridify_us')
-        newrow(layout, 'Size 2:', scene, 'vi_gridify_as')
+#        newrow(layout, 'Rotation:', scene, 'vi_gridify_rot')
+#        newrow(layout, 'Size 1:', scene, 'vi_gridify_us')
+#        newrow(layout, 'Size 2:', scene, 'vi_gridify_as')
         row = layout.row()
         row.operator("object.vi_gridify2", text="Grid the object")

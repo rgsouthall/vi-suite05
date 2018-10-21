@@ -2038,24 +2038,21 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 node.active = False
                 
     def bc_update(self, context):
-        ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling")
         if self.envi_con_type in ("Wall", "Floor", "Roof"):
             return [("External", "External", "External boundary"),
              ("Zone", "Zone", "Zone boundary"),
              ("Thermal mass", "Thermal mass", "Adiabatic")]
-        elif self.envi_con_type in ("Window", "Door"):
+        elif self.envi_con_type in ("Door", "Window"):
             return [("External", "External", "External boundary"),
              ("Zone", "Zone", "Zone boundary")]
-        elif self.envi_con_type == 'Ceiling':
-            return [("Zone", "Zone", "Zone boundary"),
-                    ("Thermal mass", "Thermal mass", "Adiabatic")]
+        else:
+            return [("", "", "")]
         
                         
     matname = StringProperty(name = "", description = "", default = '')
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
                                             ("Floor", "Floor", "Ground floor construction"),
                                             ("Roof", "Roof", "Roof construction"),
- #                                           ("Ceiling", "Ceiling", "Ceiling construction"),
                                             ("Window", "Window", "Window construction"), 
                                             ("Door", "Door", "Door construction"),
                                             ("Shading", "Shading", "Shading material"),
@@ -2076,9 +2073,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_sg_uv = FloatProperty(name = "W/m^2.K", description = "Window U-Value", min = 0.01, max = 10, default = 2.4)
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
-#    envi_boundary = BoolProperty(name = "", description = "Flag to signify whether the material represents a zone boundary", default = False)
     envi_afsurface = BoolProperty(name = "", description = "Flag to signify whether the material represents an airflow surface", default = False)
-#    envi_thermalmass = BoolProperty(name = "", description = "Flag to signify whether the material represents thermal mass", default = False)
     [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
     
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
@@ -2209,10 +2204,10 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         
     def draw_buttons(self, context, layout):
         newrow(layout, 'Active:', self, 'active')
-        newrow(layout, 'Boundary:', self, "envi_con_con")
         newrow(layout, 'Type:', self, "envi_con_type")
-        
+       
         if self.envi_con_type != "None":
+            newrow(layout, 'Boundary:', self, "envi_con_con")
 
 #            if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door", "Ceiling"):
 #                newrow(layout, 'Context:', self, "envi_con_con")
@@ -2234,7 +2229,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
 #                            newrow(layout, "PV area ratio:", self, "pvsa")
 #                            
 #                            if not self.inputs['PV Schedule'].links:
-#=======
+
             if self.envi_con_type in ("Wall", "Floor", "Roof", "Window", "Door"):
                 
                 if self.envi_con_type in ("Wall", "Roof") and self.envi_con_con == 'External':
@@ -2246,7 +2241,6 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                                                     
                         if self.pp == '0':
                             newrow(layout, "PV area ratio:", self, "pvsa")
-#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
                             newrow(layout, "Efficiency:", self, "eff")
                             
                     elif self.pp == '1':
@@ -2287,7 +2281,6 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 if self.envi_con_con in ('External', 'Zone'):
                     newrow(layout, 'Air-flow:', self, "envi_afsurface")
                 newrow(layout, 'Specification:', self, "envi_con_makeup")
-#                newrow(layout, 'Boundary:', self, "envi_bc")
                 
                 if self.envi_con_makeup == '0':                    
                     if self.envi_con_type == 'Window':
@@ -2375,26 +2368,15 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "Efficiency:", self, "eff")
         
     def update(self):
-#<<<<<<< HEAD
-#        self.valid()
-#    
-#    def valid(self):
-#        try:
-#            if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type not in ('None', 'Shading')) or (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
-#                nodecolour(self, 1)
-#            else:
-#                nodecolour(self, 0)
-#        except:
-#=======
-#        socklink2(self.inputs['Outer layer'], self.id_data)
-        if len(self.inputs) == 2:
+        if len(self.inputs) == 3:
             self.valid()
     
     def valid(self):
         if ((self.envi_con_makeup == '1' or self.pv) and not self.inputs['Outer layer'].links and self.envi_con_type != 'Shading') or \
-        (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
-#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+            (not self.inputs['Outer frame layer'].links and not self.inputs['Outer frame layer'].hide):
             nodecolour(self, 1)
+        else:
+            nodecolour(self, 0)
             
     def pv_ep_write(self, sn):
         self['matname'] = get_mat(self, 1).name
@@ -2406,11 +2388,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         paramvs = ['{}-pv'.format(sn), sn, 
                    ('PhotovoltaicPerformance:Simple', 'PhotovoltaicPerformance:EquivalentOne-Diode', 'PhotovoltaicPerformance:Sandia')[int(self.pp)], '{}-pv-performance'.format(sn),
                    self.hti, self.ssp, self.mis]
-#<<<<<<< HEAD
-#        
-#=======
-#                
-#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
+
         ep_text = epentry('Generator:Photovoltaic', params, paramvs)
         
         if self.pp == '0':
@@ -2701,7 +2679,7 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
 #>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             else:
                 paramvs = [self['layer_name'], matlist[2]]
-                self.resist = matlist[2]
+                self.resist = float(matlist[2])
             
         else:
             paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab), 
@@ -3767,7 +3745,6 @@ class ViBMExNode(Node, ViNodes):
     bm_xgrad = FloatProperty(name = "X", description = "Blockmesh X simple grading", min = 0, max = 10, default = 1, update = nodeupdate)
     bm_ygrad = FloatProperty(name = "Y", description = "Blockmesh Y simple grading", min = 0, max = 10, default = 1, update = nodeupdate)
     bm_zgrad = FloatProperty(name = "Z", description = "Blockmesh Z simple grading", min = 0, max = 10, default = 1, update = nodeupdate)
-    existing =  BoolProperty(name = '', default = 0)
     
     def init(self, context):
         self['exportstate'] = ''
@@ -3789,8 +3766,6 @@ class ViBMExNode(Node, ViNodes):
         col.prop(self, "bm_zgrad")
         row = layout.row()
         row.operator("node.blockmesh", text = "Export").nodeid = self['nodeid']
-        if not self.use_custom_color:
-            newrow(layout, 'Use existing', self, 'existing')
     
     def update(self):
         socklink(self.outputs['Mesh out'], self['nodeid'].split('@')[1])
@@ -3805,7 +3780,7 @@ class ViSHMExNode(Node, ViNodes):
     bl_label = 'FloVi SnappyHexMesh'
     bl_icon = 'LAMP'
     laytypedict = {'0': (('First', 'frlayer'), ('Overall', 'olayer')), '1': (('First', 'frlayer'), ('Expansion', 'expansion')), '2': (('Final', 'fnlayer'), ('Expansion', 'expansion')),
-                     '3': (('Final', 'fnlayer'), ('Overall', 'olayer')), '4': (('Final:', 'fnlayer'), ('Expansion:', 'expansion')), '5': (('Overall:', 'olayer'), ('Expansion:', 'expansion'))}
+                     '3': (('Final', 'fnlayer'), ('Overall', 'olayer')), '4': (('Overall:', 'olayer'), ('Expansion:', 'expansion'))}
 
     def nodeupdate(self, context):
         nodecolour(self, self['exportstate'] != [str(x) for x in (self.lcells, self.gcells)])
@@ -3820,7 +3795,7 @@ class ViSHMExNode(Node, ViNodes):
 
     layerspec = EnumProperty(items = [('0', 'First & overall', 'First layer thickness and overall thickness'), ('1', 'First & ER', 'First layer thickness and expansion ratio'),
                                                ('2', 'Final & ER', 'Final layer thickness and expansion ratio'), ('3', 'Final & overall', 'Final layer thickness and overall thickness'),
-                                                ('4', 'Final & ER', 'Final layer thickness and expansion ratio'), ('5', 'Overall & ER', 'Overall thickness and expansion ratio')], name = "", default = '0', update = nodeupdate)
+                                                ('4', 'Overall & ER', 'Overall thickness and expansion ratio')], name = "", default = '0', update = nodeupdate)
     expansion = FloatProperty(name = "", description = "Exapnsion ratio", min = 1.0, max = 10.0, default = 1.0, update = nodeupdate)
     llayer = FloatProperty(name = "", description = "Last layer thickness", min = 0.01, max = 30.0, default = 1.0, update = nodeupdate)
     frlayer = FloatProperty(name = "", description = "First layer thickness", min = 0.01, max = 30.0, default = 1.0, update = nodeupdate)

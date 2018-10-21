@@ -126,7 +126,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                         (obc, obco, se, we) = boundpoly(obj, emnode, face, enng)
                         
                         if obc:
-                            if emnode.envi_con_type in ('Wall', "Floor", "Roof", "Ceiling"):
+                            if emnode.envi_con_type in ('Wall', "Floor", "Roof"):
                                 if emnode.envi_con_makeup != "2":
                                     params = list(wfrparams) + ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]                     
                                     paramvs = ['{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)]+ ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]

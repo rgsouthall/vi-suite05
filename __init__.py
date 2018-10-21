@@ -148,7 +148,7 @@ def select_nodetree(dummy):
                 envings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'EnViMatN' and ng == bpy.context.active_object.active_material.envi_nodes]
                 if envings:
                     space.node_tree = envings[0]
-        except:
+        except Exception as e:
             pass
         
 bpy.app.handlers.scene_update_post.append(select_nodetree)

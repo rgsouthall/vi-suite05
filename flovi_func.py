@@ -194,8 +194,8 @@ def fvblbmgen(mats, ffile, vfile, bfile, meshtype):
     for line in bfile.readlines():
         if line.strip() in matfacedict:
             mat = line.strip()
-        elif '_' in line and line.strip().split('_')[1] in matfacedict:
-            mat = line.strip().split('_')[1]
+        elif line.strip() in [o.name for o in bpy.data.objects]:
+            mat = bpy.data.objects[line.strip()].data.materials[0].name
         if 'nFaces' in line:
             matfacedict[mat][1] = int(line.split()[1].strip(';'))
         if 'startFace' in line:
@@ -542,36 +542,57 @@ mixture
     return ofheader  
 
 def fvshmlayers(oname, node):
+    surfdict = {"0": (("firstLayerThickness", node.frlayer), ("thickness", node.olayer)),
+                "1": (("firstLayerThickness", node.frlayer), ("expansionRatio", node.expansion)),
+                "2": (("finalLayerThickness", node.fnlayer), ("expansionRatio", node.expansion)),
+                "3": (("finalLayerThickness", node.fnlayer), ("thickness", node.olayer)),
+                "4": (("thickness", node.olayer), ("expansionRatio", node.expansion))}
+    
+    
     return 'addLayersControls\n{{\n  relativeSizes true;\n  layers\n  {{\n    "{}.*"\n    {{\n      nSurfaceLayers {};\n    }}\n  }}\n\n'.format(oname, node.layers)
     '  expansionRatio 1.0;\n  finalLayerThickness 0.3;\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 3;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n' + \
     '  nSmoothThickness 10;\n  maxFaceThicknessRatio 0.5;\n  maxThicknessToMedialRatio 0.3;\n  minMedianAxisAngle 90;\n  nBufferCellsNoExtrude 0;\n  nLayerIter 50;\n}\n\n'
     
 def fvshmwrite(node, fvos, **kwargs):     
+    surfdict = {"0": ("firstLayerThickness", node.frlayer, "thickness", node.olayer),
+                "1": ("firstLayerThickness", node.frlayer, "expansionRatio", node.expansion),
+                "2": ("finalLayerThickness", node.fnlayer, "expansionRatio", node.expansion),
+                "3": ("finalLayerThickness", node.fnlayer, "thickness", node.olayer),
+                "4": ("thickness", node.olayer, "expansionRatio", node.expansion)}
+    
     layersurf = '({}|{})'.format(kwargs['ground'][0].name, fvos[0].name) if kwargs and kwargs['ground'] else fvos[0].name 
     ofheader = 'FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n    object      snappyHexMeshDict;\n}\n\n'
     ofheader += 'castellatedMesh    {};\nsnap    {};\naddLayers    {};\ndebug    {};\n\n'.format('true', 'true', 'true', 0)
     
     ofheader += 'geometry\n{\n'
+
     for o in fvos:
         ofheader += '    {0}\n    {{\n        type triSurfaceMesh;\n        file "{0}.obj";\n    \n}}'.format(o.name)
+
     ofheader += '};\n\n'
     ofheader += 'castellatedMeshControls\n{{\n  maxLocalCells {};\n  maxGlobalCells {};\n  minRefinementCells {};\n  maxLoadUnbalance 0.10;\n  nCellsBetweenLevels {};\n\n'.format(node.lcells, node.gcells, int(node.gcells/100), node.ncellsbl)
     ofheader += '  features\n  (\n'
+
     for o in fvos:
         ofheader += '    {{\n      file "{}.eMesh";\n      level {};\n    }}\n\n'.format(o.name, node.level)
+
     ofheader += ');\n\n'
     ofheader +='  refinementSurfaces\n  {\n'
+
     for o in fvos:
         ofheader += '    {}\n    {{\n      level ({} {});\n    }}\n\n  '.format(o.name, node.surflmin, node.surflmax) 
+
     ofheader += '};\n\n'
     ofheader += '  resolveFeatureAngle 30;\n  refinementRegions\n  {}\n\n'
     ofheader += '  locationInMesh ({0[0]:} {0[1]} {0[2]});\n  allowFreeStandingZoneFaces true;\n}}\n\n'.format(bpy.data.objects[node.empties].location)
     ofheader += 'snapControls\n{\n  nSmoothPatch 3;\n  tolerance 2.0;\n  nSolveIter 30;\n  nRelaxIter 5;\n  nFeatureSnapIter 10;\n  implicitFeatureSnap false;\n  explicitFeatureSnap true;\n  multiRegionFeatureSnap false;\n}\n\n'
     ofheader += 'addLayersControls\n{\n  relativeSizes true;\n  layers\n  {\n'
+
     for o in fvos:
         ofheader += '"{}.*"\n    {{\n      nSurfaceLayers {};\n    }}\n'.format(o.name, node.layers)
+
     ofheader += '}}\n\n'.format(o.name, node.layers)
-    ofheader += '  expansionRatio 1.0;\n  finalLayerThickness 0.3;\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 3;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n' + \
+    ofheader += '  {0[0]} {0[1]};\n  {0[2]} {0[3]};\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 5;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n'.format(surfdict[node.layerspec][:]) + \
                 '  nSmoothThickness 10;\n  maxFaceThicknessRatio 0.5;\n  maxThicknessToMedialRatio 0.3;\n  minMedianAxisAngle 90;\n  nBufferCellsNoExtrude 0;\n  nLayerIter 50;\n}\n\n'
     ofheader += 'meshQualityControls\n{\n  #include "meshQualityDict"\n  nSmoothScale 4;\n  errorReduction 0.75;\n}\n\n'
     ofheader += 'writeFlags\n(\n  scalarLevels\n  layerSets\n  layerFields\n);\n\nmergeTolerance 1e-6;\n'

@@ -522,8 +522,10 @@ class NODE_OT_RadPreview(bpy.types.Operator, io_utils.ExportHelper):
 
     def invoke(self, context, event):
         scene = context.scene
+        
         if viparams(self, scene):
             return {'CANCELLED'}
+        
         objmode()
         self.simnode, frame = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]], scene.frame_current
         self.simnode.presim()
@@ -2685,10 +2687,12 @@ class NODE_OT_Shadow(bpy.types.Operator):
             for k in o.keys():
                 del o[k]
             o['omin'], o['omax'], o['oave'] = {}, {}, {}
+            
             if simnode.sdoy <= simnode.edoy:
                 o['days'] = arange(simnode.sdoy, simnode.edoy + 1, dtype = float)
             else:
                 o['days'] = arange(simnode.sdoy, simnode.edoy + 1, dtype = float)
+                
             o['hours'] = arange(simnode.starthour, simnode.endhour + 1, 1/simnode.interval, dtype = float)
             bm = bmesh.new()
             bm.from_mesh(o.data)
@@ -3398,7 +3402,7 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        expnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+        expnode = context.node if context.node.bl_label == "FloVi BlockMesh" else context.node.inputs[0].links[0].from_node
         bmos = [o for o in scene.objects if o.vi_type == '2']
         
         if viparams(self, scene):
@@ -3416,11 +3420,8 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
         with open(os.path.join(scene['flparams']['ofcpfilebase'], 'blockMeshDict'), 'w') as bmfile:
             bmfile.write(fvbmwrite(bmos[0], expnode))
 
-        if not expnode.existing:
-            call(("blockMesh", "-case", "{}".format(scene['flparams']['offilebase'])))
-            fvblbmgen(bmos[0].data.materials, open(os.path.join(scene['flparams']['ofcpfilebase'], 'faces'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'points'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'boundary'), 'r'), 'blockMesh')
-        else:
-            pass
+        call(("blockMesh", "-case", "{}".format(scene['flparams']['offilebase'])))
+        fvblbmgen(bmos[0].data.materials, open(os.path.join(scene['flparams']['ofcpfilebase'], 'faces'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'points'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'boundary'), 'r'), 'blockMesh')
 
         expnode.export()
         return {'FINISHED'}
@@ -3434,6 +3435,7 @@ class NODE_OT_Snappymesh(bpy.types.Operator):
     nodeid = bpy.props.StringProperty()
 
     def execute(self, context):
+        bpy.ops.node.blockmesh()        
         scene, mats = context.scene, []
 
         for dirname in os.listdir(scene['flparams']['offilebase']):
@@ -3447,7 +3449,6 @@ class NODE_OT_Snappymesh(bpy.types.Operator):
         fvos = [o for o in scene.objects if o.vi_type == '3']
         
         if fvos:
-#            selobj(scene, fvos[0])
             bmos = [o for o in scene.objects if o.vi_type == '2']
 #                bpy.ops.export_mesh.stl(filepath=os.path.join(scene['flparams']['ofctsfilebase'], '{}.obj'.format(o.name)), check_existing=False, filter_glob="*.stl", axis_forward='Y', axis_up='Z', global_scale=1.0, use_scene_unit=True, ascii=False, use_mesh_modifiers=True)
             fvobjwrite(scene, fvos, bmos[0])
@@ -3602,9 +3603,9 @@ class NODE_OT_FVSolve(bpy.types.Operator):
     def terminate(self, scene):
         self.run.kill()
 
-class VIGridify(bpy.types.Operator):
+class OBJECT_OT_VIGridify(bpy.types.Operator):
     ''''''
-    bl_idname = "view3d.vi_gridify"
+    bl_idname = "object.vi_gridify"
     bl_label = "VI Gridify"
      
     def modal(self, context, event):
@@ -3683,3 +3684,54 @@ class VIGridify(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
+class OBJECT_OT_VIGridify2(bpy.types.Operator):
+    ''''''
+    bl_idname = "object.vi_gridify2"
+    bl_label = "VI Gridify"
+    bl_options = {"REGISTER", 'UNDO'}
+    
+    rotate =  bpy.props.FloatProperty(name = 'Rotation', default = 0, min = 0, max = 360) 
+    us =  bpy.props.FloatProperty(default = 0.6, min = 0.01) 
+    acs =  bpy.props.FloatProperty(default = 0.6, min = 0.01) 
+    
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return (obj and obj.type == 'MESH')
+    
+    def execute(self, context):
+        self.o = bpy.context.active_object
+        mesh = bmesh.from_edit_mesh(self.o.data)
+        mesh.faces.ensure_lookup_table()
+        mesh.verts.ensure_lookup_table()
+        self.upv = mesh.faces[0].calc_tangent_edge_pair().copy().normalized()
+        self.norm = mesh.faces[0].normal.copy()
+        self.acv = self.upv.copy()
+        eul = Euler(radians(-90) * self.norm, 'XYZ')
+        self.acv.rotate(eul)
+        rotation = Euler(radians(self.rotate) * self.norm, 'XYZ')
+        self.upv.rotate(rotation)
+        self.acv.rotate(rotation)
+        vertdots = [Vector.dot(self.upv, vert.co) for vert in mesh.verts]
+        vertdots2 = [Vector.dot(self.acv, vert.co) for vert in mesh.verts]
+        svpos = mesh.verts[vertdots.index(min(vertdots))].co
+        svpos2 = mesh.verts[vertdots2.index(min(vertdots2))].co
+        res1, res2, ngs1, ngs2, gs1, gs2 = 1, 1, self.us, self.acs, self.us, self.acs
+        vs = mesh.verts[:]
+        es = mesh.edges[:]
+        fs = [f for f in mesh.faces[:] if f.select]
+        gs = vs + es + fs
+          
+        while res1:
+            res = bmesh.ops.bisect_plane(mesh, geom = gs, dist = 0.001, plane_co = svpos + ngs1 * self.upv, plane_no = self.upv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
+            res1 = res['geom_cut']
+            gs = mesh.verts[:] + mesh.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
+            ngs1 += gs1
+    
+        while res2:
+            res = bmesh.ops.bisect_plane(mesh, geom = gs, dist = 0.001, plane_co = svpos2 + ngs2 * self.acv, plane_no = self.acv, use_snap_center = 0, clear_outer = 0, clear_inner = 0)
+            res2 = res['geom_cut']
+            gs = mesh.verts[:] + mesh.edges[:] + [v for v in res['geom'] if isinstance(v, bmesh.types.BMFace)]
+            ngs2 += gs2
+        bmesh.update_edit_mesh(self.o.data)
+        return {'FINISHED'}
