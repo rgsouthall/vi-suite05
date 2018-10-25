@@ -61,7 +61,7 @@ def boundpoly(obj, emnode, poly, enng):
 
     elif emnode.envi_con_con == 'Thermal mass':
         return(("Adiabatic", "", "NoSun", "NoWind"))
-    elif emnode.envi_con_con == 'External' and emnode.envi_con_type == 'Floor':
+    elif emnode.envi_con_con == 'Ground':
         return(("Ground", "", "NoSun", "NoWind"))
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))

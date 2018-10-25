@@ -137,6 +137,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                     gens.append('{}_{}-pv'.format(obj.name, face.index))
                                     
                             elif emnode.envi_con_type in ('Door', 'Window')  and emnode.envi_con_makeup != "2":
+                                print(mat.name)
                                 if len(face.verts) > 4:
                                     exp_op.report({'ERROR'}, 'Window/door in {} has more than 4 vertices'.format(obj.name))
                                     
@@ -154,6 +155,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 else:
                                     paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '{}-fad'.format(mat.name), '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((vco[0] + (1, -1)[vco[0] - xav > 0]*(0.001+emnode.fw, 0)[abs(vco[0] - xav) < 0.0001], vco[1] + (1, -1)[vco[1] - yav > 0]*(0.001+emnode.fw, 0)[abs(vco[1] - yav) < 0.0001], vco[2] + (1, -1)[vco[2] - zav > 0]*(0.001+emnode.fw, 0)[abs(vco[2] - zav) < 0.0001])) for vco in vcos]
+                                
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
                 
                             elif emnode.envi_con_type == 'Shading' or obj.envi_type == '1':
@@ -449,7 +451,8 @@ def pregeo(op):
             en_obj = scene.objects.active
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
             selmesh('desel')
-            enomats = [enom for enom in en_obj.data.materials if enom and enom.envi_nodes and enom.envi_nodes.nodes and not [n.use_custom_color for n in enom.envi_nodes.nodes]]
+            enomats = [enom for enom in en_obj.data.materials if enom and enom.envi_nodes and enom.envi_nodes.nodes and not any([n.use_custom_color for n in enom.envi_nodes.nodes])]
+            print('e', [enom for enom in en_obj.data.materials if enom and enom.envi_nodes and enom.envi_nodes.nodes])
             obj.select, en_obj.select, en_obj.name, en_obj.data.name, en_obj.layers[1], en_obj.layers[0], scene.layers[0], scene.layers[1] = False, True, 'en_'+obj.name, en_obj.data.name, True, False, False, True
             mis = [f.material_index for f in en_obj.data.polygons]
 
@@ -554,8 +557,10 @@ def pregeo(op):
             for node in enng.nodes:
                 if hasattr(node, 'zone') and node.zone == en_obj.name:
                     node.uvsockupdate()
-    
+                
+            print(enomats, [get_con_node(mat).name for mat in enomats])    
             if any([get_con_node(mat).envi_afsurface for mat in enomats]):
+                
                 enng['enviparams']['afn'] = 1
                 
                 if 'Control' not in [node.bl_label for node in enng.nodes]:

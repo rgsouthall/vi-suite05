@@ -2038,13 +2038,16 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
                 node.active = False
                 
     def bc_update(self, context):
-        if self.envi_con_type in ("Wall", "Floor", "Roof"):
+        if self.envi_con_type in ("Wall", "Roof"):
             return [("External", "External", "External boundary"),
              ("Zone", "Zone", "Zone boundary"),
              ("Thermal mass", "Thermal mass", "Adiabatic")]
         elif self.envi_con_type in ("Door", "Window"):
             return [("External", "External", "External boundary"),
              ("Zone", "Zone", "Zone boundary")]
+        elif self.envi_con_type == "Floor":
+            return [("Ground", "Ground", "Ground boundary"), ("External", "External", "External boundary"),
+             ("Zone", "Zone", "Zone boundary"), ("Thermal mass", "Thermal mass", "Adiabatic")]
         else:
             return [("", "", "")]
         
@@ -2426,6 +2429,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
             paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
+            print(get_mat(self, 1).name)
             
             for pm, presetmat in enumerate(mats):  
                 matlist = list(envi_mats.matdat[presetmat])
@@ -2525,6 +2529,7 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             if self.fclass == '0':
                 params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
                 paramvs = ('{}-frame-layer{}'.format(self['matname'], 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(self['matname']), '{}-frame-layer{}'.format(self['matname'], 0))
+                print(paramvs)
                 ep_text += epentry('Material', params[:-2], paramvs[:-2])
                 ep_text += epentry('Construction', params[-2:], paramvs[-2:])
             
@@ -5107,7 +5112,7 @@ class EnViSSFlowNode(Node, EnViNodes):
                     if (othersock.name[0:-2]+'b' in [s.name for s in othernode.outputs] and othernode.outputs[othersock.name[0:-2]+'b'].links) or othersock.name[0:-2]+'b' not in [s.name for s in othernode.outputs]:
                         zn = othernode.zone
                         sn = othersock.sn
-                        snames.append(('win-', 'door-')[bpy.data.materials[othersock.name[:-len(sn)-4]].envi_con_type == 'Door']+zn+'_'+sn)
+                        snames.append(('win-', 'door-')[get_con_node(bpy.data.materials[othersock.name[:-len(sn)-4]]).envi_con_type == 'Door']+zn+'_'+sn)
                         params = ('Surface Name', 'Leakage Component Name', 'External Node Name', 'Window/Door Opening Factor')
                         paramvs = (snames[-1], '{}_{}'.format(self.name, self.linkmenu), en, self.wdof1)
                         if self.linkmenu in ('SO', 'DO'):
@@ -5462,14 +5467,19 @@ class EnViEMSZoneNode(Node, EnViNodes):
     def zupdate(self, context):
         adict = {'Window': 'win', 'Door': 'door'}
         self.supdate(context)
-        try:
+        sssocklist = []
+        try:            
             obj = bpy.data.objects[self.emszone]
             odm = obj.data.materials
-            sssocklist = ['{}_{}_{}_{}'.format(adict[odm[face.material_index].envi_con_type], self.emszone, face.index, self.actdict[self.acttype][1]) for face in obj.data.polygons if odm[face.material_index].envi_afsurface == 1 and odm[face.material_index].envi_con_type in ('Window', 'Door')]          
+            for face in obj.data.polygons:
+                mat = odm[face.material_index]
+                for emnode in mat.envi_nodes.nodes:
+                    if emnode.bl_idname == 'EnViCon' and emnode.active and emnode.envi_afsurface and emnode.envi_con_type in ('Window', 'Door'):
+                        sssocklist.append('{}_{}_{}_{}'.format(adict[emnode.envi_con_type], self.emszone, face.index, self.actdict[self.acttype][1]))         
+
             self.inputs[0].hide = False
             nodecolour(self, 0)
         except:
-            sssocklist = []
             self.inputs[0].hide = True
             nodecolour(self, 1)
 
@@ -5479,7 +5489,9 @@ class EnViEMSZoneNode(Node, EnViNodes):
 
         for sock in sorted(set(sssocklist)):
             if not self.inputs.get(sock):
-                try: self.inputs.new('EnViActSocket', sock).sn = '{0[0]}-{0[1]}_{0[2]}_{0[3]}'.format(sock.split('_'))
+                try: 
+                    self.inputs.new('EnViActSocket', sock).sn = '{0[0]}-{0[1]}_{0[2]}_{0[3]}'.format(sock.split('_'))
+                    print(sock.split('_'))
                 except Exception as e: print('3190', e)
 
     emszone = StringProperty(name = '', update = zupdate)
