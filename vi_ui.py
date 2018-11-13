@@ -8,10 +8,11 @@ envi_cons = envi_constructions()
 
 class Vi3DPanel(bpy.types.Panel):
     '''VI-Suite 3D view panel'''
-    bl_label = "VI-Suite Display"
+    bl_label = "VI Display"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-        
+    bl_category = "VI-Suite"
+    
     def draw(self, context):
         scene = context.scene
         cao = context.active_object
@@ -481,7 +482,7 @@ class VIMatPanel(bpy.types.Panel):
             rmmenu(layout, cm)
         
         elif cm.mattype == '2':
-            fvsimnode = bpy.data.node_groups[scene['viparams']['fvsimnode'].split('@')[1]].nodes[scene['viparams']['fvsimnode'].split('@')[0]] if 'fvsimnode' in scene['viparams'] else 0
+            fvsimnode = bpy.data.node_groups[scene['viparams']['fvsimnode'].split('@')[1]].nodes[scene['viparams']['fvsimnode'].split('@')[0]] if scene.get('viparams') and 'fvsimnode' in scene['viparams'] else 0
             newrow(layout, "Type:", cm, "flovi_bmb_type")
             if fvsimnode:
                 context.scene['flparams']['solver'] = fvsimnode.solver
@@ -708,17 +709,17 @@ def rmmenu(layout, cm):
     row.label("-----------------------------------------")
     
 class MESH_Gridify_Panel(bpy.types.Panel):
-     bl_label = "Gridify Panel"
-     bl_space_type = "VIEW_3D"
-     bl_region_type = "TOOLS"
-     bl_context = "objectmode"
-     bl_category = "VI-Suite"
- 
-     def draw(self, context):         
-         scene = context.scene
-         layout = self.layout
-         newrow(layout, 'Up vector:', scene, 'gridifyup')
-         newrow(layout, 'Up size:', scene, 'gridifyus')
-         newrow(layout, 'Across size:', scene, 'gridifyas')
-         row = layout.row()
-         row.operator("view3d.gridify", text="Grid the object")
+    bl_label = "VI Gridify"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_context = "mesh_edit"
+    bl_category = "VI-Suite"
+      
+    def draw(self, context):         
+#        scene = context.scene
+        layout = self.layout
+#        newrow(layout, 'Rotation:', scene, 'vi_gridify_rot')
+#        newrow(layout, 'Size 1:', scene, 'vi_gridify_us')
+#        newrow(layout, 'Size 2:', scene, 'vi_gridify_as')
+        row = layout.row()
+        row.operator("object.vi_gridify2", text="Grid the object")

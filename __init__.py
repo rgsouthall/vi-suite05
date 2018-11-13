@@ -70,6 +70,8 @@ def abspath(self, context):
         self.ofbin = bpy.path.abspath(self.ofbin)
     if self.oflib != bpy.path.abspath(self.oflib):
         self.oflib = bpy.path.abspath(self.oflib)  
+    if self.ofetc != bpy.path.abspath(self.ofetc):
+        self.ofetc = bpy.path.abspath(self.ofetc)
         
 class VIPreferences(AddonPreferences):
     bl_idname = __name__
@@ -80,8 +82,9 @@ class VIPreferences(AddonPreferences):
     epweath = StringProperty(name = '', description = 'EnergyPlus weather directory location', default = '', subtype='DIR_PATH', update=abspath)
     ofbin = StringProperty(name = '', description = 'OpenFOAM binary directory location', default = '', subtype='DIR_PATH', update=abspath)
     oflib = StringProperty(name = '', description = 'OpenFOAM library directory location', default = '', subtype='DIR_PATH', update=abspath)
+    ofetc = StringProperty(name = '', description = 'OpenFOAM letc directory location', default = '', subtype='DIR_PATH', update=abspath)
     ui_dict = {"Radiance bin directory:": 'radbin', "Radiance lib directory:": 'radlib', "EnergyPlus bin directory:": 'epbin',
-               "EnergyPlus weather directory:": 'epweath', 'OpenFOAM bin directory': 'ofbin', 'OpenFOAM lib directory': 'oflib'}
+               "EnergyPlus weather directory:": 'epweath', 'OpenFOAM bin directory': 'ofbin', 'OpenFOAM lib directory': 'oflib', 'OpenFOAM etc directory': 'ofetc'}
 
     def draw(self, context):
         layout = self.layout 
@@ -145,7 +148,7 @@ def select_nodetree(dummy):
                 envings = [ng for ng in bpy.data.node_groups if ng.bl_idname == 'EnViMatN' and ng == bpy.context.active_object.active_material.envi_nodes]
                 if envings:
                     space.node_tree = envings[0]
-        except:
+        except Exception as e:
             pass
         
 bpy.app.handlers.scene_update_post.append(select_nodetree)
@@ -184,7 +187,7 @@ def path_update():
     radbdir = vi_prefs.radbin if vi_prefs and os.path.isdir(vi_prefs.radbin) else os.path.join('{}'.format(addonpath), 'Radfiles', 'bin') 
     ofbdir = vi_prefs.ofbin if vi_prefs and os.path.isdir(vi_prefs.ofbin) else os.path.join('{}'.format(addonpath), 'OFFiles', 'bin') 
     ofldir = vi_prefs.oflib if vi_prefs and os.path.isdir(vi_prefs.oflib) else os.path.join('{}'.format(addonpath), 'OFFiles', 'lib')
-
+    ofedir = vi_prefs.ofetc if vi_prefs and os.path.isdir(vi_prefs.ofetc) else os.path.join('{}'.format(addonpath), 'OFFiles')
     os.environ["PATH"] += "{0}{1}".format(evsep[str(sys.platform)], os.path.dirname(bpy.app.binary_path))
     
     if not os.environ.get('RAYPATH'):# or radldir not in os.environ['RAYPATH'] or radbdir not in os.environ['PATH']  or epdir not in os.environ['PATH']:
@@ -195,7 +198,8 @@ def path_update():
            
         os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}{0}{3}".format(evsep[str(sys.platform)], radbdir, epdir, ofbdir)    
         os.environ["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"] + "{0}{1}".format(evsep[str(sys.platform)], ofldir) if os.environ.get("LD_LIBRARY_PATH") else "{0}{1}".format(evsep[str(sys.platform)], ofldir)
-
+        os.environ["WM_PROJECT_DIR"] = ofedir
+        
 def colupdate(self, context):
     cmap(self)
 
@@ -379,8 +383,8 @@ def register():
     Material.radfile = sprop("", "Radiance file material description", 1024, "")
     Material.vi_shadow = bprop("VI Shadow", "Flag to signify whether the material represents a VI Shadow sensing surface", False)
     Material.livi_sense = bprop("LiVi Sensor", "Flag to signify whether the material represents a LiVi sensing surface", False)
-    Material.livi_compliance = bprop("LiVi Compliance Surface", "Flag to siginify whether the material represents a LiVi compliance surface", False)
-    Material.gl_roof = bprop("Glazed Roof", "Flag to siginify whether the communal area has a glazed roof", False)
+    Material.livi_compliance = bprop("LiVi Compliance Surface", "Flag to signify whether the material represents a LiVi compliance surface", False)
+    Material.gl_roof = bprop("Glazed Roof", "Flag to signify whether the communal area has a glazed roof", False)
     hspacetype = [('0', 'Public/Staff', 'Public/Staff area'), ('1', 'Patient', 'Patient area')]
     rspacetype = [('0', "Kitchen", "Kitchen space"), ('1', "Living/Dining/Study", "Living/Dining/Study area"), ('2', "Communal", "Non-residential or communal area")]
     respacetype = [('0', "Sales", "Sales space"), ('1', "Occupied", "Occupied space")]
@@ -396,17 +400,17 @@ def register():
 # EnVi material definitions
     Material.envi_nodes = bpy.props.PointerProperty(type = bpy.types.NodeTree)
     Material.envi_type = sprop("", "EnVi Material type", 64, "None")
-    
-    Material.envi_shading = bprop("", "Flag to siginify whether the material contains shading elements", False)
+
+    Material.envi_shading = bprop("", "Flag to signify whether the material contains shading elements", False)
 #    Material.envi_con_type = eprop([("Wall", "Wall", "Wall construction"),("Floor", "Floor", "Ground floor construction"),("Roof", "Roof", "Roof construction"),("Ceiling", "Ceiling", "Ceiling construction"),("Window", "Window", "Window construction"), ("Door", "Door", "Door construction"),
 #                    ("Shading", "Shading", "Shading material"),("None", "None", "Surface to be ignored")], "", "Specify the construction type", "None")
-#    Material.envi_simple_glazing = bprop("", "Flag to siginify whether to use a EP simple glazing representation", False)
+#    Material.envi_simple_glazing = bprop("", "Flag to signify whether to use a EP simple glazing representation", False)
 #    Material.envi_sg_uv = fprop("", "Window U-Value", 0, 10, 2.4)
 #    Material.envi_sg_shgc = fprop("", "Window Solar Heat Gain Coefficient", 0, 1, 0.7)
 #    Material.envi_sg_vt = fprop("", "Window Visible Transmittance", 0, 1, 0.8)
-    Material.envi_boundary = bprop("", "Flag to siginify whether the material represents a zone boundary", False)
-#    Material.envi_afsurface = bprop("", "Flag to siginify whether the material represents an airflow surface", False)
-#    Material.envi_thermalmass = bprop("", "Flag to siginify whether the material represents thermal mass", False)
+    Material.envi_boundary = bprop("", "Flag to signify whether the material represents a zone boundary", False)
+#    Material.envi_afsurface = bprop("", "Flag to signify whether the material represents an airflow surface", False)
+#    Material.envi_thermalmass = bprop("", "Flag to signify whether the material represents thermal mass", False)
 #    Material.envi_aperture = eprop([("0", "External", "External facade airflow component", 0), ("1", "Internal", "Zone boundary airflow component", 1),], "", "Position of the airflow component", "0")
 #    Material.envi_con_makeup = eprop([("0", "Pre-set", "Construction pre-set"),("1", "Layers", "Custom layers"),("2", "Dummy", "Adiabatic")], "", "Pre-set construction of custom layers", "0")
 #    Material.envi_layero = eprop([("0", "None", "Not present"), ("1", "Database", "Select from database"), ("2", "Custom", "Define custom material properties")], "", "Composition of the outer layer", "0")
@@ -615,9 +619,9 @@ def register():
     Scene.vi_bsdfleg_max = bpy.props.FloatProperty(name = "", description = "Legend maximum", min = 0, max = 1000000, default = 100)
     Scene.vi_bsdfleg_min = bpy.props.FloatProperty(name = "", description = "Legend minimum", min = 0, max = 1000000, default = 0)
     Scene.vi_bsdfleg_scale = EnumProperty(items = [('0', 'Linear', 'Linear scale'), ('1', 'Log', 'Logarithmic scale')], name = "", description = "Legend scale", default = '0')    
-    Scene.gridifyup = fvprop(3, '', 'Grid up vector', [1, 0, 0], 'VELOCITY', -1, 1)
-    Scene.gridifyus = fprop("", "Up direction size", 0.01, 10, 0.6)
-    Scene.gridifyas = fprop("", "Side direction size", 0.01, 10, 0.6)
+    Scene.vi_gridify_rot = fprop("deg", "Rotation around face normal", 0.0, 360, 0.0)
+    Scene.vi_gridify_us = fprop("m", "Up direction size", 0.01, 10, 0.6)
+    Scene.vi_gridify_as = fprop("m", "Side direction size", 0.01, 10, 0.6)
 
 #    Scene.vi_lbsdf_direc = EnumProperty(items = bsdfdirec, name = "", description = "Legend scale")
     

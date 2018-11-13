@@ -61,8 +61,8 @@ def boundpoly(obj, emnode, poly, enng):
 
     elif emnode.envi_con_con == 'Thermal mass':
         return(("Adiabatic", "", "NoSun", "NoWind"))
-#    elif poly.calc_center_bounds()[2] <= 0:
-#        return(("Ground", '{}_{}'.format(obj.name, poly.index), "NoSun", "NoWind"))
+    elif emnode.envi_con_con == 'Ground':
+        return(("Ground", "", "NoSun", "NoWind"))
     else:
         return(("Outdoors", "", "SunExposed", "WindExposed"))
 
