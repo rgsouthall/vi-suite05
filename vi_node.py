@@ -5346,6 +5346,13 @@ class EnViSched(Node, EnViNodes):
         except:
             nodecolour(self, 1)
 
+    file = EnumProperty(name = '', items = [("0", "None", "No file"), ("1", "Select", "Select file"), ("2", "Generate", "Generate file")], default = '0')
+    select_file = StringProperty(name="", description="Name of the variable file", default="", subtype="FILE_PATH")
+    cn = IntProperty(name = "", default = 1, min = 1)
+    rtsat = IntProperty(name = "", default = 0, min = 0)
+    hours = IntProperty(name = "", default = 8760, min = 1, max = 8760)
+    delim = EnumProperty(name = '', items = [("Comma", "Comma", "Comma delimiter"), ("Space", "Space", "space delimiter")], default = 'Comma')
+    generate_file = StringProperty(default = "", name = "")
     (u1, u2, u3, u4) =  [StringProperty(name = "", description = "Valid entries (; separated for each 'For', comma separated for each day, space separated for each time value pair)", update = tupdate)] * 4
     (f1, f2, f3, f4) =  [StringProperty(name = "", description = "Valid entries (space separated): AllDays, Weekdays, Weekends, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, AllOtherDays", update = tupdate)] * 4
     (t1, t2, t3, t4) = [IntProperty(name = "", default = 365, min = 1, max = 365, update = tupdate)] * 4
@@ -5360,9 +5367,20 @@ class EnViSched(Node, EnViNodes):
     def draw_buttons(self, context, layout):
         uvals, u = (1, self.u1, self.u2, self.u3, self.u4), 0
         tvals = (0, self.t1, self.t2, self.t3, self.t4)
-        while uvals[u] and tvals[u] < 365:
-            [newrow(layout, v[0], self, v[1]) for v in (('End day {}:'.format(u+1), 't'+str(u+1)), ('Fors:', 'f'+str(u+1)), ('Untils:', 'u'+str(u+1)))]
-            u += 1
+        newrow(layout, 'From file', self, 'file')
+        
+        if self.file == "1":
+            newrow(layout, 'Select', self, 'select_file')
+            newrow(layout, 'Columns', self, 'cn')
+            newrow(layout, 'Skip rows', self, 'rtsat')
+            newrow(layout, 'Delimiter', self, 'delim')
+        elif self.file == "2":
+            newrow(layout, 'Generate', self, 'generate_file')
+
+        if self.file != "1":        
+            while uvals[u] and tvals[u] < 365:
+                [newrow(layout, v[0], self, v[1]) for v in (('End day {}:'.format(u+1), 't'+str(u+1)), ('Fors:', 'f'+str(u+1)), ('Untils:', 'u'+str(u+1)))]
+                u += 1
 
     def update(self):
         for sock in self.outputs:
@@ -5381,8 +5399,49 @@ class EnViSched(Node, EnViNodes):
                 fos = [fs for fs in (self.f1, self.f2, self.f3, self.f4) if fs]
                 uns = [us for us in (self.u1, self.u2, self.u3, self.u4) if us]
                 ts, fs, us = rettimes(ths, fos, uns)
+                
+#                if self.file == '0':
                 schedtext = epschedwrite(name, stype, ts, fs, us)
-                return schedtext
+        return schedtext
+            
+    def epwrite_sel_file(self, name):               
+        params = ('Name', 'ScheduleType', 'Name of File', 'Column Number', 'Rows to Skip at Top', 'Number of Hours of Data', 'Column Separator')
+        paramvs = (name, 'Any number', os.path.abspath(self.select_file), self.cn, self.rtsat, 8760, self.delim) 
+        schedtext = epentry('Schedule:File', params, paramvs)
+        '''    Schedule:File,
+        elecTDVfromCZ01res, !- Name
+        Any Number, !- ScheduleType
+        TDV_kBtu_CTZ01.csv, !- Name of File
+        2, !- Column Number
+        4, !- Rows to Skip at Top
+        8760, !- Number of Hours of Data
+        Comma; !- Column Separator'''
+        return schedtext
+    
+    def epwrite_gen_file(self, name, data, newdir):
+        schedtext, ths = '', []
+        for tosock in [link.to_socket for link in self.outputs['Schedule'].links]:
+            if not schedtext:
+                for t in (self.t1, self.t2, self.t3, self.t4):
+                    ths.append(t)
+                    if t == 365:
+                        break
+#                ths = [self.t1, self.t2, self.t3, self.t4]
+                fos = [fs for fs in (self.f1, self.f2, self.f3, self.f4) if fs]
+                uns = [us for us in (self.u1, self.u2, self.u3, self.u4) if us]
+                ts, fs, us = rettimes(ths, fos, uns)
+        for t in ts:
+            for f in fs:
+                for u in us:
+                    for hi, h in enumerate((datetime.datetime(2015, 1, 1, 0, 00) - datetime.datetime(2014, 1, 1, 0, 00)).hours):
+                        if h.day <= self.ts:
+#                            if f == 'Weekday'
+                            data[hi] = 1
+        with open(os.path.join(newdir, name), 'w') as sched_file:
+            sched_file.write(',\n'.join([d for d in data]))
+        params = ('Name', 'ScheduleType', 'Name of File', 'Column Number', 'Rows to Skip at Top', 'Number of Hours of Data', 'Column Separator')
+        paramvs = (name, 'Any number', os.path.abspath(self.select_file), self.cn, self.rtsat, 8760, self.delim) 
+        schedtext = epentry('Schedule:File', params, paramvs)    
         return schedtext
 
 class EnViFanNode(Node, EnViNodes):
