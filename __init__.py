@@ -190,6 +190,14 @@ def path_update():
     ofedir = vi_prefs.ofetc if vi_prefs and os.path.isdir(vi_prefs.ofetc) else os.path.join('{}'.format(addonpath), 'OFFiles')
     os.environ["PATH"] += "{0}{1}".format(evsep[str(sys.platform)], os.path.dirname(bpy.app.binary_path))
     
+    if sys.platform == 'darwin':
+        if os.path.join(addonpath, 'Python', 'OSX') not in os.environ["PYTHONPATH"]:
+            os.environ["PYTHONPATH"] += evsep[str(sys.platform)] + os.path.join(addonpath, 'Python', 'OSX')
+            
+    elif sys.platform == 'win32':
+        if os.path.join(addonpath, 'Python', 'Win') not in os.environ["PYTHONPATH"]:
+            os.environ["PYTHONPATH"] += evsep[str(sys.platform)] + os.path.join(addonpath, 'Python', 'Win')
+
     if not os.environ.get('RAYPATH'):# or radldir not in os.environ['RAYPATH'] or radbdir not in os.environ['PATH']  or epdir not in os.environ['PATH']:
         if vi_prefs and os.path.isdir(vi_prefs.radlib):
             os.environ["RAYPATH"] = '{0}{1}{2}'.format(radldir, evsep[str(sys.platform)], os.path.join(addonpath, 'Radfiles', 'lib'))
