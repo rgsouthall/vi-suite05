@@ -26,7 +26,7 @@ from .vi_func import socklink, socklink2, uvsocklink, newrow, epwlatilongi, node
 from .vi_func import hdrsky, nodecolour, facearea, retelaarea, iprop, bprop, eprop, fprop, sunposlivi, retdates, validradparams, retpmap
 from .envi_func import retrmenus, resnameunits, enresprops, epentry, epschedwrite, processf, get_mat, get_con_node
 from .livi_export import livi_sun, livi_sky, livi_ground, hdrexport
-from .envi_mat import retuval, envi_materials, envi_constructions, envi_layer, envi_layertype, envi_con_list
+from .envi_mat import envi_materials, envi_constructions, envi_layer, envi_layertype, envi_con_list
 
 
 envi_mats = envi_materials()
@@ -3993,6 +3993,20 @@ class ViFVParaNode(Node, ViNodes):
         row = layout.row()
         row.operator("node.fvsolve", text = "Calculate").nodeid = self['nodeid']
         
+class ViPLYNode(Node, ViNodes):
+    '''Ply export for I-Simpa node'''
+    bl_idname = 'ViPLYNode'
+    bl_label = 'I-Simpa Ply Export'
+    bl_icon = 'LAMP'
+    
+    ofile = StringProperty(name="", description="Location of the file to overlay", default="", subtype="FILE_PATH")
+    
+    def draw_buttons(self, context, layout):
+        row = layout.row()
+        newrow(layout, "Output file", self, "ofile")
+        row = layout.row()
+        row.operator("node.plyexport", text = "Export")
+        
         
 ####################### Vi Nodes Categories ##############################
 
@@ -4009,7 +4023,7 @@ vinodecat = [NodeItem("ViSPNode", label="VI-Suite Sun Path"), NodeItem("ViSSNode
 vigennodecat = [NodeItem("ViGenNode", label="VI-Suite Generative"), NodeItem("ViTarNode", label="VI-Suite Target")]
 
 vidisnodecat = [NodeItem("ViChNode", label="VI-Suite Chart")]
-vioutnodecat = [NodeItem("ViCSV", label="VI-Suite CSV"), NodeItem("ViText", label="VI-Suite Text"), NodeItem("ViFVParaNode", label="VI-Suite Paraview")]
+vioutnodecat = [NodeItem("ViCSV", label="CSV"), NodeItem("ViText", label="VI-Suite Text"), NodeItem("ViFVParaNode", label="Paraview"), NodeItem("ViPLYNode", label="I-Simpa ply")]
 viimnodecat = [NodeItem("ViLiINode", label="LiVi Image"), NodeItem("ViLiFCNode", label="LiVi FC Image"), NodeItem("ViLiGLNode", label="LiVi Glare Image")]
 viinnodecat = [NodeItem("ViLoc", label="VI Location"), NodeItem("ViEnInNode", label="EnergyPlus Input File"), NodeItem("ViEnRFNode", label="EnergyPlus Result File"), 
                NodeItem("ViASCImport", label="Import ESRI Grid file")]

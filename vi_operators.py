@@ -228,7 +228,7 @@ class MATERIAL_DelBSDF(bpy.types.Operator):
         
 class MATERIAL_SaveBSDF(bpy.types.Operator):
     bl_idname = "material.save_bsdf"
-    bl_label = "ave BSDF"
+    bl_label = "Save BSDF"
     bl_description = "Save a BSDF for the current selected object"
     bl_register = True
 
@@ -1264,6 +1264,35 @@ class NODE_OT_CSVExport(bpy.types.Operator, io_utils.ExportHelper):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
+class NODE_OT_PLYExport(bpy.types.Operator):
+    bl_idname = "node.plyexport"
+    bl_label = "Export a Ply file for I-Simpa acoustic analysis"
+    bl_description = "Export the Ply file"
+    bl_register = True
+    bl_undo = False
+    
+    def execute(self, context):
+        scene = context.scene
+        vsum, fsum, msum, vtext, ftext, mtext = 0, 0, 0, '', '', ''
+        for ob in [o for o in bpy.data.objects if o.select and o.type == 'MESH']:
+            bm = bmesh.new()
+            tm = ob.to_mesh(scene = scene, apply_modifiers = True, settings = 'PREVIEW') 
+            bm.from_mesh(tm)
+            bpy.data.meshes.remove(tm)
+            bm.transform(ob.matrix_world)
+            vsum += len(bm.verts)
+            fsum += len(bm.faces)
+            msum += len(ob.data.materials)
+            vtext += "\n".join(['{0[0]:.4f} {0[1]:.4f} {0[2]:.4f}'.format(v.co) for v in bm.verts])
+            ftext += "\n".join([' '.join([str(len(f.verts))] + [str(fv.index) for fv in f.verts] + [str(f.material_index)]) for f in bm.faces])
+            mtext += "\n".join([' '.join([str(len(m.name))] + [str(ord(c)) for c in m.name]) for m in ob.data.materials])
+            bm.free()
+            
+        with open(context.node.ofile, 'w') as ply_file:
+            ply_file.write('ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_indices\nproperty int layer_id\nelement layer {}\nproperty list uchar uchar layer_name\nend_header\n'.format(vsum, fsum, msum))
+            ply_file.write(vtext + "\n" + ftext + "\n" + mtext)
+        return {'FINISHED'}
+     
 class NODE_OT_TextUpdate(bpy.types.Operator):
     bl_idname = "node.textupdate"
     bl_label = "Update a text file"
