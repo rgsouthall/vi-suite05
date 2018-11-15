@@ -1274,25 +1274,75 @@ class NODE_OT_PLYExport(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         vsum, fsum, msum, vtext, ftext, mtext = 0, 0, 0, '', '', ''
+        
         for ob in [o for o in bpy.data.objects if o.select and o.type == 'MESH']:
             bm = bmesh.new()
             tm = ob.to_mesh(scene = scene, apply_modifiers = True, settings = 'PREVIEW') 
             bm.from_mesh(tm)
-            bpy.data.meshes.remove(tm)
+            bpy.data.meshes.remove(tm)            
+            bmesh.ops.connect_verts(bm, verts = bm.verts[:], faces_exclude = [], check_degenerate = 1)
+            bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method=3, ngon_method=0)
             bm.transform(ob.matrix_world)
             vsum += len(bm.verts)
             fsum += len(bm.faces)
             msum += len(ob.data.materials)
-            vtext += "\n".join(['{0[0]:.4f} {0[1]:.4f} {0[2]:.4f}'.format(v.co) for v in bm.verts])
-            ftext += "\n".join([' '.join([str(len(f.verts))] + [str(fv.index) for fv in f.verts] + [str(f.material_index)]) for f in bm.faces])
-            mtext += "\n".join([' '.join([str(len(m.name))] + [str(ord(c)) for c in m.name]) for m in ob.data.materials])
+            vtext += "\n".join(['{0[0]:.4f} {0[1]:.4f} {0[2]:.4f}'.format(v.co) for v in bm.verts]) + "\n" 
+            ftext += "\n".join([' '.join([str(len(f.verts))] + [str(fv.index) for fv in f.verts] + [str(f.material_index)]) for f in bm.faces]) + "\n"
+            mtext += "\n".join([' '.join([str(len(m.name))] + [str(ord(c)) for c in m.name]) for m in ob.data.materials]) + "\n"
             bm.free()
+        
+        if vtext:
+            with open(bpy.path.abspath(context.node.ofile), 'w') as ply_file:
+                ply_file.write('ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_indices\nproperty int layer_id\nelement layer {}\nproperty list uchar uchar layer_name\nend_header\n'.format(vsum, fsum, msum))
+                ply_file.write(vtext + ftext + mtext)
+            return {'FINISHED'}
+        
+        else:
+            self.report({'ERROR'}, 'No valid geometry was selected')
+            return {'CANCELLED'}
+        
+class NODE_OT_TGPolyExport(bpy.types.Operator):
+    bl_idname = "node.polyexport"
+    bl_label = "Create a poly file for tetgen meshing"
+    bl_description = "Create the poly file"
+    bl_register = True
+    bl_undo = False
+    
+    def execute(self, context):
+        scene = context.scene
+        vsum, fsum, msum, vtext, ftext, mtext = 0, 0, 0, '', '', ''
+        
+        for ob in [o for o in bpy.data.objects if o.select and o.type == 'MESH']:
+            bm = bmesh.new()
+            tm = ob.to_mesh(scene = scene, apply_modifiers = True, settings = 'PREVIEW') 
+            bm.from_mesh(tm)
+            bpy.data.meshes.remove(tm)  
+            bm.transform(ob.matrix_world)
+#            bmesh.ops.connect_verts(bm, verts = bm.verts[:], faces_exclude = [], check_degenerate = 1)
+#            bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method=3, ngon_method=0)
+            bmesh.ops.connect_verts_nonplanar(bm, angle_limit = 0.01, faces = bm.faces)
             
-        with open(context.node.ofile, 'w') as ply_file:
-            ply_file.write('ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_indices\nproperty int layer_id\nelement layer {}\nproperty list uchar uchar layer_name\nend_header\n'.format(vsum, fsum, msum))
-            ply_file.write(vtext + "\n" + ftext + "\n" + mtext)
-        return {'FINISHED'}
-     
+            vsum += len(bm.verts)
+            fsum += len(bm.faces)
+            msum += len(ob.data.materials)
+            vtext += "\n".join(['{0} {1[0]:.4f} {1[1]:.4f} {1[2]:.4f}'.format(vi + 1, v.co) for vi, v in enumerate(bm.verts)]) + "\n" 
+            ftext += "\n".join(["1 0 {}\n".format(f.index) + ' '.join([str(len(f.verts))] + [str(fv.index + 1) for fv in f.verts] + [str(f.material_index + 1)]) for f in bm.faces]) + "\n"
+            mtext += "\n".join([' '.join([str(len(m.name))] + [str(ord(c)) for c in m.name]) for m in ob.data.materials]) + "\n"
+            bm.free()
+        
+        if vtext:
+            with open(bpy.path.abspath(context.node.ofile), 'w') as poly_file:
+                poly_file.write('#Part 1 - node list\n{} 3 0 0\n'.format(vsum))
+                poly_file.write(vtext)
+                poly_file.write('#Part 2 - facet list\n{} 1\n'.format(fsum))
+                poly_file.write(ftext)
+    
+            return {'FINISHED'}
+        
+        else:
+            self.report({'ERROR'}, 'No valid geometry was selected')
+            return {'CANCELLED'}
+        
 class NODE_OT_TextUpdate(bpy.types.Operator):
     bl_idname = "node.textupdate"
     bl_label = "Update a text file"

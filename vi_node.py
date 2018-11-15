@@ -3780,7 +3780,7 @@ class ViBMExNode(Node, ViNodes):
         nodecolour(self, 0)
 
 class ViSHMExNode(Node, ViNodes):
-    '''Openfoam blockmesh export node'''
+    '''Openfoam snappyhexmesh export node'''
     bl_idname = 'ViSHMExNode'
     bl_label = 'FloVi SnappyHexMesh'
     bl_icon = 'LAMP'
@@ -3837,6 +3837,28 @@ class ViSHMExNode(Node, ViNodes):
         self.exportstate = [str(x) for x in (self.lcells, self.gcells)]
         nodecolour(self, 0)
 
+class ViTGMExNode(Node, ViNodes):
+    '''Openfoam tetgen mesh export node'''
+    bl_idname = 'ViTGMExNode'
+    bl_label = 'FloVi Tetgen'
+    bl_icon = 'LAMP'
+    
+    ofile = StringProperty(name="", description="Location of the file to overlay", default="", subtype="FILE_PATH")
+    
+    def init(self, context):
+        self['exportstate'] = ''
+        self.outputs.new('VIOfM', 'Mesh out')
+        nodecolour(self, 1)
+
+    def draw_buttons(self, context, layout):
+        row = layout.row()
+        newrow(layout, "Output file", self, "ofile")
+        
+        if self.ofile:
+            row = layout.row()
+            row.operator("node.polyexport", text = "Generate")
+
+        
 class ViFVExpNode(Node, ViNodes):
     '''Openfoam case export node'''
     bl_idname = 'ViFVExpNode'
@@ -4004,8 +4026,10 @@ class ViPLYNode(Node, ViNodes):
     def draw_buttons(self, context, layout):
         row = layout.row()
         newrow(layout, "Output file", self, "ofile")
-        row = layout.row()
-        row.operator("node.plyexport", text = "Export")
+        
+        if self.ofile:
+            row = layout.row()
+            row.operator("node.plyexport", text = "Export")
         
         
 ####################### Vi Nodes Categories ##############################
@@ -4014,7 +4038,8 @@ viexnodecat = [NodeItem("ViGExLiNode", label="LiVi Geometry"), NodeItem("LiViNod
                 NodeItem("ViGExEnNode", label="EnVi Geometry"), NodeItem("ViExEnNode", label="EnVi Context"),
                 NodeItem("ViEnELCDNode", label="EnVi Distribution"), NodeItem("ViEnELCGNode", label="EnVi Generators"),
                 NodeItem("ViFloCdNode", label="FloVi Control"),NodeItem("ViBMExNode", label="FloVi BlockMesh"), 
-                NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViFVExpNode", label="FloVi Export")]
+                NodeItem("ViSHMExNode", label="FloVi SnappyHexMesh"), NodeItem("ViTGMExNode", label="FloVi Tetgen"),
+                NodeItem("ViFVExpNode", label="FloVi Export")]
                 
 vifilenodecat = [NodeItem("ViTextEdit", label="Text Edit")]
 vinodecat = [NodeItem("ViSPNode", label="VI-Suite Sun Path"), NodeItem("ViSSNode", label="VI-Suite Shadow Map"), NodeItem("ViWRNode", label="VI-Suite Wind Rose"), NodeItem("ViSVFNode", label="VI-Suite Sky View Factor"),
