@@ -660,6 +660,7 @@ class VIObPanel(bpy.types.Panel):
 
         elif obj.vi_type == '5':                
             newrow(layout, 'Direction:', obj, 'li_bsdf_direc')
+            newrow(layout, 'Proxy:', obj, 'li_bsdf_proxy')
             newrow(layout, 'Klems/Tensor:', obj, 'li_bsdf_tensor')
             if obj.li_bsdf_tensor != ' ':
                 newrow(layout, 'resolution:', obj, 'li_bsdf_res')

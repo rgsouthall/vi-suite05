@@ -303,6 +303,7 @@ def radmat(self, scene):
     self['radname'] = radname
     radtex = ''
     mod = 'void' 
+    
     if self.radmatmenu in ('0', '1', '2', '3', '6') and self.radtex:
         try:
             teximage = self.node_tree.nodes['Material Output'].inputs['Surface'].links[0].from_node.inputs['Color'].links[0].from_node.image
@@ -346,6 +347,7 @@ def radmat(self, scene):
 
     if self.radmatmenu == '8' and self.get('bsdf') and self['bsdf'].get('xml'):
         bsdfxml = os.path.join(scene['viparams']['newdir'], 'bsdfs', '{}.xml'.format(radname))
+        
         
         with open(bsdfxml, 'w') as bsdffile:
             bsdffile.write(self['bsdf']['xml'])
@@ -1596,15 +1598,14 @@ def retvpvloc(context):
           
 def radpoints(o, faces, sks):
     fentries = ['']*len(faces) 
-    mns = [m['radname'] for m in o.data.materials]
-#    mrms = [m.radmatmenu for m in o.data.materials]
+    mns = [m.name.replace(" ", "_").replace(",", "") for m in o.data.materials]
     on = o.name.replace(" ", "_")
+    
     if sks:
         (skv0, skv1, skl0, skl1) = sks
+
     for f, face in enumerate(faces):
         fmi = face.material_index
-#        fmat = o.data.materials[face.material_index]
-#        mname = '{}_{}_{}'.format(mns[fmi], on, face.index) if mrms[fmi] == '8' else mns[fmi]
         mname = mns[fmi]
         fentry = "# Polygon \n{} polygon poly_{}_{}\n0\n0\n{}\n".format(mname, on, face.index, 3*len(face.verts))
         if sks:
@@ -1800,8 +1801,12 @@ def clearanim(scene, obs):
             
 def clearfiles(filebase):
     fileList = os.listdir(filebase)
+    
     for fileName in fileList:
-        os.remove(os.path.join(filebase, fileName))
+        try:
+            os.remove(os.path.join(filebase, fileName))
+        except:
+            pass
                     
 def clearscene(scene, op):
     for ob in [ob for ob in scene.objects if ob.type == 'MESH' and ob.layers[scene.active_layer]]:

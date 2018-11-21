@@ -118,8 +118,13 @@ class OBJECT_GenBSDF(bpy.types.Operator):
         else:
             if self.kivyrun.poll() is None:
                 self.kivyrun.kill() 
-
+            
+            if self.o.li_bsdf_proxy:
+                self.pkgbsdfrun = Popen(shlex.split("pkgBSDF -s {}".format(os.path.join(context.scene['viparams']['newdir'], 'bsdfs', '{}.xml'.format(self.mat.name)))), stdin = PIPE, stdout = PIPE)
+                self.mat['radentry'] = ''.join([line.decode() for line in self.pkgbsdfrun.stdout])
+                print(self.mat['radentry'])
             with open(os.path.join(context.scene['viparams']['newdir'], 'bsdfs', '{}.xml'.format(self.mat.name)), 'r') as bsdffile:
+                
                 self.mat['bsdf']['xml'] = bsdffile.read()
 
             context.scene['viparams']['vidisp'] = 'bsdf'
@@ -181,6 +186,7 @@ class OBJECT_GenBSDF(bpy.types.Operator):
 
         with open(os.path.join(scene['viparams']['newdir'], 'bsdfs', '{}_mg'.format(self.mat.name)), 'r') as mgfile: 
             with open(os.path.join(scene['viparams']['newdir'], 'bsdfs', '{}.xml'.format(self.mat.name)), 'w') as bsdffile:
+#            self.bsdfrun = Popen(shlex.split(gbcmd), stdin = mgfile, stdout = PIPE)
                 self.bsdfrun = Popen(shlex.split(gbcmd), stdin = mgfile, stdout = bsdffile)
 
         wm = context.window_manager
