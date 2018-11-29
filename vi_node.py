@@ -929,7 +929,7 @@ class ViLiSNode(Node, ViNodes):
                     row.operator("node.radpreview", text = 'Preview').nodeid = self['nodeid']
 #                if cinnode['Options']['Context'] == 'Basic' and cinnode['Options']['Type'] == '1' and not self.run:
 #                    row.operator("node.liviglare", text = 'Calculate').nodeid = self['nodeid']
-                elif [o.name for o in scene.objects if o.name in scene['liparams']['livic']]:
+                if [o.name for o in scene.objects if o.name in scene['liparams']['livic']]:
                     row.operator("node.livicalc", text = 'Calculate').nodeid = self['nodeid']
         except Exception as e:
             pass
@@ -2051,6 +2051,31 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
         else:
             return [("", "", "")]
         
+    def uv_update(self, context):
+        pstcs, resists = [], []
+        
+        if self.envi_con_type in ('Wall', 'Floor', 'Roof'):
+            if self.envi_con_makeup == '0':
+                ecs = envi_constructions()
+                ems = envi_materials()
+                con_layers = ecs.propdict[self.envi_con_type][self.envi_con_list]
+                thicks = [0.001 * tc for tc in [self.lt0, self.lt1, self.lt2, self.lt3, 
+                                                self.lt4, self.lt5, self.lt6, self.lt7, self.lt8, self.lt9][:len(con_layers)]]
+
+                for p, psmat in enumerate(con_layers):
+                    pi = 2 if psmat in ems.gas_dat else 1
+                    pstcs.append(float(ems.matdat[psmat][pi]))
+                    resists.append((thicks[p]/float(ems.matdat[psmat][pi]), float(ems.matdat[psmat][pi]))[ems.matdat[psmat][0] == 'Gas'])
+                uv = 1/(sum(resists) + 0.12 + 0.08)
+                self.uv = '{:.3f}'.format(uv)
+                
+            
+                
+        else:
+            self.uv = "N/A"
+                
+            
+        
                         
     matname = StringProperty(name = "", description = "", default = '')
     envi_con_type = EnumProperty(items = [("Wall", "Wall", "Wall construction"),
@@ -2077,8 +2102,9 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
     envi_sg_shgc = FloatProperty(name = "", description = "Window Solar Heat Gain Coefficient", min = 0, max = 1, default = 0.7)
     envi_sg_vt = FloatProperty(name = "", description = "Window Visible Transmittance", min = 0, max = 1, default = 0.8)
     envi_afsurface = BoolProperty(name = "", description = "Flag to signify whether the material represents an airflow surface", default = False)
-    [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100)]
-    
+    [lt0, lt1, lt2, lt3, lt4, lt5, lt6, lt7, lt8, lt9] = 10 * [FloatProperty(name = "mm", description = "Layer thickness (mm)", min = 0.1, default = 100, update = uv_update)]
+    uv = StringProperty(name = "", description = "Construction U-Value", default = "N/A")
+
     envi_con_list = EnumProperty(items = envi_con_list, name = "", description = "Database construction")
     active = BoolProperty(name = "", description = "Active construction", default = False, update = active_update)
     
@@ -2359,11 +2385,18 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             
             elif self.envi_con_type in ('Wall', 'Floor', 'Roof') and not self.pv:
                 row = layout.row()
-                try:
-                    row.label(text = 'U-value  = {:.3f} W/m2.K'.format(1/self.resist)) 
-                except: 
-                    row.label(text = 'U-value  = N/A') 
-            
+                if self.envi_con_makeup == '0':
+                    try:
+                        
+                        row.label(text = 'U-value  = {} W/m2.K'.format(self.uv)) 
+                    except: 
+                        row.label(text = 'U-value  = N/A') 
+                elif self.envi_con_makeup == '1':
+                    row.operator('node.envi_uv', text = "UV Calc")
+                    try:                        
+                        row.label(text = 'U-value  = {} W/m2.K'.format(self.uv)) 
+                    except: 
+                        row.label(text = 'U-value  = N/A')
             elif self.envi_con_type == 'PV' and self.envi_con_makeup == '0':
                 newrow(layout, "Series in parallel:", self, "ssp")
                 newrow(layout, "Modules in series:", self, "mis")
@@ -2429,7 +2462,6 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             params = ['Name', 'Outside layer'] + ['Layer {}'.format(i + 1) for i in range(len(mats) - 1)]        
             paramvs = [self['matname']] + ['{}-layer-{}'.format(self['matname'], mi) for mi, m in enumerate(mats)]
             ep_text = epentry('Construction', params, paramvs)
-            print(get_mat(self, 1).name)
             
             for pm, presetmat in enumerate(mats):  
                 matlist = list(envi_mats.matdat[presetmat])
@@ -2529,7 +2561,6 @@ class ENVI_Construction_Node(Node, ENVI_Material_Nodes):
             if self.fclass == '0':
                 params = ('Name', 'Roughness', 'Thickness (m)', 'Conductivity (W/m-K)', 'Density (kg/m3)', 'Specific Heat (J/kg-K)', 'Thermal Absorptance', 'Solar Absorptance', 'Visible Absorptance', 'Name', 'Outside Layer')
                 paramvs = ('{}-frame-layer{}'.format(self['matname'], 0), 'Rough', '0.12', '0.1', '1400.00', '1000', '0.9', '0.6', '0.6', '{}-frame'.format(self['matname']), '{}-frame-layer{}'.format(self['matname'], 0))
-                print(paramvs)
                 ep_text += epentry('Material', params[:-2], paramvs[:-2])
                 ep_text += epentry('Construction', params[-2:], paramvs[-2:])
             
@@ -2627,6 +2658,20 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
                 newrow(layout, "TCTC:", self, "tctc")
                 newrow(layout, "Temps:Emps", self, "tempemps")
     
+    def ret_resist(self):
+        if self.layer == '0':
+            matlist = list(envi_mats.matdat[self.material])
+            
+            if self.materialtype != '6': 
+                self.resist = self.thi * 0.001/float(matlist[1])
+            else:
+                self.resist = float(matlist[2])
+            
+        else:
+            self.resist = self.thi/self.tc
+        
+        return self.resist
+            
     def update(self):
         socklink2(self.outputs['Layer'], self.id_data)
         if self.outputs['Layer'].links:
@@ -2677,19 +2722,12 @@ class ENVI_OLayer_Node(Node, ENVI_Material_Nodes):
             
             if self.materialtype != '6':
                 paramvs = [self['layer_name'], matlist[0], '{:.3f}'.format(self.thi * 0.001)] + matlist[1:8]  
-                self.resist = self.thi * 0.001/float(matlist[1])
-#<<<<<<< HEAD
-#                
-#=======
-#>>>>>>> 01b878fb1170a017699bedd6845d832300cf263d
             else:
                 paramvs = [self['layer_name'], matlist[2]]
-                self.resist = float(matlist[2])
             
         else:
             paramvs = ['{}-layer-{}'.format(material.name, ln), self.rough, '{:.3f}'.format(self.thi * 0.001), '{:.3f}'.format(self.tc), '{:.3f}'.format(self.rho), '{:.3f}'.format(self.shc), '{:.3f}'.format(self.tab), 
                        '{:.3f}'.format(self.sab), '{:.3f}'.format(self.vab)]
-            self.resist = self.thi/self.tc
             
         ep_text = epentry(header, params, paramvs)
         

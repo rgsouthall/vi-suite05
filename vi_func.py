@@ -165,14 +165,14 @@ def retcols(cmap, levels):
     try:
         rgbas = [cmap(int(i * 255/(levels - 1))) for i in range(levels)]
     except:
-        hs = [0.75 - 0.75*(i/19) for i in range(levels)]
+        hs = [0.75 - 0.75*(i/(levels - 1)) for i in range(levels)]
         rgbas = [(*colorsys.hsv_to_rgb(h, 1.0, 1.0), 1.0) for h in hs]
     return rgbas
   
 def cmap(scene):
-    cols = retcols(ret_mcm().get_cmap(scene.vi_leg_col), 20)
+    cols = retcols(ret_mcm().get_cmap(scene.vi_leg_col), scene.vi_leg_levels)
     
-    for i in range(20):   
+    for i in range(scene.vi_leg_levels):   
         matname = '{}#{}'.format('vi-suite', i)
         
         if not bpy.data.materials.get(matname):
@@ -212,8 +212,9 @@ def cmap(scene):
         
 def leg_min_max(scene):
     try:
-        if scene.vi_res_py and bpy.app.driver_namespace.get('resmod'):
-            return (bpy.app.driver_namespace['resmod'](scene.vi_leg_min), bpy.app.driver_namespace['resmod'](scene.vi_leg_max))
+        if scene.vi_res_process == '2' and bpy.app.driver_namespace.get('resmod'):
+            bpy.app.driver_namespace['resmod']()
+            return (scene.vi_leg_min, scene.vi_leg_max)
         elif scene.vi_res_mod:
             return (eval('{}{}'.format(scene.vi_leg_min, scene.vi_res_mod)), eval('{}{}'.format(scene.vi_leg_max, scene.vi_res_mod)))
         else:
@@ -709,7 +710,7 @@ if __name__ == '__main__':\n\
 def logentry(text):
     log = bpy.data.texts.new('vi-suite-log') if 'vi-suite-log' not in bpy.data.texts else bpy.data.texts['vi-suite-log']
     log.write('')
-    log.write('{}\n'.format(text))
+    log.write('{}: {}\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), text))
     
 def retsv(self, scene, frame, rtframe, chunk, rt):
     svcmd = "rcontrib -w -I -n {} {} -m sky_glow {}-{}.oct ".format(scene['viparams']['nproc'], '-ab 1 -ad 8192 -aa 0 -ar 512 -as 1024 -lw 0.0002 ', scene['viparams']['filebase'], frame)    
@@ -724,6 +725,8 @@ def chunks(l, n):
            
 def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):    
     reslists = []
+    ll = scene.vi_leg_levels
+    increment = 1/ll
     bm = bmesh.new()
     bm.from_mesh(self.data)
     bm.transform(self.matrix_world)
@@ -795,8 +798,8 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         self['tablevi{}'.format(frame)] = array(tableheaders + [['Visual Irradiance (W/m2)', '{:.1f}'.format(self['omin']['virrad{}'.format(frame)]), '{:.1f}'.format(self['oave']['virrad{}'.format(frame)]), '{:.1f}'.format(self['omax']['virrad{}'.format(frame)])]])
         self['tablefi{}'.format(frame)] = array(tableheaders + [['Full Irradiance (W/m2)', '{:.1f}'.format(self['omin']['firrad{}'.format(frame)]), '{:.1f}'.format(self['oave']['firrad{}'.format(frame)]), '{:.1f}'.format(self['omax']['firrad{}'.format(frame)])]])
         posis = [v.co for v in bm.verts if v[cindex] > 0] if self['cpoint'] == '1' else [f.calc_center_bounds() for f in bm.faces if f[cindex] > 1]
-        illubinvals = [self['omin']['illu{}'.format(frame)] + (self['omax']['illu{}'.format(frame)] - self['omin']['illu{}'.format(frame)])/20 * (i + 0.05) for i in range(20)]
-        bins = array([0.05 * i for i in range(1, 20)])
+        illubinvals = [self['omin']['illu{}'.format(frame)] + (self['omax']['illu{}'.format(frame)] - self['omin']['illu{}'.format(frame)])/ll * (i + increment) for i in range(ll)]
+        bins = array([increment * i for i in range(1, ll)])
         
         if self['omax']['illu{}'.format(frame)] > self['omin']['illu{}'.format(frame)]:
             vals = [(gp[illures] - self['omin']['illu{}'.format(frame)])/(self['omax']['illu{}'.format(frame)] - self['omin']['illu{}'.format(frame)]) for gp in geom]         
@@ -806,9 +809,9 @@ def basiccalcapply(self, scene, frames, rtcmds, simnode, curres, pfile):
         ais = digitize(vals, bins)
         rgeom = [g for g in geom if g[cindex] > 0]
         rareas = [gp.calc_area() for gp in geom] if self['cpoint'] == '0' else [vertarea(bm, gp) for gp in geom]
-        sareas = zeros(20)
+        sareas = zeros(ll)
         
-        for ai in range(20):
+        for ai in range(ll):
             sareas[ai] = sum([rareas[gi]/totarea for gi in range(len(rgeom)) if ais[gi] == ai])
                 
         self['livires']['areabins'] = sareas
@@ -1531,7 +1534,7 @@ def retcrits(simnode, matname):
 
 # This function can be used to modify results with a driver function
 def ret_res_vals(scene, reslist):    
-    if scene.vi_res_py and bpy.app.driver_namespace.get('resmod'):
+    if scene.vi_res_process and bpy.app.driver_namespace.get('resmod'):
         try:
             return array([bpy.app.driver_namespace['resmod'](r) for r in reslist])
         except Exception as e:
@@ -1547,7 +1550,8 @@ def ret_res_vals(scene, reslist):
         
 def lividisplay(self, scene): 
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
-    
+    ll = scene.vi_leg_levels
+    increment = 1/ll
     if len(frames) > 1:
         if not self.data.animation_data:
             self.data.animation_data_create()
@@ -1579,10 +1583,10 @@ def lividisplay(self, scene):
                 g[res] = g[livires]  
                 
         if scene['liparams']['unit'] == 'Sky View':
-            nmatis = [(0, 19)[v == 1] for v in vals]
+            nmatis = [(0, ll - 1)[v == 1] for v in vals]
         else:
-            bins = array([0.05 * i for i in range(21)])
-            nmatis = clip(digitize(vals, bins, right = True) - 1, 0, 19, out=None)
+            bins = array([increment * i for i in range(ll + 1)])
+            nmatis = clip(digitize(vals, bins, right = True) - 1, 0, ll - 1, out=None)
             
         bm.to_mesh(self.data)
         bm.free()

@@ -41,7 +41,7 @@ except:
     mp = 0
 
 from . import livi_export
-from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max
+from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max, ret_res_vals
 from .vi_func import retdp, objmode, drawcircle, drawbsdfcircle, drawwedge, drawtri, setscenelivivals, draw_time, retcols, draw_index_distance
 from .envi_func import retenvires, recalculate_text
 
@@ -152,7 +152,7 @@ def li_display(disp_op, simnode):
         selobj(scene, ores)
         cmap(scene)
         
-        for matname in ['{}#{}'.format('vi-suite', i) for i in range(20)]:
+        for matname in ['{}#{}'.format('vi-suite', i) for i in range(scene.vi_leg_levels)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:
                 bpy.ops.object.material_slot_add()
                 ores.material_slots[-1].material = bpy.data.materials[matname]
@@ -357,7 +357,7 @@ class linumdisplay():
             draw_index_distance(self.allpcs, self.allres, self.fontmult * self.scene.vi_display_rp_fs, self.scene.vi_display_rp_fc, self.scene.vi_display_rp_fsh, self.alldepths)    
 
         except Exception as e:
-            print('I am excepting', e)
+            print('Error 1', e)
 
 def en_air(self, context, temp, ws, wd, hu):
     scene = context.scene
@@ -860,10 +860,11 @@ class ss_legend(Base_Display):
         
     def update(self, context):
         scene = context.scene
+        ll = scene.vi_leg_levels
         self.cao = context.active_object        
-        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), ll)
         (self.minres, self.maxres) = leg_min_max(scene)        
-        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
+        self.col, self.scale, self.levels = scene.vi_leg_col, scene.vi_leg_scale, ll
         dplaces = retdp(self.maxres, 1)
         resdiff = self.maxres - self.minres
         
@@ -871,10 +872,10 @@ class ss_legend(Base_Display):
             scene.vi_display = 0
             return
 
-        self.resvals = [format(self.minres + i*(resdiff)/20, '.{}f'.format(dplaces)) for i in range(21)] if self.scale == '0' else \
-                        [format(self.minres + (1 - log10(i)/log10(21))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, 22)[::-1]]
+        self.resvals = [format(self.minres + i*(resdiff)/ll, '.{}f'.format(dplaces)) for i in range(ll + 1)] if self.scale == '0' else \
+                        [format(self.minres + (1 - log10(i)/log10(ll + 1))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, ll + 2)[::-1]]
                         
-        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
+        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(ll)]
         
     def drawopen(self, context):
         scene = context.scene
@@ -886,10 +887,11 @@ class svf_legend(Base_Display):
         
     def update(self, context):
         scene = context.scene
+        ll = scene.vi_leg_levels
         self.cao = context.active_object        
-        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), ll)
         (self.minres, self.maxres) = leg_min_max(scene)
-        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
+        self.col, self.scale, self.levels = scene.vi_leg_col, scene.vi_leg_scale, ll
         dplaces = retdp(self.maxres, 1)
         resdiff = self.maxres - self.minres
         
@@ -897,10 +899,10 @@ class svf_legend(Base_Display):
             scene.vi_display = 0
             return
 
-        self.resvals = [format(self.minres + i*(resdiff)/20, '.{}f'.format(dplaces)) for i in range(21)] if self.scale == '0' else \
-                        [format(self.minres + (1 - log10(i)/log10(21))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, 22)[::-1]]
+        self.resvals = [format(self.minres + i*(resdiff)/ll, '.{}f'.format(dplaces)) for i in range(ll + 1)] if self.scale == '0' else \
+                        [format(self.minres + (1 - log10(i)/log10(ll + 1))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, ll + 2)[::-1]]
 
-        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
+        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(ll)]
         
     def drawopen(self, context):
         scene = context.scene
@@ -912,10 +914,11 @@ class basic_legend(Base_Display):
         
     def update(self, context):
         scene = context.scene
+        ll = scene.vi_leg_levels
         self.cao = context.active_object        
-        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), 20)
+        self.cols = retcols(mcm.get_cmap(scene.vi_leg_col), ll)
         (self.minres, self.maxres) = leg_min_max(scene)
-        self.col, self.scale = scene.vi_leg_col, scene.vi_leg_scale
+        self.col, self.scale, self.levels = scene.vi_leg_col, scene.vi_leg_scale, ll
         dplaces = retdp(self.maxres, 1)
         resdiff = self.maxres - self.minres
         
@@ -923,10 +926,10 @@ class basic_legend(Base_Display):
             scene.vi_display = 0
             return
 
-        self.resvals = [format(self.minres + i*(resdiff)/20, '.{}f'.format(dplaces)) for i in range(21)] if self.scale == '0' else \
-                        [format(self.minres + (1 - log10(i)/log10(21))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, 22)[::-1]]
+        self.resvals = [format(self.minres + i*(resdiff)/ll, '.{}f'.format(dplaces)) for i in range(ll + 1)] if self.scale == '0' else \
+                        [format(self.minres + (1 - log10(i)/log10(ll + 1))*(resdiff), '.{}f'.format(dplaces)) for i in range(1, ll + 2)[::-1]]
 
-        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(20)]
+        self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(ll)]
         
     def drawopen(self, context):
         scene = context.scene

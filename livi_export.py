@@ -29,6 +29,10 @@ def radgexport(export_op, node, **kwargs):
     if bpy.context.active_object and not bpy.context.active_object.layers[scene.active_layer]:
         export_op.report({'INFO'}, "Active geometry is not on the active layer. You may need to lock layers.")
     geooblist, caloblist, lightlist = retobjs('livig'), retobjs('livic'), retobjs('livil')
+    for o in caloblist:
+        if any([s < 0 for s in o.scale]):
+            logentry('Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+            export_op.report({'WARNING'}, 'Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
     scene['liparams']['livig'], scene['liparams']['livic'], scene['liparams']['livil'] = [o.name for o in geooblist], [o.name for o in caloblist], [o.name for o in lightlist]
     eolist = set(geooblist + caloblist)
 #    mats = set([item for sublist in [o.data.materials for o in eolist] for item in sublist])

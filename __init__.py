@@ -51,7 +51,7 @@ import sys, os, inspect, bpy, nodeitems_utils, bmesh, math, mathutils
 from bpy.app.handlers import persistent
 from numpy import array, digitize, logspace, multiply
 from numpy import log10 as nlog10
-from bpy.props import StringProperty, EnumProperty
+from bpy.props import StringProperty, EnumProperty, IntProperty
 from bpy.types import AddonPreferences
 
 def return_preferences():
@@ -264,7 +264,7 @@ def eupdate(self, context):
 def tupdate(self, context):
     for o in [o for o in context.scene.objects if o.type == 'MESH'  and 'lightarray' not in o.name and o.hide == False and o.layers[context.scene.active_layer] == True and o.get('lires')]:
         o.show_transparent = 1
-    for mat in [bpy.data.materials['{}#{}'.format('vi-suite', index)] for index in range(20)]:
+    for mat in [bpy.data.materials['{}#{}'.format('vi-suite', index)] for index in range(context.scene.vi_leg_levels)]:
         mat.use_transparency, mat.transparency_method, mat.alpha = 1, 'MASK', context.scene.vi_disp_trans
     cmap(self)
         
@@ -274,16 +274,17 @@ def wupdate(self, context):
         (o.show_wire, o.show_all_edges) = (1, 1) if context.scene.vi_disp_wire else (0, 0)
 
 def legupdate(self, context):
+#    cmap(self)
     scene = context.scene
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
     obs = [o for o in scene.objects if o.get('lires')]
-    
+    increment = 1/scene.vi_leg_levels
     if scene.vi_leg_scale == '0':
-        bins = array([0.05 * i for i in range(1, 20)])
+        bins = array([increment * i for i in range(1, scene.vi_leg_levels)])
     elif scene.vi_leg_scale == '1':
-        slices = logspace(0, 2, 21, True)
-        bins = array([(slices[i] - 0.05 * (20 - i))/100 for i in range(21)])
-        bins = array([1 - math.log10(i)/math.log10(21) for i in range(1, 22)][::-1])
+        slices = logspace(0, 2, scene.vi_leg_levels + 1, True)
+        bins = array([(slices[i] - increment * (scene.vi_leg_levels - i))/100 for i in range(scene.vi_leg_levels + 1)])
+        bins = array([1 - math.log10(i)/math.log10(scene.vi_leg_levels + 1) for i in range(1, scene.vi_leg_levels + 2)][::-1])
         bins = bins[1:-1]
     
     for o in obs:
@@ -321,6 +322,10 @@ def liviresupdate(self, context):
     for o in [o for o in bpy.data.objects if o.lires]:
         o.lividisplay(context.scene)  
     eupdate(self, context)
+
+def script_update(self, context):
+    script = bpy.data.texts[context.scene.script_file]
+    exec(script.as_string())
                       
 def register():
     bpy.utils.register_module(__name__)    
@@ -350,8 +355,8 @@ def register():
     Object.li_bsdf_proxy = bprop("", "Include proxy geometry in the BSDF", False)
     Object.li_bsdf_tensor = EnumProperty(items = [(' ', 'Klems', 'Uniform Klems sample'), ('-t3', 'Symmentric', 'Symmetric Tensor BSDF'), ('-t4', 'Assymmetric', 'Asymmetric Tensor BSDF')], name = '', description = 'BSDF tensor', default = ' ')
     Object.li_bsdf_res = EnumProperty(items = [('1', '2x2', '2x2 sampling resolution'), ('2', '4x4', '4x4 sampling resolution'), ('3', '8x8', '8x8 sampling resolution'), ('4', '16x16', '16x16 sampling resolution'), ('5', '32x32', '32x32 sampling resolution'), ('6', '64x64', '64x64 sampling resolution'), ('7', '128x128', '128x128 sampling resolution')], name = '', description = 'BSDF resolution', default = '4')
-    Object.li_bsdf_tsamp = bpy.props.IntProperty(name = '', description = 'Tensor samples', min = 1, max = 20, default = 4)
-    Object.li_bsdf_ksamp = bpy.props.IntProperty(name = '', description = 'Klem samples', min = 1, default = 200)
+    Object.li_bsdf_tsamp = IntProperty(name = '', description = 'Tensor samples', min = 1, max = 20, default = 4)
+    Object.li_bsdf_ksamp = IntProperty(name = '', description = 'Klem samples', min = 1, default = 200)
     Object.li_bsdf_rcparam = sprop("", "rcontrib parameters", 1024, "")
     Object.radbsdf = radbsdf
     Object.retsv = retsv
@@ -586,8 +591,8 @@ def register():
     Material.li_bsdf_direc = EnumProperty(items = [('+b', 'Backwards', 'Backwards BSDF'), ('+f', 'Forwards', 'Forwards BSDF'), ('+b +f', 'Bi-directional', 'Bi-directional BSDF')], name = '', description = 'BSDF direction', default = '+b')
     Material.li_bsdf_tensor = EnumProperty(items = [(' ', 'Klems', 'Uniform Klems sample'), ('-t3', 'Symmentric', 'Symmetric Tensor BSDF'), ('-t4', 'Assymmetric', 'Asymmetric Tensor BSDF')], name = '', description = 'BSDF tensor', default = ' ')
     Material.li_bsdf_res = EnumProperty(items = [('1', '2x2', '2x2 sampling resolution'), ('2', '4x4', '4x4 sampling resolution'), ('3', '8x8', '8x8 sampling resolution'), ('4', '16x16', '16x16 sampling resolution'), ('5', '32x32', '32x32 sampling resolution'), ('6', '64x64', '64x64 sampling resolution'), ('7', '128x128', '128x128 sampling resolution')], name = '', description = 'BSDF resolution', default = '4')
-    Material.li_bsdf_tsamp = bpy.props.IntProperty(name = '', description = 'BSDF resolution', min = 1, max = 20, default = 4)
-    Material.li_bsdf_ksamp = bpy.props.IntProperty(name = '', description = 'BSDF resolution', min = 1, default = 2000)
+    Material.li_bsdf_tsamp = IntProperty(name = '', description = 'BSDF resolution', min = 1, max = 20, default = 4)
+    Material.li_bsdf_ksamp = IntProperty(name = '', description = 'BSDF resolution', min = 1, default = 2000)
     Material.li_bsdf_rcparam = sprop("", "rcontrib parameters", 1024, "")
     Material.li_bsdf_proxy_depth = fprop("", "Depth of proxy geometry", -10, 10, 0)
 #    Material.flovi_bmionut = fprop("Value", "nuTilda value", -1000, 1000, 0.0)
@@ -602,7 +607,7 @@ def register():
     Scene.suns = EnumProperty(items = [('0', 'Single', 'Single sun'), ('1', 'Monthly', 'Monthly sun for chosen time'), ('2', 'Hourly', 'Hourly sun for chosen date')], name = '', description = 'Sunpath sun type', default = '0', update=sunpath1)
     Scene.sunsstrength = bpy.props.FloatProperty(name = "", description = "Sun strength", min = 0, max = 100, default = 0.1, update=sunpath1)
     Scene.sunssize = bpy.props.FloatProperty(name = "", description = "Sun size", min = 0, max = 1, default = 0.01, update=sunpath1)
-    Scene.solday = bpy.props.IntProperty(name = "", description = "Day of year", min = 1, max = 365, default = 1, update=sunpath1)
+    Scene.solday = IntProperty(name = "", description = "Day of year", min = 1, max = 365, default = 1, update=sunpath1)
     Scene.solhour = bpy.props.FloatProperty(name = "", description = "Time of day", subtype='TIME', unit='TIME', min = 0, max = 24, default = 12, update=sunpath1)
     (Scene.hourdisp, Scene.spupdate, Scene.timedisp) = [bprop("", "",0)] * 3
     Scene.li_disp_panel = iprop("Display Panel", "Shows the Display Panel", -1, 2, 0)
@@ -622,9 +627,11 @@ def register():
                                              ('hsv', 'HSV', 'HSV colour scale'), ('viridis', 'Viridis', 'Viridis colour scale')], 
                                             name = "", description = "Legend scale", default = 'rainbow', update=colupdate)
     Scene.vi_res_mod = sprop("", "Result modifier", 1024, "")
-    Scene.vi_res_py = bprop("", "Boolean for Python function modification of results",  False)
-    Scene.script_file = bpy.props.StringProperty(description="Text file to show")
+#    Scene.vi_res_py = bprop("", "Boolean for Python function modification of results",  False)
+    Scene.vi_res_process = eprop([("0", "None", ""), ("1", "Modifier", ""), ("2", "Script", "")], "", "Specify the type of data processing", "0")
+    Scene.script_file = bpy.props.StringProperty(description="Text file to show", update = script_update)
     Scene.vi_leg_unit = sprop("", "Legend unit", 1024, "")
+    Scene.vi_leg_levels = IntProperty(name = "", description = "Day of year", min = 2, max = 100, default = 20, update=legupdate)
     Scene.vi_bsdfleg_max = bpy.props.FloatProperty(name = "", description = "Legend maximum", min = 0, max = 1000000, default = 100)
     Scene.vi_bsdfleg_min = bpy.props.FloatProperty(name = "", description = "Legend minimum", min = 0, max = 1000000, default = 0)
     Scene.vi_bsdfleg_scale = EnumProperty(items = [('0', 'Linear', 'Linear scale'), ('1', 'Log', 'Logarithmic scale')], name = "", description = "Legend scale", default = '0')    

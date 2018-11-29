@@ -100,18 +100,20 @@ class Vi3DPanel(bpy.types.Panel):
                             
                     elif scene['viparams']['visimcontext'] == 'LiVi Basic':
                         newrow(layout, 'Metric:', scene, 'li_disp_basic')
-
+                    
                     newrow(layout, 'Legend unit:', scene, "vi_leg_unit")
-                    newrow(layout, 'Modifier:', scene, "vi_res_mod")
-#                    newrow(layout, 'Script:', scene, "vi_res_py")
-#                    if scene.vi_res_py:
-#                        layout.prop_search(scene, 'script_file', bpy.data, 'texts', text='File', icon='TEXT')
-#                        
-                        
+                    newrow(layout, 'Processing:', scene, "vi_res_process") 
+
+                    if scene.vi_res_process == '1':                    
+                        newrow(layout, 'Modifier:', scene, "vi_res_mod")
+                    elif scene.vi_res_process == '2':
+                        layout.prop_search(scene, 'script_file', bpy.data, 'texts', text='File', icon='TEXT')
+                       
                     newrow(layout, 'Legend max:', scene, "vi_leg_max")
                     newrow(layout, 'Legend min:', scene, "vi_leg_min")
                     newrow(layout, 'Legend scale:', scene, "vi_leg_scale")
                     newrow(layout, 'Legend colour:', scene, "vi_leg_col")
+                    newrow(layout, 'Legend levels:', scene, "vi_leg_levels")
                     newrow(layout, 'Emitter materials:', scene, "vi_disp_mat")
                     
                     if scene.vi_disp_mat:

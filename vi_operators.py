@@ -1440,6 +1440,22 @@ class MAT_EnVi_Node(bpy.types.Operator):
             context.material.envi_nodes.name = context.material.name
         return {'FINISHED'}
     
+class NODE_EnVi_UV(bpy.types.Operator):
+    bl_idname = "node.envi_uv"
+    bl_label = "EnVi Material U-Value Calculation"
+
+    def execute(self, context):
+        resists = []
+        node = context.node
+        lsock = node.inputs['Outer layer']
+                
+        while lsock.links:
+            resists.append(lsock.links[0].from_node.ret_resist())
+            lsock = lsock.links[0].from_node.inputs['Layer']
+
+        node.uv = '{:.3f}'.format(1/(sum(resists) + 0.12 + 0.08))
+        return {'FINISHED'}
+    
 class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
     bl_idname = "node.enexport"
     bl_label = "Export"
@@ -2630,6 +2646,10 @@ class NODE_OT_SVF(bpy.types.Operator):
             for k in o.keys():
                 del o[k]
                 
+            if any([s < 0 for s in o.scale]):
+                logentry('Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+                self.report({'WARNING'}, 'Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+
             o['omin'], o['omax'], o['oave'] = {}, {}, {}
             bm = bmesh.new()
             bm.from_mesh(o.data)
@@ -2771,6 +2791,11 @@ class NODE_OT_Shadow(bpy.types.Operator):
         for oi, o in enumerate([scene.objects[on] for on in scene['liparams']['shadc']]):
             for k in o.keys():
                 del o[k]
+                
+            if any([s < 0 for s in o.scale]):
+                logentry('Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+                self.report({'WARNING'}, 'Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+
             o['omin'], o['omax'], o['oave'] = {}, {}, {}
             
             if simnode.sdoy <= simnode.edoy:
@@ -2877,7 +2902,9 @@ class VIEW3D_OT_SVFDisplay(bpy.types.Operator):
         if event.type != 'INBETWEEN_MOUSEMOVE' and context.region and context.area.type == 'VIEW_3D' and context.region.type == 'WINDOW':  
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
-            if any((self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
+            if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
+                if self.scene.vi_leg_levels != self.legend.levels:
+                    li_display(self, self.simnode)
                 self.legend.update(context)
                 redraw = 1
             
@@ -2990,10 +3017,12 @@ class VIEW3D_OT_SSDisplay(bpy.types.Operator):
         if event.type != 'INBETWEEN_MOUSEMOVE' and context.region and context.area.type == 'VIEW_3D' and context.region.type == 'WINDOW':                    
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
-            if any((self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
-                self.legend.update(context)
+            if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
+                if self.scene.vi_leg_levels != self.legend.levels:
+                    li_display(self, self.simnode)
+                self.legend.update(context)                
                 redraw = 1
-            
+                 
             # Legend routine 
             
             if self.legend.spos[0] < mx < self.legend.epos[0] and self.legend.spos[1] < my < self.legend.epos[1]:
@@ -3175,7 +3204,9 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
         if event.type != 'INBETWEEN_MOUSEMOVE' and context.region and context.area.type == 'VIEW_3D' and context.region.type == 'WINDOW':            
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
-            if any((self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
+            if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
+                if self.scene.vi_leg_levels != self.legend.levels:
+                    li_display(self, self.simnode)
                 self.legend.update(context)
                 redraw = 1
             
