@@ -40,7 +40,7 @@ else:
     from .vi_node import vinode_categories, envinode_categories, envimatnode_categories
     from .envi_mat import envi_materials, envi_constructions, envi_layero, envi_layer1, envi_layer2, envi_layer3, envi_layer4, envi_layerotype, envi_layer1type, envi_layer2type, envi_layer3type, envi_layer4type, envi_con_list
     from .vi_func import iprop, bprop, eprop, fprop, sprop, fvprop, sunpath1, radmat, radbsdf, retsv, cmap
-    from .vi_func import rtpoints, lhcalcapply, udidacalcapply, compcalcapply, basiccalcapply, lividisplay, setscenelivivals
+    from .vi_func import rtpoints, lhcalcapply, udidacalcapply, compcalcapply, basiccalcapply, lividisplay, setscenelivivals, py_path
     from .envi_func import enunits, enpunits, enparametric, resnameunits, aresnameunits
     from .flovi_func import fvmat, ret_fvbp_menu, ret_fvbu_menu, ret_fvbnut_menu, ret_fvbnutilda_menu, ret_fvbk_menu, ret_fvbepsilon_menu, ret_fvbomega_menu, ret_fvbt_menu, ret_fvba_menu, ret_fvbprgh_menu
     from .vi_display import setcols
@@ -53,6 +53,16 @@ from numpy import array, digitize, logspace, multiply
 from numpy import log10 as nlog10
 from bpy.props import StringProperty, EnumProperty, IntProperty
 from bpy.types import AddonPreferences
+
+evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
+platpath = {'linux': ':', 'darwin': ':', 'win32': ';'}
+addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+if sys.platform in ('darwin', 'win32'):
+    if 'PYTHONPATH' not in os.environ:
+        os.environ['PYTHONPATH'] =  os.path.join(addonpath, 'Python')
+    elif os.path.join(addonpath, 'Python') not in os.environ['PYTHONPATH']:
+        os.environ['PYTHONPATH'] =  os.environ['PYTHONPATH'] + evsep[str(sys.platform)] + os.path.join(addonpath, 'Python')
 
 def return_preferences():
     return bpy.context.user_preferences.addons[__name__].preferences
@@ -74,8 +84,7 @@ def abspath(self, context):
         self.ofetc = bpy.path.abspath(self.ofetc)
         
 class VIPreferences(AddonPreferences):
-    bl_idname = __name__
-    
+    bl_idname = __name__    
     radbin = StringProperty(name = '', description = 'Radiance binary directory location', default = '', subtype='DIR_PATH', update=abspath)
     radlib = StringProperty(name = '', description = 'Radiance library directory location', default = '', subtype='DIR_PATH', update=abspath)
     epbin = StringProperty(name = '', description = 'EnergyPlus binary directory location', default = '', subtype='DIR_PATH', update=abspath)
@@ -176,11 +185,8 @@ bpy.app.handlers.scene_update_post.append(mesh_index)
             
 epversion = "8-9-0"
 envi_mats, envi_cons, conlayers = envi_materials(), envi_constructions(), 5
-addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-#matpath, epwpath  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/'
 
 def path_update():
-    evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
     vi_prefs = bpy.context.user_preferences.addons[__name__].preferences
     epdir = vi_prefs.epbin if vi_prefs and vi_prefs.epbin and os.path.isdir(vi_prefs.epbin) else os.path.join('{}'.format(addonpath), 'EPFiles')
     radldir = vi_prefs.radlib if vi_prefs and os.path.isdir(vi_prefs.radlib) else os.path.join('{}'.format(addonpath), 'Radfiles', 'lib')
@@ -189,14 +195,6 @@ def path_update():
     ofldir = vi_prefs.oflib if vi_prefs and os.path.isdir(vi_prefs.oflib) else os.path.join('{}'.format(addonpath), 'OFFiles', 'lib')
     ofedir = vi_prefs.ofetc if vi_prefs and os.path.isdir(vi_prefs.ofetc) else os.path.join('{}'.format(addonpath), 'OFFiles')
     os.environ["PATH"] += "{0}{1}".format(evsep[str(sys.platform)], os.path.dirname(bpy.app.binary_path))
-    
-    if sys.platform == 'darwin':
-        if os.path.join(addonpath, 'Python', 'OSX') not in os.environ["PYTHONPATH"]:
-            os.environ["PYTHONPATH"] += evsep[str(sys.platform)] + os.path.join(addonpath, 'Python', 'OSX')
-            
-    elif sys.platform == 'win32':
-        if os.path.join(addonpath, 'Python', 'Win') not in os.environ["PYTHONPATH"]:
-            os.environ["PYTHONPATH"] += evsep[str(sys.platform)] + os.path.join(addonpath, 'Python', 'Win')
 
     if not os.environ.get('RAYPATH'):# or radldir not in os.environ['RAYPATH'] or radbdir not in os.environ['PATH']  or epdir not in os.environ['PATH']:
         if vi_prefs and os.path.isdir(vi_prefs.radlib):
@@ -274,7 +272,6 @@ def wupdate(self, context):
         (o.show_wire, o.show_all_edges) = (1, 1) if context.scene.vi_disp_wire else (0, 0)
 
 def legupdate(self, context):
-#    cmap(self)
     scene = context.scene
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
     obs = [o for o in scene.objects if o.get('lires')]

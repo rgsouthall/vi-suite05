@@ -27,6 +27,10 @@ from numpy import sum as nsum
 from numpy import min as nmin
 from numpy import max as nmax
 from numpy import append as nappend
+from . import livi_export
+from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max, ret_res_vals, py_path
+from .vi_func import retdp, objmode, drawcircle, drawbsdfcircle, drawwedge, drawtri, setscenelivivals, draw_time, retcols, draw_index_distance
+from .envi_func import retenvires, recalculate_text
 
 try:
     import matplotlib
@@ -39,11 +43,6 @@ try:
     mp = 1
 except:
     mp = 0
-
-from . import livi_export
-from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max, ret_res_vals
-from .vi_func import retdp, objmode, drawcircle, drawbsdfcircle, drawwedge, drawtri, setscenelivivals, draw_time, retcols, draw_index_distance
-from .envi_func import retenvires, recalculate_text
 
 nh = 768
 enunitdict = {'Heating (W)': 'Watts (W)', 'Cooling (W)': 'Watts (W)', 'CO2 (ppm)': 'PPM', 'Solar gain (W)': 'Watts (W)', 'Temperature (degC)': u'Temperature (\u00B0C)', 'PMV': 'PMV', 'PPD (%)': '%', 'Air heating (W)': 'W', 

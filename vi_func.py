@@ -16,7 +16,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-import bpy, os, sys, multiprocessing, mathutils, bmesh, datetime, colorsys, bgl, blf, shlex, bpy_extras, math
+import bpy, os, sys, inspect, multiprocessing, mathutils, bmesh, datetime, colorsys, bgl, blf, shlex, bpy_extras, math
 #from collections import OrderedDict
 from subprocess import Popen, PIPE, STDOUT
 from numpy import int8, in1d, float16, float32, float64, array, digitize, amax, amin, average, zeros, inner, transpose, nan, set_printoptions, choose, clip, where, savetxt, char
@@ -34,6 +34,23 @@ from mathutils.bvhtree import BVHTree
 from xml.dom import minidom
 from bpy.props import IntProperty, StringProperty, EnumProperty, FloatProperty, BoolProperty, FloatVectorProperty
 
+def py_path():
+    addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+     
+    if sys.platform == 'darwin':
+        if os.path.join(addonpath, 'Python', 'OSX') not in sys.path:
+            return os.path.join(addonpath, 'Python', 'OSX')         
+        else:
+            return ''
+        
+    elif sys.platform == 'win32':
+        if os.path.join(addonpath, 'Python', 'Win') not in sys.path:
+            return os.path.join(addonpath, 'Python', 'Win')
+        else:
+            return ''
+
+sys.path.append(py_path())
+    
 def ret_plt():
     try:
         import matplotlib
@@ -50,6 +67,7 @@ def ret_mcm():
         import matplotlib.cm as mcm
         return mcm
     except Exception as e:
+        logentry('Matplotlib error: {}'.format(e))
         return 0   
     
 dtdf = datetime.date.fromordinal
