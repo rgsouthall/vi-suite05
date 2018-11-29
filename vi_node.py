@@ -222,11 +222,12 @@ class LiViNode(Node, ViNodes):
         self['skynum'] = int(self.skymenu)         
         suns = [ob for ob in scene.objects if ob.type == 'LAMP' and ob.data.type == 'SUN'] 
                 
-        if self.contextmenu == 'Basic' and self['skynum'] < 2:
+        if self.contextmenu == 'Basic' and ((self.skyprog == '0' and self['skynum'] < 2) or (self.skyprog == '1' and self.epsilon > 1)):
             starttime = datetime.datetime(2015, 1, 1, int(self.shour), int((self.shour - int(self.shour))*60)) + datetime.timedelta(self.sdoy - 1) if self['skynum'] < 3 else datetime.datetime(2013, 1, 1, 12)                                       
             self['endframe'] = self.startframe + int(((24 * (self.edoy - self.sdoy) + self.ehour - self.shour)/self.interval)) if self.animated else [scene.frame_current]
             frames = range(self.startframe, self['endframe'] + 1) if self.animated else [scene.frame_current]
             scene.frame_start, scene.frame_end = self.startframe, frames[-1]
+            
             if suns:
                 sun = suns[0]
                 sun['VIType'] = 'Sun'
@@ -495,22 +496,20 @@ class LiViNode(Node, ViNodes):
             
             if self.skyprog in ('0', '1'):
                 self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[self['skynum']] if self.skyprog == '0' else "-P {} {}".format(self.epsilon, self.delta)
-                for f, frame in enumerate(range(self.startframe, self['endframe'] + 1)):
-                    if self.skyprog == '0':                    
-                        skytext = livi_sun(scene, self, f) + livi_sky(self['skynum'])
-                        if self['skynum'] < 2:
-                            if frame == self.startframe:
-                                if 'SUN' in [ob.data.type for ob in scene.objects if ob.type == 'LAMP' and ob.get('VIType')]:
-                                    sun = [ob for ob in scene.objects if ob.get('VIType') == 'Sun'][0]
-                                else:
-                                    bpy.ops.object.lamp_add(type='SUN')
-                                    sun = bpy.context.object
-                                    sun['VIType'] = 'Sun'
-                        if self.hdr:
-                            hdrexport(scene, f, frame, self, skytext)
-                        
-                    else:
-                        skytext = livi_sun(scene, self, f) + livi_sky(self['skynum'])
+
+                for f, frame in enumerate(range(self.startframe, self['endframe'] + 1)):                  
+                    skytext = livi_sun(scene, self, f) + livi_sky(self['skynum']) + livi_ground(*self.gcol, self.gref)
+                    if self['skynum'] < 2 or (self.skyprog == '1' and self.epsilon > 1):
+                        if frame == self.startframe:
+                            if 'SUN' in [ob.data.type for ob in scene.objects if ob.type == 'LAMP' and ob.get('VIType')]:
+                                sun = [ob for ob in scene.objects if ob.get('VIType') == 'Sun'][0]
+                            else:
+                                bpy.ops.object.lamp_add(type='SUN')
+                                sun = bpy.context.object
+                                sun['VIType'] = 'Sun'
+ 
+                    if self.hdr:
+                        hdrexport(scene, f, frame, self, skytext)                        
                     
                     self['Text'][str(frame)] = skytext + livi_ground(*self.gcol, self.gref)
 

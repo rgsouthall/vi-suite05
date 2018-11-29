@@ -26,13 +26,16 @@ def radgexport(export_op, node, **kwargs):
     clearscene(scene, export_op)
     frames = range(node['Options']['fs'], node['Options']['fe'] + 1)
     scene['liparams']['cp'] = node.cpoint
+    
     if bpy.context.active_object and not bpy.context.active_object.layers[scene.active_layer]:
         export_op.report({'INFO'}, "Active geometry is not on the active layer. You may need to lock layers.")
     geooblist, caloblist, lightlist = retobjs('livig'), retobjs('livic'), retobjs('livil')
+    
     for o in caloblist:
         if any([s < 0 for s in o.scale]):
             logentry('Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
             export_op.report({'WARNING'}, 'Negative scaling on calculation object {}. Results may not be as expected'.format(o.name))
+            
     scene['liparams']['livig'], scene['liparams']['livic'], scene['liparams']['livil'] = [o.name for o in geooblist], [o.name for o in caloblist], [o.name for o in lightlist]
     eolist = set(geooblist + caloblist)
 #    mats = set([item for sublist in [o.data.materials for o in eolist] for item in sublist])
@@ -114,7 +117,7 @@ def radgexport(export_op, node, **kwargs):
             if ' ' in o.ies_name:
                 export_op.report({'ERROR'}, 'There is a space in the {} IES file name - rename it'.format(o.name))
             iesname = os.path.splitext(os.path.basename(o.ies_name))[0]
-            print(os.path.abspath(o.ies_name))
+
             if os.path.isfile(bpy.path.abspath(o.ies_name)):
                 iescmd = "ies2rad -t default -m {0} -c {1[0]:.3f} {1[1]:.3f} {1[2]:.3f} -p '{2}' -d{3} -o {4}-{5} '{6}'".format(o.ies_strength, (o.ies_rgb, ct2RGB(o.ies_ct))[o.ies_colmenu == '1'], scene['liparams']['lightfilebase'], o.ies_unit, iesname, frame, o.ies_name)
                 subprocess.call(shlex.split(iescmd))
@@ -132,6 +135,7 @@ def radgexport(export_op, node, **kwargs):
                     bm.transform(o.matrix_world)
                     bm.normal_update()
                     bm.faces.ensure_lookup_table()
+                    
                     for f in bm.faces: 
                         lrot = mathutils.Vector.rotation_difference(mathutils.Vector((0, 0, -1)), f.normal).to_euler('XYZ')
                         lradfile += u'!xform -rx {0[0]:.3f} -ry {0[1]:.3f} -rz {0[2]:.3f} -t {1[0]:.3f} {1[1]:.3f} {1[2]:.3f} "{2}"{3}'.format([math.degrees(lr) for lr in lrot], f.calc_center_bounds(), os.path.join(scene['liparams']['lightfilebase'], iesname+"-{}.rad".format(frame)), ('\n', '\n\n')[f == bm.faces[-1]])
@@ -147,26 +151,32 @@ def livi_sun(scene, node, frame):
     if node.skyprog in ('0', '1') and node.contextmenu == 'Basic':        
         simtime = node.starttime + frame*datetime.timedelta(seconds = 3600*node.interval)
         solalt, solazi, beta, phi = solarPosition(simtime.timetuple()[7], simtime.hour + (simtime.minute)*0.016666, scene.latitude, scene.longitude)
+        
         if node.skyprog == '0':
             gsrun = Popen("gensky -ang {} {} {} -t {} -g {}".format(solalt, solazi, node['skytypeparams'], node.turb, node.gref).split(), stdout = PIPE) 
         else:
             gsrun = Popen("gendaylit -ang {} {} {} -g {}".format(solalt, solazi, node['skytypeparams'], node.gref).split(), stdout = PIPE)
     else:
         gsrun = Popen("gensky -ang {} {} {} -g {}".format(45, 0, node['skytypeparams'], node.gref).split(), stdout = PIPE)
+    
     return gsrun.stdout.read().decode()
 
 def hdrexport(scene, f, frame, node, skytext):
     with open('{}-{}sky.oct'.format(scene['viparams']['filebase'], frame), 'w') as skyoct:
         Popen('oconv -w -'.split(), stdin = PIPE, stdout = skyoct).communicate(input = skytext.encode('utf-8'))
+
     with open(os.path.join(scene['viparams']['newdir'], str(frame)+".hdr"), 'w') as hdrfile:
         rpictcmd = "rpict -vta -vp 0 0 0 -vd 0 1 0 -vu 0 0 1 -vh 360 -vv 360 -x 1500 -y 1500 {}-{}sky.oct".format(scene['viparams']['filebase'], frame)
         Popen(rpictcmd.split(), stdout = hdrfile).communicate()
+
     cntrun = Popen('cnt 750 1500'.split(), stdout = PIPE)
     rcalccmd = 'rcalc -f {} -e XD=1500;YD=750;inXD=0.000666;inYD=0.001333'.format(os.path.join(scene.vipath, 'Radfiles', 'lib', 'latlong.cal'))
     rcalcrun = Popen(rcalccmd.split(), stdin = cntrun.stdout, stdout = PIPE)
     rtracecmd = 'rtrace -n {} -x 1500 -y 750 -fac {}-{}sky.oct'.format(scene['viparams']['nproc'], scene['viparams']['filebase'], frame)
+
     with open('{}p.hdr'.format(os.path.join(scene['viparams']['newdir'], str(frame))), 'w') as hdrim:
         Popen(rtracecmd.split(), stdin = rcalcrun.stdout, stdout = hdrim).communicate()
+
     if '{}p.hdr'.format(frame) not in bpy.data.images:
         bpy.data.images.load(os.path.join(scene['viparams']['newdir'], "{}p.hdr".format(frame)))
     else:

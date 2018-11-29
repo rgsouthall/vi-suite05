@@ -2764,17 +2764,18 @@ def sunposenvi(scene, sun, dirsol, difsol, mdata, ddata, hdata):
 def sunposlivi(scene, skynode, frames, sun, stime):
     sun.data.shadow_method, sun.data.shadow_ray_samples, sun.data.sky.use_sky = 'RAY_SHADOW', 8, 1
     
-    if skynode['skynum'] < 3: 
+    if skynode['skynum'] < 3 or (skynode.skyprog == '1' and skynode.epsilon > 1): 
         times = [stime + frame*datetime.timedelta(seconds = 3600*skynode.interval) for frame in range(len(frames))]  
         solposs = [solarPosition(t.timetuple()[7], t.hour + (t.minute)*0.016666, scene.latitude, scene.longitude) for t in times]
-        beamvals = [(0, 3)[solposs[t][0] > 0] for t in range(len(times))] if skynode['skynum'] < 2 else [0 for t in range(len(times))]
+        beamvals = [(0, 3)[solposs[t][0] > 0] for t in range(len(times))] if skynode['skynum'] < 2  or (skynode.skyprog == '1' and skynode.epsilon > 1) else [0 for t in range(len(times))]
         skyvals = [5 for t in range(len(times))]
         
-    elif skynode['skynum'] == 3: 
+    elif skynode['skynum'] == 3 and skynode.skyprog == '0': 
         times = [datetime.datetime(2015, 3, 20, 12, 0)]
         solposs = [solarPosition(t.timetuple()[7], t.hour + (t.minute)*0.016666, 0, 0) for t in times]
         beamvals = [0 for t in range(len(times))]
         skyvals = [5 for t in range(len(times))]
+        
     shaddict = {'0': 0.01, '1': 2, '2': 5, '3': 5}
     values = list(zip([shaddict[str(skynode['skynum'])] for t in range(len(times))], beamvals, skyvals))
     sunapply(scene, sun, values, solposs, frames)
@@ -2783,6 +2784,7 @@ def sunposh(context, suns):
     scene = context.scene
     sps = [solarPosition(scene.solday, i, scene.latitude, scene.longitude) for i in range(0, 23)]
     spsvalid = [sp[0] > 0 for sp in sps]
+    
     if sum(spsvalid) > len(suns):
         for i in range(sum(spsvalid) - len(suns)):
             bpy.ops.object.lamp_add(type = "SUN")
