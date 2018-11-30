@@ -495,10 +495,11 @@ class LiViNode(Node, ViNodes):
             self['preview'] = 1
             
             if self.skyprog in ('0', '1'):
-                self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[self['skynum']] if self.skyprog == '0' else "-P {} {}".format(self.epsilon, self.delta)
+                self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[self['skynum']] if self.skyprog == '0' else "-P {} {} -O {}".format(self.epsilon, self.delta, int(self.spectrummenu))
 
                 for f, frame in enumerate(range(self.startframe, self['endframe'] + 1)):                  
                     skytext = livi_sun(scene, self, f) + livi_sky(self['skynum']) + livi_ground(*self.gcol, self.gref)
+                    
                     if self['skynum'] < 2 or (self.skyprog == '1' and self.epsilon > 1):
                         if frame == self.startframe:
                             if 'SUN' in [ob.data.type for ob in scene.objects if ob.type == 'LAMP' and ob.get('VIType')]:
@@ -511,7 +512,7 @@ class LiViNode(Node, ViNodes):
                     if self.hdr:
                         hdrexport(scene, f, frame, self, skytext)                        
                     
-                    self['Text'][str(frame)] = skytext + livi_ground(*self.gcol, self.gref)
+                    self['Text'][str(frame)] = skytext
 
             elif self.skyprog == '2':
                 if self.hdrname and os.path.isfile(self.hdrname):
