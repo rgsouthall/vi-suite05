@@ -276,8 +276,10 @@ def legupdate(self, context):
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
     obs = [o for o in scene.objects if o.get('lires')]
     increment = 1/scene.vi_leg_levels
+    
     if scene.vi_leg_scale == '0':
         bins = array([increment * i for i in range(1, scene.vi_leg_levels)])
+        
     elif scene.vi_leg_scale == '1':
         slices = logspace(0, 2, scene.vi_leg_levels + 1, True)
         bins = array([(slices[i] - increment * (scene.vi_leg_levels - i))/100 for i in range(scene.vi_leg_levels + 1)])
