@@ -328,8 +328,9 @@ class linumdisplay():
         
                         face2d = [view3d_utils.location_3d_to_region_2d(context.region, context.region_data, f.calc_center_median_weighted()) for f in faces]
                         (faces, pcs, depths) = map(list, zip(*[[f, face2d[fi], distances[fi]] for fi, f in enumerate(faces) if face2d[fi] and 0 < face2d[fi][0] < self.width and 0 < face2d[fi][1] < self.height]))          
-                        res = [f[livires] for f in faces] if not self.scene.vi_res_mod else [eval('{}{}'.format(f[livires], self.scene.vi_res_mod)) for f in faces]
-                    
+                        res = [f[livires] for f in faces] 
+                        res = ret_res_vals(self.scene, res)
+                        
                     elif bm.verts.layers.float.get('res{}'.format(self.scene.frame_current)):                        
                         verts = [v for v in geom if not v.hide and v.select and (context.space_data.region_3d.view_location - self.view_location).dot(v.co + self.scene.vi_display_rp_off * v.normal.normalized() - self.view_location)/((context.space_data.region_3d.view_location-self.view_location).length * (v.co + self.scene.vi_display_rp_off * v.normal.normalized() - self.view_location).length) > 0]
                         distances = [(self.view_location - v.co + self.scene.vi_display_rp_off * v.normal.normalized()).length for v in verts]
@@ -930,6 +931,9 @@ class basic_legend(Base_Display):
 
         self.resvals = ['{0} - {1}'.format(self.resvals[i], self.resvals[i+1]) for i in range(ll)]
         
+        if scene.vi_res_process == '2' and bpy.app.driver_namespace.get('restext'):
+            self.resvals = bpy.app.driver_namespace.get('restext')()
+        
     def drawopen(self, context):
         scene = context.scene
         draw_legend(self, scene, scene['liparams']['unit'] if not scene.vi_leg_unit else scene.vi_leg_unit)
@@ -1193,7 +1197,7 @@ def draw_legend(self, scene, unit):
     lh = ydiff/(levels + 1)    
     blf.size(font_id, 12, 300)
     titxdimen = blf.dimensions(font_id, unit)[0]
-    resxdimen = blf.dimensions(font_id, self.resvals[-1])[0]
+    resxdimen = max([blf.dimensions(font_id, r)[0] for r in self.resvals])
     mydimen = blf.dimensions(font_id, unit)[1]
     fontscale = max(titxdimen/(xdiff * 0.9), resxdimen/(xdiff * 0.6), mydimen * 1.25/lh)
     blf.size(font_id, 12, int(300/fontscale))

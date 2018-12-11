@@ -231,8 +231,7 @@ def cmap(scene):
 def leg_min_max(scene):
     try:
         if scene.vi_res_process == '2' and bpy.app.driver_namespace.get('resmod'):
-            bpy.app.driver_namespace['resmod']()
-            return (scene.vi_leg_min, scene.vi_leg_max)
+            return bpy.app.driver_namespace['resmod']([scene.vi_leg_min, scene.vi_leg_max])
         elif scene.vi_res_mod:
             return (eval('{}{}'.format(scene.vi_leg_min, scene.vi_res_mod)), eval('{}{}'.format(scene.vi_leg_max, scene.vi_res_mod)))
         else:
@@ -294,8 +293,7 @@ def bmesh2mesh(scene, obmesh, o, frame, tmf, fb):
             
             with open(mfile, 'w') as mesh:
                 o2mrun = Popen('obj2mesh -w -a {} '.format(tmf).split(), stdout = mesh, stdin = PIPE, stderr = PIPE, universal_newlines=True).communicate(input = (otext + vtext + ftext))
-                
-                
+                               
             if os.path.getsize(mfile) and not o2mrun[1] and not fb:
                 gradfile += "void mesh id \n1 {}\n0\n0\n\n".format(mfile)
 
@@ -1554,17 +1552,17 @@ def retcrits(simnode, matname):
 def ret_res_vals(scene, reslist):    
     if scene.vi_res_process and bpy.app.driver_namespace.get('resmod'):
         try:
-            return array([bpy.app.driver_namespace['resmod'](r) for r in reslist])
+            return bpy.app.driver_namespace['resmod'](reslist)
         except Exception as e:
-            print(e)
-            return array(reslist)
+            logentry('User script error {}. Check console'.format(e))
+            return reslist
     elif scene.vi_res_mod:
         try:
-            return array([eval('{}{}'.format(r, scene.vi_res_mod)) for r in reslist])
+            return [eval('{}{}'.format(r, scene.vi_res_mod)) for r in reslist]
         except:
-            return array(reslist)
+            return reslist
     else:
-        return array(reslist)
+        return reslist
         
 def lividisplay(self, scene): 
     frames = range(scene['liparams']['fs'], scene['liparams']['fe'] + 1)
