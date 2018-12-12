@@ -37,17 +37,17 @@ from bpy.props import IntProperty, StringProperty, EnumProperty, FloatProperty, 
 def py_path():
     addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
      
-    if sys.platform == 'darwin':
-        if os.path.join(addonpath, 'Python', 'OSX') not in sys.path:
-            return os.path.join(addonpath, 'Python', 'OSX')         
+    if sys.platform in ('darwin', 'win32'):
+        if os.path.join(addonpath, 'Python') not in sys.path:
+            return os.path.join(addonpath, 'Python')         
         else:
             return ''
         
-    elif sys.platform == 'win32':
-        if os.path.join(addonpath, 'Python', 'Win') not in sys.path:
-            return os.path.join(addonpath, 'Python', 'Win')
-        else:
-            return ''
+#    elif sys.platform == 'win32':
+#        if os.path.join(addonpath, 'Python', 'Win') not in sys.path:
+#            return os.path.join(addonpath, 'Python', 'Win')
+#        else:
+#            return ''
 
 sys.path.append(py_path())
     
