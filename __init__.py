@@ -289,7 +289,16 @@ def legupdate(self, context):
     for o in obs:
         bm = bmesh.new()
         bm.from_mesh(o.data)
+        cmap(self)
         
+        if len(o.material_slots) != scene.vi_leg_levels:
+            for matname in ['{}#{}'.format('vi-suite', i) for i in range(scene.vi_leg_levels)]:
+                if bpy.data.materials[matname] not in o.data.materials[:]:
+                    bpy.ops.object.material_slot_add()
+                    o.material_slots[-1].material = bpy.data.materials[matname]
+            while len(o.material_slots) > scene.vi_leg_levels:
+                    bpy.ops.object.material_slot_remove()
+                    
         for f, frame in enumerate(frames):
             if bm.faces.layers.float.get('res{}'.format(frame)):
                 livires = bm.faces.layers.float['res{}'.format(frame)] 
@@ -315,6 +324,7 @@ def legupdate(self, context):
                     fc.keyframe_points[f].co = frame, nmatis[fi]
         bm.free()
     scene.frame_set(scene.frame_current)
+    
     
 def liviresupdate(self, context):
     setscenelivivals(context.scene)

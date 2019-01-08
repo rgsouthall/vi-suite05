@@ -127,6 +127,7 @@ def li_display(disp_op, simnode):
         
         selobj(scene, o)
         bpy.ops.object.duplicate() 
+        
         for face in bm.faces:
             face.select = True 
         
@@ -172,6 +173,7 @@ def li_display(disp_op, simnode):
         if scene.vi_disp_3d == 1 and ores.data.shape_keys == None:
             selobj(scene, ores)
             bpy.ops.object.shape_key_add(from_mix = False)
+            
             for frame in range(scene['liparams']['fs'], scene['liparams']['fe'] + 1):
                 bpy.ops.object.shape_key_add(from_mix = False)
                 ores.active_shape_key.name, ores.active_shape_key.value = str(frame), 1
@@ -180,6 +182,7 @@ def li_display(disp_op, simnode):
     bpy.ops.wm.save_mainfile(check_existing = False)
     scene.frame_set(scene['liparams']['fs'])
     rendview(1)
+    print('new object')
 
 def spnumdisplay(disp_op, context, simnode):
     scene = context.scene

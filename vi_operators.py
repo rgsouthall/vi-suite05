@@ -2903,8 +2903,6 @@ class VIEW3D_OT_SVFDisplay(bpy.types.Operator):
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
             if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
-                if self.scene.vi_leg_levels != self.legend.levels:
-                    li_display(self, self.simnode)
                 self.legend.update(context)
                 redraw = 1
             
@@ -3018,8 +3016,6 @@ class VIEW3D_OT_SSDisplay(bpy.types.Operator):
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
             if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
-                if self.scene.vi_leg_levels != self.legend.levels:
-                    li_display(self, self.simnode)
                 self.legend.update(context)                
                 redraw = 1
                  
@@ -3190,7 +3186,6 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
     bl_undo = False
 
     def modal(self, context, event): 
-#        scene = context.scene
         redraw = 0 
         
         if self.scene.vi_display == 0 or context.scene['viparams']['vidisp'] != 'lipanel' or not any([o.lires for o in bpy.data.objects]):
@@ -3205,8 +3200,6 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
             mx, my = event.mouse_region_x, event.mouse_region_y 
             
             if any((self.scene.vi_leg_levels != self.legend.levels, self.scene.vi_leg_col != self.legend.col, self.scene.vi_leg_scale != self.legend.scale, (self.legend.minres, self.legend.maxres) != leg_min_max(self.scene))):               
-                if self.scene.vi_leg_levels != self.legend.levels:
-                    li_display(self, self.simnode)
                 self.legend.update(context)
                 redraw = 1
             
@@ -3483,6 +3476,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
 #        if scene['viparams']['visimcontext'] == 'LiVi Basic':
         self.table = basic_table([240, context.region.height - 40], context.region.width, context.region.height, 'table.png', 600, 100)  
         self.table.update(context)
+        
         if self.scene['viparams']['visimcontext'] == 'LiVi Compliance':
             self.tablecomp = comp_table([300, context.region.height - 40], context.region.width, context.region.height, 'compliance.png', 600, 200)
             self.tablecomp.update(context)
