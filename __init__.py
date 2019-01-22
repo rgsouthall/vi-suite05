@@ -262,7 +262,7 @@ def eupdate(self, context):
 def tupdate(self, context):
     for o in [o for o in context.scene.objects if o.type == 'MESH'  and 'lightarray' not in o.name and o.hide == False and o.layers[context.scene.active_layer] == True and o.get('lires')]:
         o.show_transparent = 1
-    for mat in [bpy.data.materials['{}#{}'.format('vi-suite', index)] for index in range(context.scene.vi_leg_levels)]:
+    for mat in [bpy.data.materials['{}#{}'.format('vi-suite', index)] for index in range(1, context.scene.vi_leg_levels + 1)]:
         mat.use_transparency, mat.transparency_method, mat.alpha = 1, 'MASK', context.scene.vi_disp_trans
     cmap(self)
         
@@ -291,12 +291,12 @@ def legupdate(self, context):
         bm.from_mesh(o.data)
         cmap(self)
         
-        if len(o.material_slots) != scene.vi_leg_levels:
-            for matname in ['{}#{}'.format('vi-suite', i) for i in range(scene.vi_leg_levels)]:
+        if len(o.material_slots) != scene.vi_leg_levels + 1:
+            for matname in ['{}#{}'.format('vi-suite', i) for i in range(0, scene.vi_leg_levels + 1)]:
                 if bpy.data.materials[matname] not in o.data.materials[:]:
                     bpy.ops.object.material_slot_add()
                     o.material_slots[-1].material = bpy.data.materials[matname]
-            while len(o.material_slots) > scene.vi_leg_levels:
+            while len(o.material_slots) > scene.vi_leg_levels + 1:
                     bpy.ops.object.material_slot_remove()
                     
         for f, frame in enumerate(frames):
@@ -313,7 +313,7 @@ def legupdate(self, context):
             else:
                 vals = array([scene.vi_leg_max for f in bm.faces])
                         
-            nmatis = digitize(vals, bins)
+            nmatis = digitize(vals, bins) + 1
 
             if len(frames) == 1:                
                 o.data.polygons.foreach_set('material_index', nmatis)

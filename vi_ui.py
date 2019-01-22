@@ -1,6 +1,6 @@
 import bpy
 from collections import OrderedDict
-from .vi_func import newrow, retdates
+from .vi_func import newrow, retdates, logentry
 from .envi_mat import envi_materials, envi_constructions
 
 envi_mats = envi_materials()
@@ -19,8 +19,7 @@ class Vi3DPanel(bpy.types.Panel):
         layout = self.layout
 
         try:
-            if cao and cao.active_material.get('bsdf') and cao.active_material['bsdf']['type'] == ' ' and cao.vi_type == '5':
-                
+            if cao and cao.active_material.get('bsdf') and cao.active_material['bsdf']['type'] == ' ' and cao.vi_type == '5' and scene['viparams'].get('vidisp'):                
                 if scene['viparams']['vidisp'] != 'bsdf_panel':
                     row = layout.row()
                     row.operator("view3d.bsdf_display", text="BSDF Display") 
@@ -31,7 +30,7 @@ class Vi3DPanel(bpy.types.Panel):
                     newrow(layout, 'BSDF colour:', scene, "vi_leg_col")
         
         except Exception as e:
-            pass
+            logentry("Problem with BSDF panel display: {}".format(e))
 
         if scene.get('viparams') and scene['viparams'].get('vidisp'): 
             if scene['viparams']['vidisp'] == 'wr' and 'Wind_Plane' in [o['VIType'] for o in bpy.data.objects if o.get('VIType')]:

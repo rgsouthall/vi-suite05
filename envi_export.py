@@ -56,9 +56,9 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 
         en_idf.write('HeatBalanceAlgorithm, ConductionTransferFunction;\n\n')
    
-        params = ('Name', 'Begin Month', 'Begin Day', 'End Month', 'End Day', 'Day of Week for Start Day', 'Use Weather File Holidays and Special Days', 'Use Weather File Daylight Saving Period',\
-        'Apply Weekend Holiday Rule', 'Use Weather File Rain Indicators', 'Use Weather File Snow Indicators', 'Number of Times Runperiod to be Repeated')
-        paramvs = (node.loc, node.sdate.month, node.sdate.day, node.edate.month, node.edate.day, "UseWeatherFile", "Yes", "Yes", "No", "Yes", "Yes", "1")
+        params = ('Name', 'Begin Month', 'Begin Day of Month', 'Begin Year', 'End Month', 'End Day of Month', 'End Year', 'Day of Week for Start Day', 'Use Weather File Holidays and Special Days', 'Use Weather File Daylight Saving Period',\
+        'Apply Weekend Holiday Rule', 'Use Weather File Rain Indicators', 'Use Weather File Snow Indicators')
+        paramvs = (node.loc, node.sdate.month, node.sdate.day, '', node.edate.month, node.edate.day, '', "", "Yes", "Yes", "No", "Yes", "Yes")
         en_idf.write(epentry('RunPeriod', params, paramvs))    
 
 
@@ -70,13 +70,11 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 for emnode in mat.envi_nodes.nodes:
                     if emnode.bl_idname == 'EnViCon' and emnode.active:
                         if emnode.envi_con_type == 'Window':    
-                            if emnode.envi_simple_glazing:
-                                em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
-                                ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
-                            else:                            
-                                en_idf.write(emnode.ep_write())
-
-                        
+#                            if emnode.envi_simple_glazing:
+#                                em.sg_write(en_idf, mat.name+'_sg', emnode.envi_sg_uv, emnode.envi_sg_shgc, emnode.envi_sg_vt)
+#                                ec.con_write(en_idf, emnode.envi_con_type, mat.name, mat.name+'_sg', mat.name, [mat.name+'_sg'])
+#                            else:                            
+                            en_idf.write(emnode.ep_write())                        
                         else:                            
                             if emnode.envi_con_type not in ('None', 'Shading', 'Aperture'):
                                 en_idf.write(emnode.ep_write())
@@ -137,7 +135,6 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                     gens.append('{}_{}-pv'.format(obj.name, face.index))
                                     
                             elif emnode.envi_con_type in ('Door', 'Window')  and emnode.envi_con_makeup != "2":
-                                print(mat.name)
                                 if len(face.verts) > 4:
                                     exp_op.report({'ERROR'}, 'Window/door in {} has more than 4 vertices'.format(obj.name))
                                     
@@ -146,14 +143,14 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 paramvs = ['{}_{}'.format(obj.name, face.index), 'Wall', '{}-frame'.format(mat.name), obj.name, obc, obco, se, we, 'autocalculate', len(face.verts)] + ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format(vco) for vco in vcos]
                                 en_idf.write(epentry('BuildingSurface:Detailed', params, paramvs))    
                                 obound = ('win-', 'door-')[emnode.envi_con_type == 'Door']+obco if obco else obco
-                                params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Shading Control Name', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
+                                params = ['Name', 'Surface Type', 'Construction Name', 'Building Surface Name', 'Outside Boundary Condition Object', 'View Factor to Ground', 'Frame and Divider Name', 'Multiplier', 'Number of Vertices'] + \
                                 ["X,Y,Z ==> Vertex {} (m)".format(v.index) for v in face.verts]
                                 
                                 if emnode.fclass in ('0', '2'):
-                                    paramvs = [('win-', 'door-')[emnode.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '', '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[emnode.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '', '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((xav+(vco[0]-xav)*(1 - emnode.farea * 0.01), yav+(vco[1]-yav)*(1 - emnode.farea * 0.01), zav+(vco[2]-zav)*(1 - emnode.farea * 0.01))) for vco in vcos]
                                 else:
-                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', ('', '{}-shading-control'.format(mat.name))[mat.envi_shading], '{}-fad'.format(mat.name), '1', len(face.verts)] + \
+                                    paramvs = [('win-', 'door-')[mat.envi_con_type == 'Door']+'{}_{}'.format(obj.name, face.index), emnode.envi_con_type, mat.name, '{}_{}'.format(obj.name, face.index), obound, 'autocalculate', '{}-fad'.format(mat.name), '1', len(face.verts)] + \
                                     ["  {0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}".format((vco[0] + (1, -1)[vco[0] - xav > 0]*(0.001+emnode.fw, 0)[abs(vco[0] - xav) < 0.0001], vco[1] + (1, -1)[vco[1] - yav > 0]*(0.001+emnode.fw, 0)[abs(vco[1] - yav) < 0.0001], vco[2] + (1, -1)[vco[2] - zav > 0]*(0.001+emnode.fw, 0)[abs(vco[2] - zav) < 0.0001])) for vco in vcos]
                                 
                                 en_idf.write(epentry('FenestrationSurface:Detailed', params, paramvs))
@@ -162,8 +159,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                                 params = ['Name', 'Transmittance Schedule Name', 'Number of Vertices'] + ['X,Y,Z ==> Vertex {} (m)'.format(v.index) for v in face.verts]
                                 paramvs = ['{}_{}'.format(obj.name, face.index), '', len(face.verts)] + ['{0[0]:.4f}, {0[1]:.4f}, {0[2]:.4f}'.format(vco) for vco in vcos]
                                 en_idf.write(epentry('Shading:Building:Detailed', params, paramvs))
-                        
-                        
+                       
             bm.free()
     
         en_idf.write("\n!-   ===========  ALL OBJECTS IN CLASS: SCHEDULES ===========\n\n")

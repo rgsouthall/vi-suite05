@@ -62,7 +62,28 @@ def retframe(axis, dnode, frames):
         return frames[0]
     
 def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
-    plt.close()
+    plt.close('all')
+    
+# Failed attempt to improve display with qt scaling. QT_AUTO_SCREEN_SCALE_FACTOR=1 before blende command works 
+    # but increases interface size 
+    
+#    if plt.get_backend() == 'Qt5Agg':
+#        from matplotlib.backends.qt_compat import QtWidgets, QtCore
+#        if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
+#            QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True)
+#        
+#        if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
+#            QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+#        
+#        print(dir(QtCore.Qt))
+##        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+##        qApp = QtWidgets.QApplication(sys.argv)
+##        qApp.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+###        if hasattr(QStyleFactory, 'AA_UseHighDpiPixmaps'):
+##        qApp.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
+###        plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
+        
+    fig, ax = plt.subplots(dpi=dnode.dpi)
     variant = rvariant(dnode)
     rnx = dnode.inputs['X-axis'].links[0].from_node
     rlx = rnx['reslists']
@@ -124,7 +145,7 @@ def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
     y1data = timedata([dnode.inputs['Y-axis 1'].multfactor * float(y) for y in y1d], dnode.timemenu, dnode.inputs['Y-axis 1'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
     ylabel = label(dnode, menusy1[1], 'Y-axis 1', variant)
     drange = checkdata(chart_op, xdata, y1data)        
-    line, = plt.plot(xdata[:drange], y1data[:drange], color=colors[0], ls = linestyles[0], linewidth = 1, label = llabel(dnode, menusy1[1], 'Y-axis 1', variant))    
+    line, = ax.plot(xdata[:drange], y1data[:drange], color=colors[0], ls = linestyles[0], linewidth = 1, label = llabel(dnode, menusy1[1], 'Y-axis 1', variant))    
            
     if dnode.inputs['Y-axis 2'].links:
         rny2 = dnode.inputs['Y-axis 2'].links[0].from_node
@@ -135,7 +156,7 @@ def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
         y2d = [ry2[4].split()[si:ei + 1] for ry2 in rly2 if ry2[0] == framey2 and ry2[1] == dnode.inputs['Y-axis 2'].rtypemenu and ry2[2] == menusy2[0] and ry2[3] == menusy2[1]][0]
         y2data = timedata([dnode.inputs['Y-axis 2'].multfactor * float(y) for y in y2d], dnode.timemenu, dnode.inputs['Y-axis 2'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
         drange = checkdata(chart_op, xdata, y2data) 
-        line, = plt.plot(xdata[:drange], y2data[:drange], color=colors[1], ls = linestyles[1], linewidth = 1, label = llabel(dnode, menusy2[1], 'Y-axis 2', variant))    
+        line, = ax.plot(xdata[:drange], y2data[:drange], color=colors[1], ls = linestyles[1], linewidth = 1, label = llabel(dnode, menusy2[1], 'Y-axis 2', variant))    
  
     if dnode.inputs['Y-axis 3'].links:
         rny3 = dnode.inputs['Y-axis 3'].links[0].from_node
@@ -146,7 +167,7 @@ def chart_disp(chart_op, plt, dnode, rnodes, Sdate, Edate):
         y3d = [ry3[4].split()[si:ei + 1] for ry3 in rly3 if ry3[0] == framey3 and ry3[1] == dnode.inputs['Y-axis 3'].rtypemenu and ry3[2] == menusy3[0] and ry3[3] == menusy3[1]][0]
         y3data = timedata([dnode.inputs['Y-axis 3'].multfactor * float(y) for y in y3d], dnode.timemenu, dnode.inputs['Y-axis 3'].statmenu, mdata, ddata, sdata, dnode, Sdate, Edate)
         drange = checkdata(chart_op, xdata, y3data) 
-        line, = plt.plot(xdata[:drange], y3data[:drange], color=colors[2], ls = linestyles[2], linewidth = 1, label=llabel(dnode, menusy3[1], 'Y-axis 3', variant))    
+        line, = ax.plot(xdata[:drange], y3data[:drange], color=colors[2], ls = linestyles[2], linewidth = 1, label=llabel(dnode, menusy3[1], 'Y-axis 3', variant))    
     
     try:
         plt.xlabel(xlabel)    

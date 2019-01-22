@@ -3456,6 +3456,7 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
             if redraw:
                 context.area.tag_redraw()
                 self.frame = context.scene.frame_current
+                
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
@@ -3465,8 +3466,10 @@ class VIEW3D_OT_LiViBasicDisplay(bpy.types.Operator):
         self.scene['viparams']['vidisp'] = 'lipanel'
         self.simnode = bpy.data.node_groups[self.scene['viparams']['restree']].nodes[self.scene['viparams']['resnode']]
         self.frame = self.scene.frame_current
+        
         if li_display(self, self.simnode) == 'CANCELLED':
             return {'CANCELLED'}
+        
         self.scene.vi_disp_wire, self.scene.vi_display = 1, 1
         lnd = linumdisplay(self, context, self.simnode)
         self._handle_pointres = bpy.types.SpaceView3D.draw_handler_add(lnd.draw, (context, ), 'WINDOW', 'POST_PIXEL')

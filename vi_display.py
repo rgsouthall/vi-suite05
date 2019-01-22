@@ -28,7 +28,7 @@ from numpy import min as nmin
 from numpy import max as nmax
 from numpy import append as nappend
 from . import livi_export
-from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max, ret_res_vals, py_path
+from .vi_func import cmap, skframe, selobj, retvpvloc, viewdesc, drawloop, drawpoly, draw_index, blf_props, drawsquare, leg_min_max, ret_res_vals, py_path, logentry
 from .vi_func import retdp, objmode, drawcircle, drawbsdfcircle, drawwedge, drawtri, setscenelivivals, draw_time, retcols, draw_index_distance
 from .envi_func import retenvires, recalculate_text
 
@@ -152,7 +152,7 @@ def li_display(disp_op, simnode):
         selobj(scene, ores)
         cmap(scene)
         
-        for matname in ['{}#{}'.format('vi-suite', i) for i in range(scene.vi_leg_levels)]:
+        for matname in ['{}#{}'.format('vi-suite', i) for i in range(scene.vi_leg_levels + 1)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:
                 bpy.ops.object.material_slot_add()
                 ores.material_slots[-1].material = bpy.data.materials[matname]
@@ -182,7 +182,6 @@ def li_display(disp_op, simnode):
     bpy.ops.wm.save_mainfile(check_existing = False)
     scene.frame_set(scene['liparams']['fs'])
     rendview(1)
-    print('new object')
 
 def spnumdisplay(disp_op, context, simnode):
     scene = context.scene
@@ -360,7 +359,7 @@ class linumdisplay():
             draw_index_distance(self.allpcs, self.allres, self.fontmult * self.scene.vi_display_rp_fs, self.scene.vi_display_rp_fc, self.scene.vi_display_rp_fsh, self.alldepths)    
 
         except Exception as e:
-            print('Error 1', e)
+            logentry('Error in LiVi number display: {}'.format(e))
 
 def en_air(self, context, temp, ws, wd, hu):
     scene = context.scene
@@ -383,25 +382,26 @@ def en_air(self, context, temp, ws, wd, hu):
         
         # Temperature
         maxval, minval = max(temp), min(temp)
-        maxval, minval = max(temp), min(temp)
-        reslevel = (temp[scene.frame_current] - minval)/(maxval - minval)
+        tempval = temp[scene.frame_current]
+        reslevel = (tempval - minval)/(maxval - minval)
         blf.size(font_id, 20, int(height/14))
         bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
         blf.position(font_id, int(leftwidth + hscale*5), int(topheight - hscale * 20), 0)
-        blf.draw(font_id, u"T: {:.1f}\u00b0C".format(temp[scene.frame_current]))
-        drawpoly(int(leftwidth + hscale * 10), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 60), botheight, 1, *colorsys.hsv_to_rgb(1 - reslevel, 1.0, 1.0))
+        blf.draw(font_id, u"T: {:.1f}\u00b0C".format(tempval))
+        drawpoly(int(leftwidth + hscale * 10), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 60), botheight, *colorsys.hsv_to_rgb(1 - reslevel, 1.0, 1.0), 1)
         drawloop(int(leftwidth + hscale * 10 - 1), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 60), botheight)
         
         # Wind
         direcs = ('N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW')
+        
         if context.space_data.region_3d.is_perspective:
             view_mat = context.space_data.region_3d.perspective_matrix
             vw = mathutils.Vector((view_mat[3][0], view_mat[3][1], 0)).normalized()
         else:
             vw =  mathutils.Vector((0.0, 0.0, -1.0))
             vw.rotate(bpy.context.region_data.view_rotation)
-        orot = atan2(vw[1],vw[0]) - atan2(1,0)
-    
+        
+        orot = atan2(vw[1],vw[0]) - atan2(1,0)    
         scene, font_id, height = context.scene, 0, context.region.height
         maxws = max(ws)
         radius, hscale = 110, height/nh
@@ -435,6 +435,7 @@ def en_air(self, context, temp, ws, wd, hu):
             blf.position(font_id, int(posx - fwidth*cos(ang) + hscale *0.825 * radius*sin(ang)), int(posy + fwidth*sin(ang) + hscale * 0.825 * radius * cos(ang)), 0)
             blf.rotation(font_id, - orot - d*pi*0.25)
             blf.draw(font_id, direcs[d])
+            
         blf.disable(0, 4)
         blf.disable(0, 1)   
         drawtri(posx, posy, ws[scene.frame_current]/maxws, wd[scene.frame_current] + orot*180/pi, hscale, radius)
@@ -442,7 +443,8 @@ def en_air(self, context, temp, ws, wd, hu):
         # Humidity
         blf.enable(0, 4)
         maxval, minval = 100, 0
-        reslevel = (hu[scene.frame_current] - minval)/(maxval - minval)
+        humval = hu[scene.frame_current]
+        reslevel = (humval - minval)/(maxval - minval)
         bgl.glMatrixMode(bgl.GL_PROJECTION)
         bgl.glLoadIdentity()
         bgl.gluOrtho2D(0, width, 0, height)
@@ -450,8 +452,8 @@ def en_air(self, context, temp, ws, wd, hu):
         bgl.glLoadIdentity()
         bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
         blf.position(font_id, int(leftwidth + hscale * 75), int(topheight - hscale * 20), 0)
-        blf.draw(font_id, "H: {:.1f}%".format(hu[scene.frame_current]))
-        drawpoly(int(leftwidth + hscale * 80), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 130), botheight, 1, *colorsys.hsv_to_rgb(1 - reslevel, 1.0, 1.0))
+        blf.draw(font_id, "H: {:.1f}%".format(humval))
+        drawpoly(int(leftwidth + hscale * 80), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 130), botheight, *colorsys.hsv_to_rgb(1 - reslevel, 1.0, 1.0), 1)
         drawloop(int(leftwidth + hscale * 80 - 1), botheight + int(0.9 * bheight * reslevel), int(leftwidth + hscale * 130), botheight)      
         blf.disable(0, 4)
             
@@ -467,8 +469,10 @@ class Base_Display():
         self.press = 0
         self.move = 0
         self.expand = 0
+        
         if iname not in bpy.data.images:
             bpy.data.images.load(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))), 'Images', iname))
+        
         self.image = iname
         self.hl = [1, 1, 1, 1]
         self.cao = None
@@ -476,10 +480,13 @@ class Base_Display():
         
     def draw(self, context, width, height):
         self.width, self.height = context.region.width, context.region.height
+        
         if self.pos[1] > height:
             self.pos[1] = height
+            
         self.spos = (int(self.pos[0] - 25), int(self.pos[1] - 15))
         self.epos = (int(self.pos[0] + 25), int(self.pos[1] + 15))
+        
         if self.expand == 0:
             self.drawclosed()
         if self.expand == 1:
@@ -607,12 +614,12 @@ class en_scatter(Base_Display):
                 self.minmax = envals(self.unit, scene, zdata)    
                 cbtitle = enunitdict[self.unit]
                 self.plt = plt
-                self.plt.rcParams['font.family']='Noto Sans'
+                self.plt.rcParams['font.family'] = 'Noto Sans'
                 draw_dhscatter(self, scene, days, hours, zdata, '{} {}'.format(title, entitledict[self.unit]), 'Days', 'Hours', cbtitle, self.minmax[0], self.minmax[1])  
                 save_plot(self, scene, 'scatter.png')
 
         except Exception as e:  
-            print('en_scatter', e)
+            logentry('Problen saving scatter plot: {}'.format(e))
         
     def drawopen(self, context):
         draw_image(self, 0)
@@ -636,6 +643,7 @@ class en_barchart(Base_Display):
         self.col = scene.vi_leg_col
         self.plt = plt
         self.minmax = (scene.bar_min, scene.bar_max)
+        
         if self.cao and self.cao.get(self.resstring) and self.cao[self.resstring].get(self.unit):
             x = arange(resnode['AStart'], resnode['AEnd'] + 1)
             y = array(self.cao[self.resstring][self.unit])

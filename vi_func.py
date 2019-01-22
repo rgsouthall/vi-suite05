@@ -20,7 +20,7 @@ import bpy, os, sys, inspect, multiprocessing, mathutils, bmesh, datetime, color
 #from collections import OrderedDict
 from subprocess import Popen, PIPE, STDOUT
 from numpy import int8, in1d, float16, float32, float64, array, digitize, amax, amin, average, zeros, inner, transpose, nan, set_printoptions, choose, clip, where, savetxt, char
-set_printoptions(threshold=nan)
+#set_printoptions(threshold=nan)
 from numpy import sum as nsum
 from numpy import max as nmax
 from numpy import min as nmin
@@ -188,9 +188,9 @@ def retcols(cmap, levels):
     return rgbas
   
 def cmap(scene):
-    cols = retcols(ret_mcm().get_cmap(scene.vi_leg_col), scene.vi_leg_levels)
+    cols = [(0.0, 0.0, 0.0, 1.0)] + retcols(ret_mcm().get_cmap(scene.vi_leg_col), scene.vi_leg_levels)
     
-    for i in range(scene.vi_leg_levels):   
+    for i in range(scene.vi_leg_levels + 1):   
         matname = '{}#{}'.format('vi-suite', i)
         
         if not bpy.data.materials.get(matname):
@@ -1602,7 +1602,7 @@ def lividisplay(self, scene):
             nmatis = [(0, ll - 1)[v == 1] for v in vals]
         else:
             bins = array([increment * i for i in range(ll + 1)])
-            nmatis = clip(digitize(vals, bins, right = True) - 1, 0, ll - 1, out=None)
+            nmatis = clip(digitize(vals, bins, right = True) - 1, 0, ll - 1, out=None) + 1
             
         bm.to_mesh(self.data)
         bm.free()
@@ -2057,7 +2057,7 @@ def compass(loc, scale, wro, mat):
     
     for i in range(1, 11):
         # diameter becomes radius post 2.79
-        bmesh.ops.create_circle(bm, cap_ends=False, diameter=scale*((i**2)/10)*0.1, segments=132,  matrix=Matrix.Rotation(pi/64, 4, 'Z')*Matrix.Translation((0, 0, 0)))
+        bmesh.ops.create_circle(bm, cap_ends=False, radius=scale*((i**2)/10)*0.1, segments=132,  matrix=Matrix.Rotation(pi/64, 4, 'Z')*Matrix.Translation((0, 0, 0)))
     
     for edge in bm.edges:
         edge.select_set(False) if edge.index % 3 or edge.index > 1187 else edge.select_set(True)
@@ -2070,7 +2070,7 @@ def compass(loc, scale, wro, mat):
         vert.co[2] = 0
 
     # diameter becomes radius post 2.79       
-    bmesh.ops.create_circle(bm, cap_ends=True, diameter=scale *0.005, segments=8, matrix=Matrix.Rotation(-pi/8, 4, 'Z')*Matrix.Translation((0, 0, 0)))
+    bmesh.ops.create_circle(bm, cap_ends=True, radius=scale * 0.0025, segments=8, matrix=Matrix.Rotation(-pi/8, 4, 'Z')*Matrix.Translation((0, 0, 0)))
     
     matrot = Matrix.Rotation(pi*0.25, 4, 'Z')
     degmatrot = Matrix.Rotation(pi*0.125, 4, 'Z')
