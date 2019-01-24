@@ -3533,8 +3533,8 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
         with open(os.path.join(scene['flparams']['ofcpfilebase'], 'blockMeshDict'), 'w') as bmfile:
             bmfile.write(fvbmwrite(bmos[0], expnode))
 
-        call(("blockMesh", "-case", "{}".format(scene['flparams']['offilebase'])))
-        fvblbmgen(bmos[0].data.materials, open(os.path.join(scene['flparams']['ofcpfilebase'], 'faces'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'points'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'boundary'), 'r'), 'blockMesh')
+#        call(("blockMesh", "-case", "{}".format(scene['flparams']['offilebase'])))
+#        fvblbmgen(bmos[0].data.materials, open(os.path.join(scene['flparams']['ofcpfilebase'], 'faces'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'points'), 'r'), open(os.path.join(scene['flparams']['ofcpfilebase'], 'boundary'), 'r'), 'blockMesh')
 
         expnode.export()
         return {'FINISHED'}
