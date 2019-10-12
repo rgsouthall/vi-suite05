@@ -290,9 +290,9 @@ class WindroseAxes(PolarAxes):
             val = vals[i,:] + offset
             offset += vals[i, :]
             zorder = ZBASE + nbins - i
-            xs, ys = poly_between(angles, 0, val)
-            patch = self.fill(xs, ys, facecolor=colors[i],
-                              edgecolor=colors[i], zorder=zorder, **kwargs)
+            patch = self.fill(np.append(angles, 0), np.append(val, 0),
+                              facecolor=colors[i], edgecolor=colors[i],
+                              zorder=zorder, **kwargs)
             self.patches_list.extend(patch)
 
 
