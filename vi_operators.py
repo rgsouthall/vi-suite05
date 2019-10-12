@@ -2348,8 +2348,8 @@ class NODE_OT_WindRose(bpy.types.Operator):
 #        (fig, ax) = wr_axes(plt)
         sbinvals = arange(0,int(ceil(max(cws))),2)
         dbinvals = arange(-11.25,372.25,22.5)
-        dfreq = histogram(awd, bins=dbinvals)[0]
-        adfreq = histogram(cwd, bins=dbinvals)[0]
+        dfreq = histogram(cwd, bins=dbinvals)[0]
+        adfreq = histogram(vawd, bins=dbinvals)[0]
         dfreq[0] = dfreq[0] + dfreq[-1]
         dfreq = dfreq[:-1]
         
@@ -2359,12 +2359,15 @@ class NODE_OT_WindRose(bpy.types.Operator):
             ax.box(vawd, vaws, bins=sbinvals, normed=True, cmap=mcm.get_cmap(scene.vi_leg_col))
         elif simnode.wrtype in ('2', '3', '4'):
             ax.contourf(vawd, vaws, bins=sbinvals, normed=True, cmap=mcm.get_cmap(scene.vi_leg_col))
-
+        
+        if simnode.max_freq == '1':
+            ax.set_rmax(simnode.max_freq_val)
+            
         plt.savefig(scene['viparams']['newdir']+'/disp_wind.svg')
         (wro, scale) = wind_rose(simnode['maxres'], scene['viparams']['newdir']+'/disp_wind.svg', simnode.wrtype, mcolors)
         
         wro['maxres'], wro['minres'], wro['avres'], wro['nbins'], wro['VIType'] = max(aws), min(aws), sum(aws)/len(aws), len(sbinvals), 'Wind_Plane'
-        simnode['maxfreq'] = 100*numpy.max(adfreq)/len(cwd)
+        simnode['maxfreq'] = 100*numpy.max(adfreq)/len(vawd) if simnode.max_freq == '0' else simnode.max_freq_val
         windnum(simnode['maxfreq'], (0,0,0), scale, compass((0,0,0), scale, wro, wro.data.materials['wr-000000']))
         plt.close()
         wro['table'] = array([["", 'Minimum', 'Average', 'Maximum'], ['Speed (m/s)', wro['minres'], '{:.1f}'.format(wro['avres']), wro['maxres']], ['Direction (\u00B0)', min(awd), '{:.1f}'.format(sum(awd)/len(awd)), max(awd)]])
@@ -2372,7 +2375,7 @@ class NODE_OT_WindRose(bpy.types.Operator):
         wro['wd'] = awd.reshape(len(doys), 24).T.tolist()
         wro['days'] = array(doys, dtype = float)
         wro['hours'] = arange(1, 25, dtype = float)        
-        wro['maxfreq'] = 100*numpy.max(dfreq)/len(awd)
+        wro['maxfreq'] = 100*numpy.max(adfreq)/len(vawd)
         simnode['nbins'] = len(sbinvals)        
         simnode['ws'] = array(cws).reshape(365, 24).T.tolist()
         simnode['wd'] = array(cwd).reshape(365, 24).T.tolist()        
@@ -3524,6 +3527,10 @@ class NODE_OT_Blockmesh(bpy.types.Operator):
         if len(bmos) != 1:
             self.report({'ERROR'},"One and only one object with the CFD Domain property is allowed")
             return {'CANCELLED'}
+        elif [f.material_index for f in bmos[0].data.polygons if f.material_index + 1 > len(bmos[0].data.materials)]:
+            self.report({'ERROR'},"Not every domain face has a material attached")
+            logentry("Not every face has a material attached")
+            return {'CANCELLED'}
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'controlDict'), 'w') as cdfile:
             cdfile.write(fvcdwrite("simpleFoam", 0.005, 5))
         with open(os.path.join(scene['flparams']['ofsfilebase'], 'fvSolution'), 'w') as fvsolfile:
@@ -3557,7 +3564,8 @@ class NODE_OT_Snappymesh(bpy.types.Operator):
             if os.path.isfile(os.path.join(scene['flparams']['ofcpfilebase'], fname)) and fname in ('cellLevel', 'pointLevel', 'surfaceIndex', 'level0Edge', 'refinementHistory'):
                 os.remove(os.path.join(scene['flparams']['ofcpfilebase'], fname))
 
-        expnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+        expnode = context.node
+#        expnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
         fvos = [o for o in scene.objects if o.vi_type == '3']
         
         if fvos:
@@ -3568,7 +3576,7 @@ class NODE_OT_Snappymesh(bpy.types.Operator):
             gmats = [mat for mat in fvos[0].data.materials if mat.flovi_ground]
 #            if gmats:
             with open(os.path.join(scene['flparams']['ofsfilebase'], 'snappyHexMeshDict'), 'w') as shmfile:
-                shmfile.write(fvshmwrite(expnode, fvos, ground = gmats))
+                shmfile.write(fvshmwrite(expnode, fvos, bmos[0], ground = gmats))
             with open(os.path.join(scene['flparams']['ofsfilebase'], 'meshQualityDict'), 'w') as mqfile:
                 mqfile.write(fvmqwrite())
             with open(os.path.join(scene['flparams']['ofsfilebase'], 'surfaceFeatureExtractDict'), 'w') as sfefile:

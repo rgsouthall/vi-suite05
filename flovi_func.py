@@ -224,13 +224,14 @@ def fvblbmgen(mats, ffile, vfile, bfile, meshtype):
     bm = bmesh.new()
 
     for line in [line for line in vfile.readlines() if line[0] == '(' and len(line.split(' ')) == 3]:
-        bm.verts.new().co = [float(vpos) for vpos in line[1:-2].split(' ')]
+        bm.verts.new([float(vpos) for vpos in line[1:-2].split(' ')])
 
     if hasattr(bm.verts, "ensure_lookup_table"):
         bm.verts.ensure_lookup_table()
 
     for l, line in enumerate([line for line in ffile.readlines() if '(' in line and line[0].isdigit() and len(line.split(' ')) == int(line[0])]):
         newf = bm.faces.new([bm.verts[int(fv)] for fv in line[2:-2].split(' ')])
+        
         for facerange in matfacedict.items():
             if l in range(facerange[1][0], facerange[1][0] + facerange[1][1]):
                 newf.material_index = matnamedict[facerange[0]]
@@ -553,7 +554,7 @@ def fvshmlayers(oname, node):
     '  expansionRatio 1.0;\n  finalLayerThickness 0.3;\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 3;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n' + \
     '  nSmoothThickness 10;\n  maxFaceThicknessRatio 0.5;\n  maxThicknessToMedialRatio 0.3;\n  minMedianAxisAngle 90;\n  nBufferCellsNoExtrude 0;\n  nLayerIter 50;\n}\n\n'
     
-def fvshmwrite(node, fvos, **kwargs):     
+def fvshmwrite(node, fvos, bmo, **kwargs):     
     surfdict = {"0": ("firstLayerThickness", node.frlayer, "thickness", node.olayer),
                 "1": ("firstLayerThickness", node.frlayer, "expansionRatio", node.expansion),
                 "2": ("finalLayerThickness", node.fnlayer, "expansionRatio", node.expansion),
@@ -562,7 +563,7 @@ def fvshmwrite(node, fvos, **kwargs):
     
     layersurf = '({}|{})'.format(kwargs['ground'][0].name, fvos[0].name) if kwargs and kwargs['ground'] else fvos[0].name 
     ofheader = 'FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n    object      snappyHexMeshDict;\n}\n\n'
-    ofheader += 'castellatedMesh    {};\nsnap    {};\naddLayers    {};\ndebug    {};\n\n'.format('true', 'true', 'true', 0)
+    ofheader += 'castellatedMesh    {};\nsnap    {};\naddLayers    {};\ndebug    {};\n\n'.format('true', 'true', ('false', 'true')[node.layers], 0)
     
     ofheader += 'geometry\n{\n'
 
@@ -574,22 +575,22 @@ def fvshmwrite(node, fvos, **kwargs):
     ofheader += '  features\n  (\n'
 
     for o in fvos:
-        ofheader += '    {{\n      file "{}.eMesh";\n      level {};\n    }}\n\n'.format(o.name, node.level)
+        ofheader += '    {{\n      file "{}.eMesh";\n      level {};\n    }}\n\n'.format(o.name, o.flovi_fl)
 
     ofheader += ');\n\n'
     ofheader +='  refinementSurfaces\n  {\n'
 
     for o in fvos:
-        ofheader += '    {}\n    {{\n      level ({} {});\n    }}\n\n  '.format(o.name, node.surflmin, node.surflmax) 
+        ofheader += '    {}\n    {{\n      level ({} {});\n    }}\n\n  '.format(o.name, o.flovi_slmin, o.flovi_slmax) 
 
     ofheader += '};\n\n'
     ofheader += '  resolveFeatureAngle 30;\n  refinementRegions\n  {}\n\n'
-    ofheader += '  locationInMesh ({0[0]:} {0[1]} {0[2]});\n  allowFreeStandingZoneFaces true;\n}}\n\n'.format(bpy.data.objects[node.empties].location)
+    ofheader += '  locationInMesh ({0[0]:} {0[1]} {0[2]});\n  allowFreeStandingZoneFaces true;\n}}\n\n'.format(mathutils.Matrix.Translation(bmo['flovi_translate']) * bpy.data.objects[node.empties].location)
     ofheader += 'snapControls\n{\n  nSmoothPatch 3;\n  tolerance 2.0;\n  nSolveIter 30;\n  nRelaxIter 5;\n  nFeatureSnapIter 10;\n  implicitFeatureSnap false;\n  explicitFeatureSnap true;\n  multiRegionFeatureSnap false;\n}\n\n'
     ofheader += 'addLayersControls\n{\n  relativeSizes true;\n  layers\n  {\n'
 
     for o in fvos:
-        ofheader += '"{}.*"\n    {{\n      nSurfaceLayers {};\n    }}\n'.format(o.name, node.layers)
+        ofheader += '"{}.*"\n    {{\n      nSurfaceLayers {};\n    }}\n'.format(o.name, o.flovi_sl)
 
     ofheader += '}}\n\n'.format(o.name, node.layers)
     ofheader += '  {0[0]} {0[1]};\n  {0[2]} {0[3]};\n  minThickness 0.1;\n  nGrow 0;\n  featureAngle 60;\n  slipFeatureAngle 30;\n  nRelaxIter 5;\n  nSmoothSurfaceNormals 1;\n  nSmoothNormals 3;\n'.format(surfdict[node.layerspec][:]) + \

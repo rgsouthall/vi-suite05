@@ -2149,7 +2149,7 @@ def spathrange(mats):
 
 def windnum(maxws, loc, scale, wr):
     txts = []
-    matrot = Matrix.Rotation(-pi*0.075, 4, 'Z')
+    matrot = Matrix.Rotation(-pi*0.05, 4, 'Z')
     direc = Vector((0, 1, 0))
     for i in range(2, 6):
         bpy.ops.object.text_add(view_align=False, enter_editmode=False, location=((i**2)/25)*scale*(matrot*direc))

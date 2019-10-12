@@ -1116,7 +1116,8 @@ class ViWRNode(Node, ViNodes):
     wrtype = EnumProperty(items = [("0", "Hist 1", "Stacked histogram"), ("1", "Hist 2", "Stacked Histogram 2"), ("2", "Cont 1", "Filled contour"), ("3", "Cont 2", "Edged contour"), ("4", "Cont 3", "Lined contour")], name = "", default = '0', update = nodeupdate)
     sdoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 1, update = nodeupdate)
     edoy = IntProperty(name = "", description = "Day of simulation", min = 1, max = 365, default = 365, update = nodeupdate)
-
+    max_freq = EnumProperty(items = [("0", "Data", "Max frequency taken from data"), ("1", "Specified", "User entered value")], name = "", default = '0', update = nodeupdate)
+    max_freq_val = FloatProperty(name = "", description = "Max frequency", min = 1, max = 100, default = 20, update = nodeupdate)
 
     def init(self, context):
         self['nodeid'] = nodeid(self)
@@ -1131,6 +1132,9 @@ class ViWRNode(Node, ViNodes):
             newrow(layout, 'Start day {}/{}:'.format(sdate.day, sdate.month), self, "sdoy")
             newrow(layout, 'End day {}/{}:'.format(edate.day, edate.month), self, "edoy")
             newrow(layout, 'Colour:', context.scene, 'vi_leg_col')
+            newrow(layout, 'Max frequency:', self, 'max_freq')
+            if self.max_freq == '1':
+               newrow(layout, 'Frequency:', self, 'max_freq_val') 
             row = layout.row()
             row.operator("node.windrose", text="Create Wind Rose").nodeid = self['nodeid']
         else:
@@ -1139,7 +1143,7 @@ class ViWRNode(Node, ViNodes):
 
     def export(self):
         nodecolour(self, 0)
-        self['exportstate'] = [str(x) for x in (self.wrtype, self.sdoy, self.edoy)]
+        self['exportstate'] = [str(x) for x in (self.wrtype, self.sdoy, self.edoy, self.max_freq, self.max_freq_val)]
         
     def update(self):
         pass
@@ -3839,11 +3843,11 @@ class ViSHMExNode(Node, ViNodes):
 
     lcells = IntProperty(name = "", description = "SnappyhexMesh local cells", min = 0, max = 100000, default = 1000, update = nodeupdate)
     gcells = IntProperty(name = "", description = "SnappyhexMesh global cells", min = 0, max = 1000000, default = 10000, update = nodeupdate)
-    level = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
-    surflmin = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
-    surflmax = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
+#    level = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
+#    surflmin = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
+#    surflmax = IntProperty(name = "", description = "SnappyhexMesh level", min = 0, max = 6, default = 2, update = nodeupdate)
     ncellsbl = IntProperty(name = "", description = "Number of cells between levels", min = 0, max = 6, default = 2, update = nodeupdate)
-    layers = IntProperty(name = "", description = "Layer number", min = 0, max = 10, default = 0, update = nodeupdate)
+    layers = BoolProperty(name = "", description = "Turn on surface layering", default = 0, update = nodeupdate)
 
     layerspec = EnumProperty(items = [('0', 'First & overall', 'First layer thickness and overall thickness'), ('1', 'First & ER', 'First layer thickness and expansion ratio'),
                                                ('2', 'Final & ER', 'Final layer thickness and expansion ratio'), ('3', 'Final & overall', 'Final layer thickness and overall thickness'),
@@ -3863,22 +3867,24 @@ class ViSHMExNode(Node, ViNodes):
         nodecolour(self, 1)
 
     def draw_buttons(self, context, layout):
-        newrow(layout, 'Meshing point:', self, 'empties')
-        if self.empties:
-            newrow(layout, 'Local cells:', self, 'lcells')
-            newrow(layout, 'Global cells:', self, 'gcells')
-            newrow(layout, 'Level:', self, 'level')
-            newrow(layout, 'Max level:', self, 'surflmax')
-            newrow(layout, 'Min level:', self, 'surflmin')
-            newrow(layout, 'CellsBL:', self, 'ncellsbl')
-            newrow(layout, 'Layers:', self, 'layers')
-            
-            if self.layers:
-                newrow(layout, 'Layer spec:', self, 'layerspec')
-                [newrow(layout, laytype[0], self, laytype[1]) for laytype in self.laytypedict[self.layerspec]]
-    
-            row = layout.row()
-            row.operator("node.snappy", text = "Export").nodeid = self['nodeid']
+        if self.inputs[0].links:
+            newrow(layout, 'Meshing point:', self, 'empties')
+            if self.empties:
+                newrow(layout, 'Local cells:', self, 'lcells')
+                newrow(layout, 'Global cells:', self, 'gcells')
+#                newrow(layout, 'Level:', self, 'level')
+#                newrow(layout, 'Max level:', self, 'surflmax')
+#                newrow(layout, 'Min level:', self, 'surflmin')
+                newrow(layout, 'Layers:', self, 'layers')
+                newrow(layout, 'CellsBL:', self, 'ncellsbl')
+                
+                
+                if self.layers:
+                    newrow(layout, 'Layer spec:', self, 'layerspec')
+                    [newrow(layout, laytype[0], self, laytype[1]) for laytype in self.laytypedict[self.layerspec]]
+        
+                row = layout.row()
+                row.operator("node.snappy", text = "Export").nodeid = self['nodeid']
 
     def export(self):
         self.exportstate = [str(x) for x in (self.lcells, self.gcells)]

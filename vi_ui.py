@@ -19,7 +19,7 @@ class Vi3DPanel(bpy.types.Panel):
         layout = self.layout
 
         try:
-            if cao and cao.active_material.get('bsdf') and cao.active_material['bsdf']['type'] == ' ' and cao.vi_type == '5' and scene['viparams'].get('vidisp'):                
+            if cao and cao.active_material and cao.active_material.get('bsdf') and cao.active_material['bsdf']['type'] == ' ' and cao.vi_type == '5' and scene['viparams'].get('vidisp'):                
                 if scene['viparams']['vidisp'] != 'bsdf_panel':
                     row = layout.row()
                     row.operator("view3d.bsdf_display", text="BSDF Display") 
@@ -449,7 +449,12 @@ class VIObPanel(bpy.types.Panel):
                     newrow(layout, 'Inside convection:', obj, "envi_ica")
                     newrow(layout, 'Outside convection:', obj, "envi_oca")
                     
-
+            if obj.vi_type == '3':
+                newrow(layout, 'Feature level:', obj, "flovi_fl")
+                newrow(layout, 'Surface max level:', obj, "flovi_slmax")
+                newrow(layout, 'Surface min level:', obj, "flovi_slmin")
+                newrow(layout, 'Surface layers:', obj, "flovi_slmin")
+                
         if (obj.type == 'LAMP' and obj.data.type != 'SUN') or obj.vi_type == '4':
             newrow(layout, 'IES file:', obj, "ies_name")
             newrow(layout, 'IES Dimension:', obj, "ies_unit")

@@ -336,6 +336,10 @@ def script_update(self, context):
     if context.scene.vi_res_process == '2':
         script = bpy.data.texts[context.scene.script_file]
         exec(script.as_string())
+        
+def flovi_levels(self, context):
+    if self.flovi_slmin > self.flovi_slmax:
+       self.flovi_slmin -= 1 
                       
 def register():
     bpy.utils.register_module(__name__)    
@@ -377,7 +381,10 @@ def register():
     Object.envi_ica = eprop([("0", "Default", "Use the system wide convection algorithm"), ("1", "Simple", "Use the simple convection algorithm"), ("2", "Detailed", "Use the detailed convection algorithm"), ("3", "Trombe", "Use the Trombe wall convection algorithm"), ("4", "Adaptive", "Use the adaptive convection algorithm")], "", "Specify the EnVi zone inside convection algorithm", "0")
 
 # FloVi object definitions
-              
+    Object.flovi_fl = IntProperty(name = '', description = 'SnappyHexMesh object features levels', min = 1, max = 20, default = 4) 
+    Object.flovi_slmax = IntProperty(name = '', description = 'SnappyHexMesh surface maximum levels', min = 1, max = 20, default = 4, update=flovi_levels)   
+    Object.flovi_slmin = IntProperty(name = '', description = 'SnappyHexMesh surface minimum levels', min = 1, max = 20, default = 3, update=flovi_levels)     
+    Object.flovi_sl = IntProperty(name = '', description = 'SnappyHexMesh surface minimum levels', min = 0, max = 20, default = 3) 
 # Vi_suite material definitions
     Material.mattype = eprop([("0", "Geometry", "Geometry"), ("1", 'Light sensor', "LiVi sensing material".format(u'\u00b3')), ("2", "FloVi boundary", 'FloVi blockmesh boundary')], "", "VI-Suite material type", "0")
                                  
