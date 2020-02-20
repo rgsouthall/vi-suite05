@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.projections.polar import PolarAxes
 from numpy.lib.twodim_base import histogram2d
-from pylab import poly_between
+#from pylab import poly_between
 
 RESOLUTION = 100
 ZBASE = -1000 #The starting zorder for all drawing, negative to have the grid on
